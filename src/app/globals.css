@@ -215,7 +215,7 @@ a.pixel-btn {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: #05143a;
+  background: #c4b56a;
   position: relative;
 }
 .city-canvas {
@@ -256,7 +256,15 @@ a.pixel-btn {
   max-width: 90vw;
 }
 .story-pop { top: 72px; }
-.plane-banner { top: 28px; background: #fff3a0; }
+.plane-banner {
+  top: 14%;
+  transform: none;
+  z-index: 3;
+  background: #fff3a0;
+  color: #3a3010;
+  border: 3px solid #e0c060;
+  white-space: nowrap;
+}
 .hud-note {
   bottom: 64px;
   background: #d62828;

@@ -1,164 +1,62 @@
 "use client";
 
-// The playable city. PixiJS draws it straight to a canvas: @pixi/react is
-// not used, because that package is built for an older React reconciler
-// than the one Next ships (see the README). This file is a Client Component
-// because it owns a WebGL canvas, pointer events, and a render loop.
-//
-// The map is isometric, the same projection as prototype/render.py
-// (tile 16×8, 3px per story). One sprite style per building type, recolored
-// from the Nuggets palette. Landmarks get an extra shape on top. An idle
-// crane sits on whatever lot is still under construction.
+// Shows the painted city. pixelScene.js draws the sky, mountains, roads and
+// buildings into one small canvas. This file uploads that canvas as a Pixi
+// texture and scales it with nearest-neighbor, so a 640×500 picture becomes
+// the view without a blur filter. The texture is replaced only when the
+// city or the time-of-day phase changes. The crane and the plane are the
+// only things the ticker moves, which is what keeps a phone from repainting
+// a hundred buildings at 60fps.
 
 import { useEffect, useRef } from "react";
-import { Application, Container, Graphics } from "pixi.js";
-import { lightingAt } from "@/lib/lighting";
+import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
+import { SCENE_H, SCENE_W, paintScene, project, sceneSignature } from "./pixelScene";
 
-const TW = 16;
-const TH = 8;
-const STORY = 3;
-
-const COLORS = {
-  rowhouse: { top: 0xc45a3a, left: 0x8a3018, right: 0xe07a55 },
-  mixeduse: { top: 0xf57c00, left: 0xb85a00, right: 0xffb74d },
-  office: { top: 0x5aa2ea, left: 0x0d47a1, right: 0x90caf9 },
-  skyscraper: { top: 0xfdd835, left: 0x0d2a6b, right: 0x1e88e5 },
-  state: { top: 0xeceff1, left: 0x607d8b, right: 0xcfd8dc },
-  museum: { top: 0xe8501e, left: 0x6a1b1b, right: 0xff8a65 },
-  capitol: { top: 0xfdd835, left: 0xb88a00, right: 0xfff59d },
-};
-
-function project(x, y, z = 0) {
-  return [(x - y) * (TW / 2), (x + y) * (TH / 2) - z];
-}
-
-function polyAt(g, points, color) {
-  g.poly(points.flat(), true).fill({ color });
-}
-
-function drawBox(g, x, y, stories, colors) {
-  const z = Math.max(stories, 0) * STORY;
-  const p = (dx, dy, h) => project(x + dx, y + dy, h);
-  const a = p(0, 0, 0);
-  const b = p(1, 0, 0);
-  const c = p(1, 1, 0);
-  const d = p(0, 1, 0);
-  const A = p(0, 0, z);
-  const B = p(1, 0, z);
-  const C = p(1, 1, z);
-  const D = p(0, 1, z);
-  if (z > 0) {
-    polyAt(g, [b, c, C, B], colors.right);
-    polyAt(g, [d, c, C, D], colors.left);
+// ?time=22:00 previews a clock hour without waiting for it. The live view
+// still uses the device clock when the query is absent.
+function viewClock() {
+  const q = new URLSearchParams(window.location.search).get("time");
+  if (q && /^\d{1,2}:\d{2}$/.test(q)) {
+    const [h, m] = q.split(":").map(Number);
+    return lightingAtMinutes(h * 60 + m);
   }
-  polyAt(g, [A, B, C, D], colors.top);
-  return C;
+  return lightingAt(new Date());
 }
 
 function drawCrane(g, x, y, stories, bob) {
-  const [sx, sy] = project(x + 0.15, y + 0.15, stories * STORY);
-  const topY = sy - 16;
-  g.moveTo(sx, sy).lineTo(sx, topY).stroke({ width: 2, color: 0xd7d7d7 });
-  g.moveTo(sx, topY).lineTo(sx + 14, topY + 2).stroke({ width: 2, color: 0xfdd835 });
-  g.circle(sx + 14, topY + 6 + bob, 1.6).fill({ color: 0x9e9e9e });
-}
-
-function drawCity(g, city, light) {
   g.clear();
-  if (!city) return;
-  const { tiles, period } = city.map;
-  const road = light.streetLights > 0.5 ? 0x3a3a22 : 0x3a3f36;
-  const grass = 0x2e7d32;
-  for (let y = 0; y < tiles; y++) {
-    for (let x = 0; x < tiles; x++) {
-      const roadTile = x % period === 0 || y % period === 0;
-      const [sx, sy] = project(x, y, 0);
-      const [a1, a2] = project(x + 1, y, 0);
-      const [b1, b2] = project(x + 1, y + 1, 0);
-      const [c1, c2] = project(x, y + 1, 0);
-      polyAt(g, [[sx, sy], [a1, a2], [b1, b2], [c1, c2]], roadTile ? road : grass);
-    }
-  }
-
-  const items = [];
-  for (const b of city.buildings) items.push({ key: b.x + b.y, draw: () => drawBuilding(g, b, light) });
-  for (const p of city.parks) items.push({ key: p.x + p.y, draw: () => drawPark(g, p) });
-  for (const q of city.sideQuests) items.push({ key: q.x + q.y + 0.5, draw: () => drawQuest(g, q) });
-  for (const l of city.landmarks) {
-    if (l.key === "capitol") continue;
-    items.push({ key: l.x + l.y, draw: () => drawLandmark(g, l) });
-  }
-  items.sort((a, b) => a.key - b.key);
-  for (const item of items) item.draw();
-}
-
-function drawBuilding(g, b, light) {
-  const colors = COLORS[b.type] || COLORS.office;
-  const stories = b.status === "complete" ? b.targetStories : Math.max(b.storiesBuilt, 0.2);
-  drawBox(g, b.x, b.y, stories, colors);
-  if (b.type === "capitol") {
-    const [cx, cy] = project(b.x + 0.5, b.y + 0.5, stories * STORY + 6);
-    g.circle(cx, cy, 5).fill({ color: 0xfdd835 });
-  }
-  if (light.windowLight > 0.35 && stories >= 1) {
-    const floors = Math.min(6, Math.floor(stories));
-    for (let i = 0; i < floors; i++) {
-      const [wx, wy] = project(b.x + 0.35, b.y + 0.65, 3 + i * 4);
-      g.rect(wx, wy, 2, 2).fill({ color: 0xfff3a0 });
-    }
-  }
-}
-
-function drawPark(g, p) {
-  drawBox(g, p.x, p.y, 0.15, { top: 0x43a047, left: 0x2e7d32, right: 0x66bb6a });
-  const [tx, ty] = project(p.x + 0.5, p.y + 0.45, 2);
-  g.circle(tx, ty, 3).fill({ color: 0x1b5e20 });
-}
-
-function drawQuest(g, q) {
-  drawBox(g, q.x, q.y, 1.2, { top: 0xfdd835, left: 0xb88a00, right: 0xfff59d });
-  drawBox(g, q.x + 1, q.y, 0.8, { top: 0xd62828, left: 0x8a1c1c, right: 0xe8501e });
-}
-
-function drawLandmark(g, l) {
-  if (l.key === "unionStation") {
-    drawBox(g, l.x, l.y, 3, { top: 0xf5f5f5, left: 0x8d6e63, right: 0xd7ccc8 });
-    const [sx, sy] = project(l.x + 0.5, l.y + 0.2, 12);
-    g.rect(sx - 8, sy, 16, 3).fill({ color: 0xfdd835 });
-  } else if (l.key === "courthouse") {
-    drawBox(g, l.x, l.y, 4, { top: 0xeceff1, left: 0x546e7a, right: 0xcfd8dc });
-  } else if (l.key === "artMuseum") {
-    drawBox(g, l.x, l.y, 5, { top: 0xd62828, left: 0x4e342e, right: 0xffcc80 });
-  } else if (l.key === "cathedral") {
-    drawBox(g, l.x, l.y, 6, { top: 0xcfd8dc, left: 0x455a64, right: 0xb0bec5 });
-    const [sx, sy] = project(l.x + 0.5, l.y + 0.5, 22);
-    g.moveTo(sx, sy - 8).lineTo(sx - 4, sy).lineTo(sx + 4, sy).fill({ color: 0xeceff1 });
-  } else {
-    drawBox(g, l.x, l.y, 3, COLORS.state);
-  }
-}
-
-function drawDust(g, x, y, stories) {
-  const [sx, sy] = project(x + 0.6, y + 0.6, stories * STORY);
-  g.circle(sx, sy, 3).fill({ color: 0xc4b08a, alpha: 0.8 });
-  g.circle(sx + 5, sy - 2, 2).fill({ color: 0x8d7b63, alpha: 0.7 });
+  const base = project(x + 0.12, y + 0.12, 0);
+  const top = project(x + 0.12, y + 0.12, stories * 3 + 18);
+  const mastX = Math.round(base[0]);
+  const topY = Math.round(top[1]);
+  g.moveTo(mastX, base[1]).lineTo(mastX, topY).stroke({ width: 2, color: 0xf0c020, pixelLine: true });
+  g.moveTo(mastX + 1, base[1]).lineTo(mastX + 1, topY).stroke({ width: 1, color: 0xc89a10, pixelLine: true });
+  const jib = mastX + 28 + bob;
+  g.moveTo(mastX - 10, topY).lineTo(jib, topY).stroke({ width: 2, color: 0xf0c020, pixelLine: true });
+  g.moveTo(mastX, topY - 6).lineTo(jib, topY).stroke({ width: 1, color: 0xc89a10, pixelLine: true });
+  g.moveTo(mastX, topY - 6).lineTo(mastX - 10, topY).stroke({ width: 1, color: 0xc89a10, pixelLine: true });
+  g.rect(mastX - 12, topY + 1, 4, 3).fill({ color: 0x808080 });
+  g.moveTo(jib - 6, topY).lineTo(jib - 6, topY + 12).stroke({ width: 1, color: 0x404040, pixelLine: true });
+  g.rect(jib - 8, topY + 12, 4, 2).fill({ color: 0xf0c020 });
+  g.rect(mastX, topY - 8, 2, 2).fill({ color: 0xff3030 });
 }
 
 function drawPlane(g, x, y) {
-  g.roundRect(x, y, 22, 6, 2).fill({ color: 0xffffff });
-  g.rect(x + 6, y + 4, 10, 3).fill({ color: 0xd62828 });
-  g.rect(x + 8, y - 3, 8, 3).fill({ color: 0xfdd835 });
-  g.circle(x + 20, y + 3, 2).fill({ color: 0x0d2a6b });
+  g.clear();
+  const s = 3;
+  const px = (dx, dy, w, h, color) => g.rect(x + dx * s, y + dy * s, w * s, h * s).fill({ color });
+  px(0, 0, 22, 4, 0xffffff);
+  px(4, 3, 12, 2, 0xd62828);
+  px(6, -3, 8, 3, 0xfdd835);
+  px(18, 0, 4, 3, 0x0d2a6b);
+  px(22, 1, 3, 2, 0xf0c020);
 }
 
 export default function CityView({ city, fx }) {
   const hostRef = useRef(null);
-  const appRef = useRef(null);
-  const worldRef = useRef(null);
   const stateRef = useRef({ city, fx });
-  // The ticker reads this ref from Pixi's loop, which is outside React.
-  // Updating it during render is forbidden, so the effect copies props in
-  // after each commit. The crane is at most one frame behind the new city.
+
   useEffect(() => {
     stateRef.current = { city, fx };
   }, [city, fx]);
@@ -169,6 +67,10 @@ export default function CityView({ city, fx }) {
     let application;
     const pointers = new Map();
     let pinchDist = 0;
+    let painted = "";
+    let texBytes = 0;
+    let frames = 0;
+    let fpsStamp = performance.now();
 
     const boot = async () => {
       application = new Application();
@@ -180,66 +82,96 @@ export default function CityView({ city, fx }) {
         roundPixels: true,
       });
       if (dead) {
-        application.destroy();
+        try {
+          application.destroy(true, { children: true });
+        } catch {
+          // Init finished after unmount. Nothing on screen to keep.
+        }
         return;
       }
       application.canvas.style.touchAction = "none";
       application.canvas.style.imageRendering = "pixelated";
       host.appendChild(application.canvas);
-      const world = new Container();
-      const ground = new Graphics();
-      const fxLayer = new Graphics();
-      world.addChild(ground, fxLayer);
-      application.stage.addChild(world);
-      appRef.current = application;
-      worldRef.current = world;
 
+      const world = new Container();
+      const citySprite = new Sprite(Texture.EMPTY);
+      const crane = new Graphics();
+      const dust = new Graphics();
+      world.addChild(citySprite, crane, dust);
+      const screenFx = new Graphics();
+      application.stage.addChild(world, screenFx);
+
+      // Cover the view, don't letterbox it. The painted picture already
+      // includes sky and prairie, so cropping an edge still looks like the
+      // scene rather than the grey page behind the canvas.
       const fit = () => {
-        if (!stateRef.current.city) return;
-        const tiles = stateRef.current.city.map.tiles;
-        const mapW = tiles * TW;
-        const mapH = tiles * TH + 40;
-        const s = Math.min(application.screen.width / (mapW + 16), application.screen.height / (mapH + 24));
-        world.scale.set(Math.max(0.7, Math.min(s, 4)));
-        world.position.set(application.screen.width / 2, application.screen.height * 0.16);
+        const s = Math.max(application.screen.width / SCENE_W, application.screen.height / SCENE_H);
+        world.scale.set(s);
+        world.position.set(
+          (application.screen.width - SCENE_W * s) / 2,
+          (application.screen.height - SCENE_H * s) / 2,
+        );
       };
       fit();
+      application.renderer.on("resize", fit);
+
+      const upload = (live, light) => {
+        const sig = sceneSignature(live, light.phase);
+        if (sig === painted) return;
+        painted = sig;
+        const canvas = paintScene(live, light);
+        const texture = Texture.from(canvas);
+        texture.source.scaleMode = "nearest";
+        const previous = citySprite.texture;
+        citySprite.texture = texture;
+        if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+        texBytes = SCENE_W * SCENE_H * 4;
+        host.dataset.texBytes = String(texBytes);
+      };
 
       const paint = () => {
         const { city: live, fx: liveFx } = stateRef.current;
         const shown = liveFx?.city || live;
         if (!shown) return;
-        const light = lightingAt(new Date());
+        const light = viewClock();
         const [r, g, b] = light.sky[2];
         application.renderer.background.color = (r << 16) + (g << 8) + b;
-        const amb = light.ambient.map((v) => Math.max(0, Math.min(255, Math.round(Math.min(v, 1) * 255))));
-        world.tint = (amb[0] << 16) + (amb[1] << 8) + amb[2];
-        drawCity(ground, shown, light);
-        fxLayer.clear();
-        const site =
-          liveFx?.crane ||
-          shown.buildings.find((building) => building.status === "in_progress");
+        upload(shown, light);
+        const site = liveFx?.crane || shown.buildings.find((building) => building.status === "in_progress");
         if (site) {
-          const bob = Math.sin(performance.now() / 280) * 2;
-          drawCrane(fxLayer, site.x, site.y, site.stories ?? site.storiesBuilt ?? 0, bob);
-          if (liveFx?.dust) drawDust(fxLayer, site.x, site.y, site.stories ?? site.storiesBuilt ?? 0);
+          const bob = Math.round(Math.sin(performance.now() / 420) * 2);
+          const stories = site.stories ?? site.targetStories ?? site.storiesBuilt ?? 2;
+          drawCrane(crane, site.x, site.y, stories, bob);
+          dust.clear();
+          if (liveFx?.dust) {
+            const [dx, dy] = project(site.x + 0.7, site.y + 0.7, (site.stories ?? site.storiesBuilt ?? 0) * 3);
+            dust.circle(dx, dy, 3).fill({ color: 0xc4b08a, alpha: 0.85 });
+            dust.circle(dx + 5, dy - 3, 2).fill({ color: 0x8d7b63, alpha: 0.7 });
+          }
+        } else {
+          crane.clear();
+          dust.clear();
         }
+        screenFx.clear();
         if (liveFx?.plane) {
           const w = application.screen.width;
-          const x = -30 + (w + 50) * liveFx.plane.progress;
-          const y = 28 + Math.sin(liveFx.plane.progress * 8) * 8;
-          // The plane is in screen space, so undo the camera before drawing it.
-          const invX = (x - world.x) / world.scale.x;
-          const invY = (y - world.y) / world.scale.y;
-          drawPlane(fxLayer, invX, invY);
+          // Sit just to the right of the quote banner, which uses the same progress.
+          const x = w * (0.06 + liveFx.plane.progress * 0.5) + 160;
+          const y = application.screen.height * 0.12 + Math.round(Math.sin(liveFx.plane.progress * 10) * 4);
+          drawPlane(screenFx, x, y);
+        }
+        frames += 1;
+        const now = performance.now();
+        if (now - fpsStamp > 1000) {
+          host.dataset.fps = String(frames);
+          frames = 0;
+          fpsStamp = now;
         }
       };
       application.ticker.add(paint);
-      paint();
 
       const canvas = application.canvas;
       const down = (event) => {
-        canvas.setPointerCapture?.(event.pointerId);
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       };
       const move = (event) => {
@@ -249,10 +181,7 @@ export default function CityView({ city, fx }) {
         const pts = [...pointers.values()];
         if (pts.length >= 2) {
           const now = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-          if (pinchDist) {
-            const next = Math.max(0.4, Math.min(4, world.scale.x * (now / pinchDist)));
-            world.scale.set(next);
-          }
+          if (pinchDist) world.scale.set(Math.max(0.3, Math.min(6, world.scale.x * (now / pinchDist))));
           pinchDist = now;
         } else {
           pinchDist = 0;
@@ -263,15 +192,14 @@ export default function CityView({ city, fx }) {
       const up = (event) => pointers.delete(event.pointerId);
       const wheel = (event) => {
         event.preventDefault();
-        const next = Math.max(0.4, Math.min(4, world.scale.x * (event.deltaY > 0 ? 0.9 : 1.1)));
-        world.scale.set(next);
+        world.scale.set(Math.max(0.3, Math.min(6, world.scale.x * (event.deltaY > 0 ? 0.9 : 1.1))));
       };
       canvas.addEventListener("pointerdown", down);
       canvas.addEventListener("pointermove", move);
       canvas.addEventListener("pointerup", up);
       canvas.addEventListener("pointercancel", up);
       canvas.addEventListener("wheel", wheel, { passive: false });
-      worldRef.current.cleanup = () => {
+      host.cleanup = () => {
         canvas.removeEventListener("pointerdown", down);
         canvas.removeEventListener("pointermove", move);
         canvas.removeEventListener("pointerup", up);
@@ -283,11 +211,14 @@ export default function CityView({ city, fx }) {
     boot();
     return () => {
       dead = true;
-      worldRef.current?.cleanup?.();
-      if (appRef.current && !appRef.current.destroyed) {
-        appRef.current.destroy(true);
+      host.cleanup?.();
+      // React strict mode runs this cleanup before init's await resolves.
+      // Destroying a half-started app throws, and the next mount still works.
+      try {
+        if (application?.renderer) application.destroy(true, { children: true });
+      } catch {
+        // Already gone.
       }
-      appRef.current = null;
     };
   }, []);
 

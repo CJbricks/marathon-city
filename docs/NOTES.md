@@ -24,7 +24,8 @@ src/app/api/strava/start   Redirects to Strava.
 src/app/api/strava/callback  Trades the code for tokens.
 src/components/game/Game.js      Screen flow and the Log run animation timer.
 src/components/game/Screens.js   Title, picker, Strava, start date, loading.
-src/components/game/CityView.js  Pixi canvas: pan, pinch, crane, plane.
+src/components/game/pixelScene.js  Draws the pixel city into one small canvas.
+src/components/game/CityView.js  Shows that canvas in Pixi. Crane and plane move on top.
 src/app/layout.js          Font, title, viewport, Chakra provider.
 src/app/page.js            Mounts Game. Stays a Server Component.
 prototype/                 The original scripts and stills. The app does not execute them.
@@ -70,6 +71,21 @@ Edit `src/lib/rules.js`. Heights, the 100-mile Union Station line, the park week
 Then run `npm test`. One test replays `prototype/activities.txt` and compares the log, lots, and landmarks to `prototype/city.json`. A rule change that should alter that historical city will fail the test on purpose. A second test checks that two replays are equal, and a third checks that a partial mile carries onto the next run.
 
 The live city is not stored as pixels. It is rebuilt from the activity rows on each visit. Change the rules, and the next page load rebuilds every save from those rows.
+
+## Art system
+
+The city is not a set of flat 3D boxes redrawn every frame. `pixelScene.js` paints one 640×500 picture, the same way `prototype/render.py` does, and `CityView.js` uploads it as a single Pixi texture. Nearest-neighbor scaling keeps the pixels square when the picture is enlarged. The texture is thrown away and painted again only when a building's story count changes or the clock moves to a new lighting phase (morning, midday, dusk, night). Between those moments the GPU just moves the texture. The crane and the plane are drawn on top, because they are the only things that sway every frame.
+
+The isometric placement is `x = (u - v) * 12`, `y = (u + v) * 6`, with the origin near the middle of the canvas. A lot with a larger `u + v` is closer to the camera, so it is painted later and covers the lots behind it. Every building is three faces: the left face is darker, the right face is mid, the top is lighter. That is the whole shading model. Windows are single pixels on those faces. At dusk and night (`windowLight` from `lighting.js`) those pixels switch to a warm yellow, and the sky and mountains use that phase's colors.
+
+To add or change a sprite, edit `pixelScene.js`:
+
+- A new ordinary type goes in `drawBuilding`. Give it a base color, call `box` for the three faces, then `windows` for the dots. `stories` is already the height. Use `b.variant` as the seed if two buildings of the same type should not match.
+- A civic landmark goes in `drawLandmark`, keyed by `unionStation`, `courthouse`, `artMuseum`, or `cathedral`. The Capitol is a building (`type === "capitol"`), not a separate landmark sprite, because it has a story count.
+- A side-quest block goes in `drawQuest`, matched on the quest name from `rules.js`.
+- Parks go in `drawPark`. Washington Park and City Park get the lake; every park gets trees and a path.
+
+`?flyover=1` on the city page, or the F key, plays the 8-second plane and quote banner without logging a run. `?time=22:00` (or any `HH:MM`) previews that hour's sky instead of the device clock. Neither one writes a run.
 
 ## Commands
 
