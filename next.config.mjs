@@ -6,8 +6,8 @@ const nextConfig = {
   // Next 16 writes an AGENTS.md on `next dev` aimed at coding agents.
   // This repo documents itself in docs/NOTES.md, so leave that file ungenerated.
   agentRules: false,
-  // The dev badge defaults to the bottom-left corner, which covers Log run.
-  devIndicators: { position: "top-right" },
+  // Hide the Next.js dev badge. It sat on top of the city in screenshots.
+  devIndicators: false,
   // Chakra's styles are Emotion style tags. Next 16's default bundler, Turbopack,
   // inserts those tags in a different place on the server than in the browser,
   // so React reports a hydration mismatch. The npm scripts pass `--webpack`,

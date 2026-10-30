@@ -10,7 +10,7 @@
 // is still what the next response replays from.
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { randomQuote } from "@/lib/quotes";
 import { replay, shouldFlyPlane } from "@/lib/replay";
 import { LoadingScreen, ManualDialog, PickerScreen, StartScreen, StravaScreen, TitleScreen } from "./Screens";
@@ -42,7 +42,28 @@ export default function Game() {
   const [manual, setManual] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [banner, setBanner] = useState("");
+  const [bannerLeft, setBannerLeft] = useState("18%");
+  const flew = useRef(false);
+  const playingRef = useRef(false);
 
+  function startFlyover() {
+    if (playingRef.current) return;
+    const line = randomQuote();
+    const started = performance.now();
+    const tick = () => {
+      const progress = (performance.now() - started) / 8000;
+      if (progress >= 1) {
+        setFx((current) => (current?.plane ? { ...current, plane: null } : current));
+        setBanner("");
+        return;
+      }
+      setFx((current) => ({ ...(current || {}), plane: { progress, quote: line } }));
+      setBanner(line);
+      setBannerLeft(`${6 + progress * 50}%`);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
 
   useEffect(() => {
     // sessionStorage and Math.random do not match the server HTML. A timeout
@@ -71,6 +92,14 @@ export default function Game() {
         if (body.save) setScreen("city");
         else if (strava === "connected") setScreen("start");
         else setScreen("title");
+        if (
+          body.city &&
+          !flew.current &&
+          new URLSearchParams(window.location.search).get("flyover") === "1"
+        ) {
+          flew.current = true;
+          startFlyover();
+        }
         if (strava === "error" || strava === "denied") {
           setNotice("Strava did not connect. Try again, or build without it.");
           setScreen(body.save ? "city" : "strava");
@@ -101,8 +130,27 @@ export default function Game() {
     setScreen("city");
   }
 
+  useEffect(() => {
+    // ?flyover=1 replays the plane without waiting for a long run, so a
+    // screenshot can catch the banner. It does not write a run.
+    if (screen !== "city" || !payload?.city || flew.current) return;
+    if (new URLSearchParams(window.location.search).get("flyover") === "1") {
+      flew.current = true;
+      startFlyover();
+    }
+  }, [screen, payload]);
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === "f" && screen === "city" && !playingRef.current) startFlyover();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [screen]);
+
   async function playRuns(prior, fresh, nextPayload) {
     setPlaying(true);
+    playingRef.current = true;
     let base = prior;
     const save = nextPayload.save;
     const asOf = nextPayload.asOf;
@@ -143,6 +191,7 @@ export default function Game() {
           const progress = (performance.now() - started) / 8000;
           setFx((current) => ({ ...(current || {}), plane: { progress, quote: line } }));
           setBanner(line);
+          setBannerLeft(`${6 + progress * 50}%`);
           await sleep(50);
         }
       }
@@ -150,6 +199,7 @@ export default function Game() {
     setFx(null);
     setBanner("");
     setPlaying(false);
+    playingRef.current = false;
     setPayload(nextPayload);
     cacheWrite(nextPayload);
   }
@@ -238,7 +288,11 @@ export default function Game() {
         <span>{fx?.milesShown != null ? `${fx.milesShown.toFixed(2)} MI` : ""}</span>
       </header>
       {fx?.label ? <p className="story-pop">{fx.label}</p> : null}
-      {banner ? <p className="plane-banner">{banner}</p> : null}
+      {banner ? (
+        <p className="plane-banner" style={{ left: bannerLeft }}>
+          {banner}
+        </p>
+      ) : null}
       {notice ? <p className="hud-note">{notice}</p> : null}
       <footer className="hud">
         <button type="button" className="pixel-btn gold" disabled={playing} onClick={logRun}>
