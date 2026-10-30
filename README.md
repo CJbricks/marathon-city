@@ -2,13 +2,13 @@
 
 Marathon City turns the owner's Strava runs into a growing pixel-art city. The look is isometric, in the spirit of SimCity 2000, and the theme is Denver. The app is planned as a plain-JavaScript Next.js site, hosted on Vercel, and laid out for a phone.
 
-The Next.js app shell lives at the repo root. The home page is a placeholder; the real screens come later. The rules, the deterministic replay, and the pixel stills stay in [`prototype/`](prototype/) as reference. New to the code? Read [docs/NOTES.md](docs/NOTES.md) for the folder map, how a request flows, and how to add a page.
+The app at the repo root replays runs into a city: opening screens, Strava sync (or a demo log), and an isometric Pixi view. The original scripts and stills stay in [`prototype/`](prototype/) as the spec the app was ported from. New to the code? Read [docs/NOTES.md](docs/NOTES.md).
 
 ![Isometric Denver city built from run miles](prototype/preview.png)
 
 ## Run locally
 
-Node.js 20.9 or newer. That is the minimum for Next.js 16.
+Node.js 20.9 or newer.
 
 ```bash
 cp .env.example .env.local
@@ -16,11 +16,26 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Choose **Demo city** on the title screen to load `prototype/activities.txt` with no keys and no database. **Log run** then asks for a distance, because the demo is not connected to Strava.
 
-`.env.local` is gitignored. Fill in `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REDIRECT_URI`, and `DATABASE_URL` there. The names have no `NEXT_PUBLIC_` prefix, so Next.js keeps them in server code and out of the browser bundle. Restart the dev server after changing them. The Strava route and the database will read them later.
+The app runs with nothing filled in. Saves go to `.data/store.json` (gitignored) until `DATABASE_URL` is set. Restart the dev server after changing `.env.local`.
 
-`@pixi/react` is not installed. Release 8.0.5 is built on `react-reconciler` 0.31, which targets React 19.0, and this app uses React 19.3. `pixi.js` itself is installed for the city canvas. Details are in [docs/NOTES.md](docs/NOTES.md).
+`npm test` replays the sample log and checks it against `prototype/city.json`. `npm run lint` and `npm run build` are the other checks.
+
+### Strava API app
+
+1. Open [Strava's API settings](https://www.strava.com/settings/api) and create an app.
+2. Set **Authorization Callback Domain** to `localhost` for local dev. Strava wants the domain only, not the path.
+3. Put the client id and secret in `.env.local`. Set `STRAVA_REDIRECT_URI` to `http://localhost:3000/api/strava/callback`.
+4. On the deployed site, change the callback domain and the redirect URI to that host. The names have no `NEXT_PUBLIC_` prefix, so they stay on the server.
+
+The connect button asks for the `read` and `activity:read_all` scopes. Tokens are stored server-side and refreshed there.
+
+### Database
+
+Set `DATABASE_URL` to a Neon, Vercel Postgres, or Supabase connection string, then run `npm run migrate`. The same script prints a note and exits if the variable is empty. Without it, the JSON file store is the source of truth for that machine.
+
+`@pixi/react` is not installed. Release 8.0.5 is built on `react-reconciler` 0.31, which targets React 19.0, and this app uses React 19.3. The city view imports `pixi.js` directly.
 
 ## How a run becomes a building
 
