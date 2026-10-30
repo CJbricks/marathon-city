@@ -54,7 +54,9 @@ const rules = {
     mixeduse: { label: "Mixed-use apartments", min: 4, max: 6 },
     rowhouse: { label: "Rowhouse / Victorian", min: 2, max: 3 },
     state: { label: "State building", min: 8, max: 12 },
-    museum: { label: "Museum", min: 10, max: 15 },
+    // perCity caps how many of this type the weighted picker may start.
+    // Story heights stay min/max. A null or missing perCity means no cap.
+    museum: { label: "Museum", min: 10, max: 15, perCity: 10 },
   },
 
   // Key order matters: weighted() walks the keys in insertion order.
@@ -65,24 +67,28 @@ const rules = {
   },
 
   landmarks: {
-    unionStation: { name: "Union Station", cumulativeRunMiles: 100 },
-    courthouse: { name: "Courthouse", runsInWindow: 12, windowDays: 30 },
+    // max is how many of that landmark the city may hold. 1 is the default
+    // for a milestone landmark. Cathedral is the exception: it is one
+    // building per milesPer banked run miles, and max null means no ceiling.
+    unionStation: { name: "Union Station", cumulativeRunMiles: 100, max: 1 },
+    courthouse: { name: "Courthouse", runsInWindow: 12, windowDays: 30, max: 1 },
     artMuseum: {
       name: "Denver Art Museum",
       minDistance: 5,
       afterRuns: 20,
+      max: 1,
     },
     cathedral: {
       name: "Cathedral Basilica",
-      singleRunMiles: 13.1,
-      longRunMiles: 10,
-      cumulativeLongRunMiles: 26.2,
+      milesPer: 200,
+      max: null,
     },
     capitol: {
       name: "State Capitol",
       unlockCumulativeRunMiles: 250,
       milesToBuild: 13.1,
       pauseCurrentBuilding: true,
+      max: 1,
     },
   },
 

@@ -172,7 +172,6 @@ export function simulate(input, rules = rulesDefault) {
   let runCount = 0;
   const runDates = [];
   let bestPace = Infinity;
-  let longRunSum = 0;
   const L = R.landmarks;
   const earned = new Set();
 
@@ -184,12 +183,31 @@ export function simulate(input, rules = rulesDefault) {
     return { x, y, ring: "civic" };
   }
 
+  function countType(type) {
+    return buildings.filter((b) => b.type === type).length;
+  }
+
+  // Drop any type that has already hit perCity, then roll. While a type is
+  // under its cap the weight table is unchanged, so the roll matches a city
+  // with no caps. Past the cap, that type is simply not in the table.
+  function chooseType(ring, rand) {
+    const source = R.ringWeights[ring] || {};
+    const weights = {};
+    for (const [key, weight] of Object.entries(source)) {
+      const limit = R.buildingTypes[key]?.perCity;
+      if (limit != null && countType(key) >= limit) continue;
+      weights[key] = weight;
+    }
+    if (!Object.keys(weights).length) return "rowhouse";
+    return weighted(weights, rand());
+  }
+
   function startBuilding(act) {
     serial++;
     const lot = takeLot();
     const seedStr = `${act.date}|${act.index}|${serial}`;
     const rand = rng(hashStr(seedStr));
-    const type = weighted(R.ringWeights[lot.ring], rand());
+    const type = chooseType(lot.ring, rand);
     const bt = R.buildingTypes[type];
     const target = bt.min + Math.floor(rand() * (bt.max - bt.min + 1));
     const b = {
@@ -242,7 +260,8 @@ export function simulate(input, rules = rulesDefault) {
   }
 
   function placeLandmark(key, date, note) {
-    if (earned.has(key)) return;
+    const max = L[key].max ?? 1;
+    if (landmarks.filter((l) => l.key === key).length >= max) return;
     earned.add(key);
     const lot = civicLot(key) || takeLot(false, M.landmarkFrontBias || 0);
     landmarks.push({
@@ -351,7 +370,9 @@ export function simulate(input, rules = rulesDefault) {
     while (rem > 0) {
       let chunk = Math.min(rem, current.needH - current.builtH);
       const capUnlockH = hund(L.capitol.unlockCumulativeRunMiles);
-      if (!earned.has("capitol") && cumRun < capUnlockH) chunk = Math.min(chunk, capUnlockH - cumRun);
+      const capMax = L.capitol.max ?? 1;
+      const capitolsSoFar = () => buildings.filter((b) => b.type === "capitol").length;
+      if (capitolsSoFar() < capMax && cumRun < capUnlockH) chunk = Math.min(chunk, capUnlockH - cumRun);
       current.builtH += chunk;
       cumRun += chunk;
       rem -= chunk;
@@ -376,7 +397,7 @@ export function simulate(input, rules = rulesDefault) {
         current = paused || startBuilding(act);
         paused = null;
       }
-      if (!earned.has("capitol") && cumRun >= capUnlockH) {
+      if (capitolsSoFar() < capMax && cumRun >= capUnlockH) {
         earned.add("capitol");
         if (L.capitol.pauseCurrentBuilding && current.builtH > 0) {
           paused = current;
@@ -419,11 +440,32 @@ export function simulate(input, rules = rulesDefault) {
       }
       bestPace = Math.min(bestPace, pace);
     }
-    if (act.miles >= L.cathedral.longRunMiles) longRunSum += act.h;
-    if (act.miles >= L.cathedral.singleRunMiles) {
-      placeLandmark("cathedral", act.date, `single run of ${act.miles} mi`);
-    } else if (longRunSum >= hund(L.cathedral.cumulativeLongRunMiles)) {
-      placeLandmark("cathedral", act.date, `cumulative long-run miles ${mi(longRunSum)}`);
+    // Cathedrals follow banked run miles, not a single long run. floor(miles /
+    // milesPer) is how many exist. max null means that number has no ceiling.
+    // A 13.1 mile run used to unlock one immediately; that fought this rule
+    // (0–199 miles must stay at zero), so the mileage bank is the only trigger.
+    const cathedral = L.cathedral;
+    if (cathedral?.milesPer) {
+      let want = Math.floor(cumRun / hund(cathedral.milesPer));
+      if (cathedral.max != null) want = Math.min(want, cathedral.max);
+      let have = landmarks.filter((l) => l.key === "cathedral").length;
+      while (have < want) {
+        have += 1;
+        const lot = takeLot(false, M.landmarkFrontBias || 0);
+        const name = have === 1 ? cathedral.name : `${cathedral.name} #${have}`;
+        landmarks.push({
+          key: "cathedral",
+          name,
+          date: act.date,
+          note: `${have} per ${cathedral.milesPer} banked run mi (${mi(cumRun)} so far)`,
+          x: lot.x,
+          y: lot.y,
+          ring: lot.ring,
+        });
+        log.push(
+          `${act.date}  Landmark: ${name} (${mi(cumRun)} banked run mi, 1 per ${cathedral.milesPer})`,
+        );
+      }
     }
   }
   awardParksThrough(addDays(R.asOfDate, 1));

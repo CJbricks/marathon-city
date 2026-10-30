@@ -68,7 +68,9 @@ Route handlers and `src/lib/db.js`, `strava.js`, `demo.js`, and `session.js` are
 
 Edit `src/lib/rules.js`. Heights, the 100-mile Union Station line, the park week rule, and the side-quest totals are all in that object. Key order inside `ringWeights` matters, because the weighted picker walks the keys in insertion order.
 
-Then run `npm test`. One test replays `prototype/activities.txt` and compares the log, lots, and landmarks to `prototype/city.json`. A rule change that should alter that historical city will fail the test on purpose. A second test checks that two replays are equal, and a third checks that a partial mile carries onto the next run.
+Limits live in the same file. `buildingTypes.museum.perCity` is how many museums the picker may start (10). Story heights stay `min` and `max`. Each milestone landmark has `max: 1`, so Union Station, the Courthouse, the Art Museum, and the Capitol cannot stack. The Cathedral is `milesPer: 200` and `max: null`: the city gets `floor(banked run miles / 200)` of them, and a number in `max` would cut that off. Set `max` back to a number if you ever want a ceiling. A 13.1 mile run does not create one early, because that would put a cathedral in a city that has not banked 200 miles.
+
+Then run `npm test`. The demo-log test checks 704.95 miles, exactly 3 cathedrals, 1 capitol, and at most 10 museums. Another test checks 1000 miles gives 5 cathedrals, and that `max: 2` holds them there. Two replays of the same log must still match, and a partial mile still carries onto the next run. Cathedrals take lots when they unlock, so building coordinates are not identical to `prototype/city.json`.
 
 The live city is not stored as pixels. It is rebuilt from the activity rows on each visit. Change the rules, and the next page load rebuilds every save from those rows.
 
@@ -81,7 +83,7 @@ The isometric placement is `x = (u - v) * 12`, `y = (u + v) * 6`, with the origi
 To add or change a sprite, edit `pixelScene.js`:
 
 - A new ordinary type goes in `drawBuilding`. Give it a base color, call `box` for the three faces, then `windows` for the dots. `stories` is already the height. Use `b.variant` as the seed if two buildings of the same type should not match.
-- A civic landmark goes in `drawLandmark`, keyed by `unionStation`, `courthouse`, `artMuseum`, or `cathedral`. The Capitol is a building (`type === "capitol"`), not a separate landmark sprite, because it has a story count.
+- A civic landmark goes in `drawLandmark`, keyed by `unionStation`, `courthouse`, `artMuseum`, or `cathedral`. Every cathedral uses the `cathedral` key, so the second and third get the same twin-spire sprite rather than a copy of some other building. The Capitol is a building (`type === "capitol"`), not a separate landmark sprite, because it has a story count. Museum buildings are the `museum` type: a gallery and one shard, not the cathedral spires.
 - A side-quest block goes in `drawQuest`, matched on the quest name from `rules.js`.
 - Parks go in `drawPark`. Washington Park and City Park get the lake; every park gets trees and a path.
 
