@@ -1,0 +1,10 @@
+{
+  // "@/" is an import alias for the src/ directory.
+  // A file can write import x from "@/app/providers" instead of a relative path.
+  // Next reads the same alias; this file is what the editor uses to resolve it.
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}

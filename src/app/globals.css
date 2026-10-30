@@ -1,0 +1,27 @@
+/* Shared styles for the whole app, imported once from layout.js.
+   Chakra handles most component styling. This file is for the few things
+   that belong on the document itself, mainly how pixel art is scaled. */
+
+html,
+body {
+  min-height: 100%;
+}
+
+/* Pixel art is drawn at a tiny size and displayed larger.
+   The browser's default scaling blurs that. crisp-edges is the standards
+   name; pixelated is the one current browsers actually honor, so it comes
+   second and wins when both are understood. Applies to future Pixi canvases too. */
+img,
+canvas {
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* 16×8 source shown at 6×. The class size is the on-screen size;
+   image-rendering above keeps the blocks sharp. */
+.pixel-mark {
+  display: block;
+  width: 96px;
+  height: 48px;
+  margin: 0 auto 1rem;
+}

@@ -1,7 +1,22 @@
+# Dependencies and build output
 node_modules/
-.env*
 .next/
+out/
+build/
+
+# Secrets. Copy .env.example to .env.local and fill it in.
+# The negation on the next line puts the empty template back, so it can be committed.
+.env*
+!.env.example
+
+# Python bits from the prototype scripts
 __pycache__/
 *.pyc
+
+# Misc
 .DS_Store
+*.pem
+npm-debug.log*
 .vercel
+*.tsbuildinfo
+next-env.d.ts
