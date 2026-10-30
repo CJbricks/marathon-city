@@ -2,9 +2,25 @@
 
 Marathon City turns the owner's Strava runs into a growing pixel-art city. The look is isometric, in the spirit of SimCity 2000, and the theme is Denver. The app is planned as a plain-JavaScript Next.js site, hosted on Vercel, and laid out for a phone.
 
-This repository is the first saved version of the planning and prototype work. The Next.js app is not built yet. Everything so far lives in [`prototype/`](prototype/): the rules, a deterministic replay of a real activity log, the pixel renderer, and stills and animations of the city, the loading screen, the intro, and the airplane banner.
+The Next.js app shell lives at the repo root. The home page is a placeholder; the real screens come later. The rules, the deterministic replay, and the pixel stills stay in [`prototype/`](prototype/) as reference. New to the code? Read [docs/NOTES.md](docs/NOTES.md) for the folder map, how a request flows, and how to add a page.
 
 ![Isometric Denver city built from run miles](prototype/preview.png)
+
+## Run locally
+
+Node.js 20.9 or newer. That is the minimum for Next.js 16.
+
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+`.env.local` is gitignored. Fill in `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REDIRECT_URI`, and `DATABASE_URL` there. The names have no `NEXT_PUBLIC_` prefix, so Next.js keeps them in server code and out of the browser bundle. Restart the dev server after changing them. The Strava route and the database will read them later.
+
+`@pixi/react` is not installed. Release 8.0.5 is built on `react-reconciler` 0.31, which targets React 19.0, and this app uses React 19.3. `pixi.js` itself is installed for the city canvas. Details are in [docs/NOTES.md](docs/NOTES.md).
 
 ## How a run becomes a building
 
