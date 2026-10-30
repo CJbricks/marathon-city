@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Marathon City - Loading</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05143A; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100vw; max-height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="mc-loading"></canvas>
+<script src="loading.js"></script>
+<script>
+  // Demo: fake progress. In the app, call loader.setProgress(p) from real load events
+  // and loader.ready(() => showCity()) when done. ?p=0.6 freezes at a fixed value.
+  const scale = Math.max(1, Math.floor(Math.min(innerWidth / 320, innerHeight / 200)));
+  const loader = MarathonLoading.mount(document.getElementById('mc-loading'), { scale });
+  const fixed = new URLSearchParams(location.search).get('p');
+  if (fixed !== null) loader.setProgress(parseFloat(fixed));
+  else {
+    let p = 0;
+    const tick = () => {
+      p = Math.min(1, p + Math.random() * 0.06 * (Math.random() < 0.25 ? 0.1 : 1));
+      loader.setProgress(p);
+      if (p < 1) setTimeout(tick, 120); else setTimeout(() => loader.ready(() => console.log('ready')), 400);
+    };
+    setTimeout(tick, 300);
+  }
+</script>
+</body>
+</html>

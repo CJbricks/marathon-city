@@ -1,0 +1,3099 @@
+{
+  "generated": "2026-10-29T21:32:08.738Z",
+  "rules": "rules.js",
+  "map": {
+    "tiles": 22,
+    "period": 3,
+    "blockLots": 2,
+    "center": 11,
+    "coreLots": 16,
+    "innerLots": 44,
+    "civicBlock": [
+      4,
+      4
+    ]
+  },
+  "lots": [
+    {
+      "x": 11,
+      "y": 11,
+      "ring": "core"
+    },
+    {
+      "x": 10,
+      "y": 11,
+      "ring": "core"
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "ring": "core"
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "ring": "core"
+    },
+    {
+      "x": 13,
+      "y": 11,
+      "ring": "core"
+    },
+    {
+      "x": 11,
+      "y": 13,
+      "ring": "core"
+    },
+    {
+      "x": 10,
+      "y": 13,
+      "ring": "core"
+    },
+    {
+      "x": 8,
+      "y": 11,
+      "ring": "core"
+    },
+    {
+      "x": 8,
+      "y": 10,
+      "ring": "core"
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "ring": "core"
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "ring": "core"
+    },
+    {
+      "x": 13,
+      "y": 10,
+      "ring": "core"
+    },
+    {
+      "x": 14,
+      "y": 11,
+      "ring": "core"
+    },
+    {
+      "x": 11,
+      "y": 14,
+      "ring": "core"
+    },
+    {
+      "x": 10,
+      "y": 14,
+      "ring": "core"
+    },
+    {
+      "x": 8,
+      "y": 13,
+      "ring": "core"
+    },
+    {
+      "x": 7,
+      "y": 11,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 10,
+      "ring": "inner"
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "ring": "inner"
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "ring": "inner"
+    },
+    {
+      "x": 14,
+      "y": 10,
+      "ring": "inner"
+    },
+    {
+      "x": 8,
+      "y": 14,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 13,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "ring": "inner"
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 14,
+      "y": 8,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 14,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 16,
+      "y": 11,
+      "ring": "inner"
+    },
+    {
+      "x": 11,
+      "y": 16,
+      "ring": "inner"
+    },
+    {
+      "x": 10,
+      "y": 16,
+      "ring": "inner"
+    },
+    {
+      "x": 5,
+      "y": 11,
+      "ring": "inner"
+    },
+    {
+      "x": 5,
+      "y": 10,
+      "ring": "inner"
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "ring": "inner"
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "ring": "inner"
+    },
+    {
+      "x": 16,
+      "y": 10,
+      "ring": "inner"
+    },
+    {
+      "x": 16,
+      "y": 13,
+      "ring": "inner"
+    },
+    {
+      "x": 13,
+      "y": 16,
+      "ring": "inner"
+    },
+    {
+      "x": 8,
+      "y": 16,
+      "ring": "inner"
+    },
+    {
+      "x": 5,
+      "y": 13,
+      "ring": "inner"
+    },
+    {
+      "x": 5,
+      "y": 8,
+      "ring": "inner"
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "ring": "inner"
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "ring": "inner"
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "ring": "inner"
+    },
+    {
+      "x": 17,
+      "y": 11,
+      "ring": "inner"
+    },
+    {
+      "x": 16,
+      "y": 14,
+      "ring": "inner"
+    },
+    {
+      "x": 14,
+      "y": 16,
+      "ring": "inner"
+    },
+    {
+      "x": 11,
+      "y": 17,
+      "ring": "inner"
+    },
+    {
+      "x": 10,
+      "y": 17,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 16,
+      "ring": "inner"
+    },
+    {
+      "x": 5,
+      "y": 14,
+      "ring": "inner"
+    },
+    {
+      "x": 4,
+      "y": 11,
+      "ring": "inner"
+    },
+    {
+      "x": 4,
+      "y": 10,
+      "ring": "inner"
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "ring": "inner"
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "ring": "inner"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "ring": "inner"
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 13,
+      "ring": "outer"
+    },
+    {
+      "x": 13,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 8,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 13,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 8,
+      "ring": "outer"
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 8,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 14,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 7,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 14,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 16,
+      "ring": "outer"
+    },
+    {
+      "x": 5,
+      "y": 16,
+      "ring": "outer"
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 16,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 5,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 16,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 11,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 10,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 19,
+      "y": 13,
+      "ring": "outer"
+    },
+    {
+      "x": 13,
+      "y": 19,
+      "ring": "outer"
+    },
+    {
+      "x": 8,
+      "y": 19,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 13,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "ring": "outer"
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 13,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 19,
+      "y": 8,
+      "ring": "outer"
+    },
+    {
+      "x": 19,
+      "y": 14,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 19,
+      "ring": "outer"
+    },
+    {
+      "x": 7,
+      "y": 19,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 14,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 11,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 10,
+      "ring": "outer"
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 20,
+      "y": 13,
+      "ring": "outer"
+    },
+    {
+      "x": 13,
+      "y": 20,
+      "ring": "outer"
+    },
+    {
+      "x": 8,
+      "y": 20,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 13,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "ring": "outer"
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 20,
+      "y": 8,
+      "ring": "outer"
+    },
+    {
+      "x": 20,
+      "y": 14,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 20,
+      "ring": "outer"
+    },
+    {
+      "x": 7,
+      "y": 20,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 16,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 14,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 14,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 20,
+      "y": 7,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 16,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "ring": "outer"
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 16,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 17,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "ring": "outer"
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 17,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 19,
+      "ring": "outer"
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 2,
+      "y": 20,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 19,
+      "ring": "outer"
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "ring": "outer"
+    },
+    {
+      "x": 20,
+      "y": 2,
+      "ring": "outer"
+    },
+    {
+      "x": 1,
+      "y": 20,
+      "ring": "outer"
+    },
+    {
+      "x": 20,
+      "y": 1,
+      "ring": "outer"
+    }
+  ],
+  "buildings": [
+    {
+      "id": 1,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 11,
+      "y": 11,
+      "targetStories": 24,
+      "startDate": "2015-06-09",
+      "startActivity": 2,
+      "seed": "2015-06-09|2|1",
+      "variant": 490613,
+      "status": "complete",
+      "completeDate": "2015-06-22",
+      "storiesBuilt": 24,
+      "progress": 1
+    },
+    {
+      "id": 2,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 10,
+      "y": 11,
+      "targetStories": 11,
+      "startDate": "2015-06-22",
+      "startActivity": 11,
+      "seed": "2015-06-22|11|2",
+      "variant": 941458,
+      "status": "complete",
+      "completeDate": "2015-06-26",
+      "storiesBuilt": 11,
+      "progress": 1
+    },
+    {
+      "id": 3,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 10,
+      "y": 10,
+      "targetStories": 23,
+      "startDate": "2015-06-26",
+      "startActivity": 16,
+      "seed": "2015-06-26|16|3",
+      "variant": 22856,
+      "status": "complete",
+      "completeDate": "2015-07-06",
+      "storiesBuilt": 23,
+      "progress": 1
+    },
+    {
+      "id": 4,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 11,
+      "y": 10,
+      "targetStories": 27,
+      "startDate": "2015-07-06",
+      "startActivity": 25,
+      "seed": "2015-07-06|25|4",
+      "variant": 596743,
+      "status": "complete",
+      "completeDate": "2015-07-15",
+      "storiesBuilt": 27,
+      "progress": 1
+    },
+    {
+      "id": 5,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 13,
+      "y": 11,
+      "targetStories": 12,
+      "startDate": "2015-07-15",
+      "startActivity": 32,
+      "seed": "2015-07-15|32|5",
+      "variant": 901034,
+      "status": "complete",
+      "completeDate": "2015-07-18",
+      "storiesBuilt": 12,
+      "progress": 1
+    },
+    {
+      "id": 6,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 11,
+      "y": 13,
+      "targetStories": 11,
+      "startDate": "2015-07-18",
+      "startActivity": 34,
+      "seed": "2015-07-18|34|6",
+      "variant": 736510,
+      "status": "complete",
+      "completeDate": "2015-07-22",
+      "storiesBuilt": 11,
+      "progress": 1
+    },
+    {
+      "id": 7,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 10,
+      "y": 13,
+      "targetStories": 28,
+      "startDate": "2015-07-22",
+      "startActivity": 37,
+      "seed": "2015-07-22|37|7",
+      "variant": 3486,
+      "status": "complete",
+      "completeDate": "2015-09-03",
+      "storiesBuilt": 28,
+      "progress": 1
+    },
+    {
+      "id": 8,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 8,
+      "y": 11,
+      "targetStories": 20,
+      "startDate": "2015-09-03",
+      "startActivity": 43,
+      "seed": "2015-09-03|43|8",
+      "variant": 17756,
+      "status": "complete",
+      "completeDate": "2015-11-29",
+      "storiesBuilt": 20,
+      "progress": 1
+    },
+    {
+      "id": 9,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 8,
+      "y": 10,
+      "targetStories": 12,
+      "startDate": "2015-11-29",
+      "startActivity": 49,
+      "seed": "2015-11-29|49|9",
+      "variant": 18096,
+      "status": "complete",
+      "completeDate": "2015-12-07",
+      "storiesBuilt": 12,
+      "progress": 1
+    },
+    {
+      "id": 10,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 10,
+      "y": 8,
+      "targetStories": 9,
+      "startDate": "2015-12-07",
+      "startActivity": 53,
+      "seed": "2015-12-07|53|10",
+      "variant": 63773,
+      "status": "complete",
+      "completeDate": "2016-05-26",
+      "storiesBuilt": 9,
+      "progress": 1
+    },
+    {
+      "id": 11,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 11,
+      "y": 8,
+      "targetStories": 27,
+      "startDate": "2016-05-26",
+      "startActivity": 55,
+      "seed": "2016-05-26|55|11",
+      "variant": 74865,
+      "status": "complete",
+      "completeDate": "2026-04-19",
+      "storiesBuilt": 27,
+      "progress": 1
+    },
+    {
+      "id": 12,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 13,
+      "y": 10,
+      "targetStories": 26,
+      "startDate": "2026-04-19",
+      "startActivity": 68,
+      "seed": "2026-04-19|68|12",
+      "variant": 458323,
+      "status": "complete",
+      "completeDate": "2026-04-26",
+      "storiesBuilt": 26,
+      "progress": 1
+    },
+    {
+      "id": 13,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 14,
+      "y": 11,
+      "targetStories": 20,
+      "startDate": "2026-04-26",
+      "startActivity": 75,
+      "seed": "2026-04-26|75|13",
+      "variant": 629924,
+      "status": "complete",
+      "completeDate": "2026-05-03",
+      "storiesBuilt": 20,
+      "progress": 1
+    },
+    {
+      "id": 14,
+      "type": "capitol",
+      "label": "State Capitol",
+      "ring": "civic",
+      "x": 13,
+      "y": 13,
+      "targetStories": 13.1,
+      "startDate": "2026-05-03",
+      "startActivity": 81,
+      "seed": null,
+      "variant": 0,
+      "status": "complete",
+      "completeDate": "2026-05-06",
+      "storiesBuilt": 13.1,
+      "progress": 1
+    },
+    {
+      "id": 15,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 11,
+      "y": 14,
+      "targetStories": 10,
+      "startDate": "2026-05-06",
+      "startActivity": 87,
+      "seed": "2026-05-06|87|15",
+      "variant": 616784,
+      "status": "complete",
+      "completeDate": "2026-05-12",
+      "storiesBuilt": 10,
+      "progress": 1
+    },
+    {
+      "id": 16,
+      "type": "skyscraper",
+      "label": "Skyscraper",
+      "ring": "core",
+      "x": 10,
+      "y": 14,
+      "targetStories": 21,
+      "startDate": "2026-05-12",
+      "startActivity": 89,
+      "seed": "2026-05-12|89|16",
+      "variant": 360578,
+      "status": "complete",
+      "completeDate": "2026-05-18",
+      "storiesBuilt": 21,
+      "progress": 1
+    },
+    {
+      "id": 17,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "core",
+      "x": 8,
+      "y": 13,
+      "targetStories": 9,
+      "startDate": "2026-05-18",
+      "startActivity": 95,
+      "seed": "2026-05-18|95|17",
+      "variant": 279335,
+      "status": "complete",
+      "completeDate": "2026-05-20",
+      "storiesBuilt": 9,
+      "progress": 1
+    },
+    {
+      "id": 18,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "inner",
+      "x": 7,
+      "y": 13,
+      "targetStories": 11,
+      "startDate": "2026-05-20",
+      "startActivity": 96,
+      "seed": "2026-05-20|96|18",
+      "variant": 629626,
+      "status": "complete",
+      "completeDate": "2026-05-24",
+      "storiesBuilt": 11,
+      "progress": 1
+    },
+    {
+      "id": 19,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 7,
+      "y": 8,
+      "targetStories": 6,
+      "startDate": "2026-05-24",
+      "startActivity": 98,
+      "seed": "2026-05-24|98|19",
+      "variant": 573129,
+      "status": "complete",
+      "completeDate": "2026-05-25",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 20,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 8,
+      "y": 7,
+      "targetStories": 5,
+      "startDate": "2026-05-25",
+      "startActivity": 100,
+      "seed": "2026-05-25|100|20",
+      "variant": 955487,
+      "status": "complete",
+      "completeDate": "2026-05-25",
+      "storiesBuilt": 5,
+      "progress": 1
+    },
+    {
+      "id": 21,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 13,
+      "y": 7,
+      "targetStories": 5,
+      "startDate": "2026-05-25",
+      "startActivity": 100,
+      "seed": "2026-05-25|100|21",
+      "variant": 959630,
+      "status": "complete",
+      "completeDate": "2026-05-27",
+      "storiesBuilt": 5,
+      "progress": 1
+    },
+    {
+      "id": 22,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 14,
+      "y": 8,
+      "targetStories": 4,
+      "startDate": "2026-05-27",
+      "startActivity": 101,
+      "seed": "2026-05-27|101|22",
+      "variant": 51564,
+      "status": "complete",
+      "completeDate": "2026-05-29",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 23,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 7,
+      "y": 14,
+      "targetStories": 6,
+      "startDate": "2026-05-29",
+      "startActivity": 102,
+      "seed": "2026-05-29|102|23",
+      "variant": 405216,
+      "status": "complete",
+      "completeDate": "2026-05-31",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 24,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 7,
+      "y": 7,
+      "targetStories": 4,
+      "startDate": "2026-05-31",
+      "startActivity": 104,
+      "seed": "2026-05-31|104|24",
+      "variant": 775695,
+      "status": "complete",
+      "completeDate": "2026-06-03",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 25,
+      "type": "state",
+      "label": "State building",
+      "ring": "inner",
+      "x": 14,
+      "y": 7,
+      "targetStories": 12,
+      "startDate": "2026-06-03",
+      "startActivity": 105,
+      "seed": "2026-06-03|105|25",
+      "variant": 181825,
+      "status": "complete",
+      "completeDate": "2026-06-08",
+      "storiesBuilt": 12,
+      "progress": 1
+    },
+    {
+      "id": 26,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 16,
+      "y": 11,
+      "targetStories": 4,
+      "startDate": "2026-06-08",
+      "startActivity": 108,
+      "seed": "2026-06-08|108|26",
+      "variant": 456815,
+      "status": "complete",
+      "completeDate": "2026-06-08",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 27,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "inner",
+      "x": 11,
+      "y": 16,
+      "targetStories": 8,
+      "startDate": "2026-06-08",
+      "startActivity": 108,
+      "seed": "2026-06-08|108|27",
+      "variant": 664497,
+      "status": "complete",
+      "completeDate": "2026-06-13",
+      "storiesBuilt": 8,
+      "progress": 1
+    },
+    {
+      "id": 28,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 10,
+      "y": 16,
+      "targetStories": 4,
+      "startDate": "2026-06-13",
+      "startActivity": 110,
+      "seed": "2026-06-13|110|28",
+      "variant": 554157,
+      "status": "complete",
+      "completeDate": "2026-06-15",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 29,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 5,
+      "y": 11,
+      "targetStories": 5,
+      "startDate": "2026-06-15",
+      "startActivity": 112,
+      "seed": "2026-06-15|112|29",
+      "variant": 857616,
+      "status": "complete",
+      "completeDate": "2026-06-17",
+      "storiesBuilt": 5,
+      "progress": 1
+    },
+    {
+      "id": 30,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 5,
+      "y": 10,
+      "targetStories": 4,
+      "startDate": "2026-06-17",
+      "startActivity": 113,
+      "seed": "2026-06-17|113|30",
+      "variant": 712028,
+      "status": "complete",
+      "completeDate": "2026-06-17",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 31,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 10,
+      "y": 5,
+      "targetStories": 6,
+      "startDate": "2026-06-17",
+      "startActivity": 113,
+      "seed": "2026-06-17|113|31",
+      "variant": 203300,
+      "status": "complete",
+      "completeDate": "2026-06-19",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 32,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 11,
+      "y": 5,
+      "targetStories": 4,
+      "startDate": "2026-06-19",
+      "startActivity": 114,
+      "seed": "2026-06-19|114|32",
+      "variant": 478751,
+      "status": "complete",
+      "completeDate": "2026-06-22",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 33,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 16,
+      "y": 10,
+      "targetStories": 5,
+      "startDate": "2026-06-22",
+      "startActivity": 115,
+      "seed": "2026-06-22|115|33",
+      "variant": 893710,
+      "status": "complete",
+      "completeDate": "2026-06-24",
+      "storiesBuilt": 5,
+      "progress": 1
+    },
+    {
+      "id": 34,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 16,
+      "y": 13,
+      "targetStories": 6,
+      "startDate": "2026-06-24",
+      "startActivity": 116,
+      "seed": "2026-06-24|116|34",
+      "variant": 76774,
+      "status": "complete",
+      "completeDate": "2026-06-25",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 35,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 13,
+      "y": 16,
+      "targetStories": 4,
+      "startDate": "2026-06-25",
+      "startActivity": 118,
+      "seed": "2026-06-25|118|35",
+      "variant": 667126,
+      "status": "complete",
+      "completeDate": "2026-06-27",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 36,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 8,
+      "y": 16,
+      "targetStories": 5,
+      "startDate": "2026-06-27",
+      "startActivity": 119,
+      "seed": "2026-06-27|119|36",
+      "variant": 393516,
+      "status": "complete",
+      "completeDate": "2026-06-27",
+      "storiesBuilt": 5,
+      "progress": 1
+    },
+    {
+      "id": 37,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 5,
+      "y": 13,
+      "targetStories": 4,
+      "startDate": "2026-06-27",
+      "startActivity": 119,
+      "seed": "2026-06-27|119|37",
+      "variant": 325418,
+      "status": "complete",
+      "completeDate": "2026-06-29",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 38,
+      "type": "state",
+      "label": "State building",
+      "ring": "inner",
+      "x": 5,
+      "y": 8,
+      "targetStories": 12,
+      "startDate": "2026-06-29",
+      "startActivity": 120,
+      "seed": "2026-06-29|120|38",
+      "variant": 29659,
+      "status": "complete",
+      "completeDate": "2026-07-04",
+      "storiesBuilt": 12,
+      "progress": 1
+    },
+    {
+      "id": 39,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 8,
+      "y": 5,
+      "targetStories": 6,
+      "startDate": "2026-07-04",
+      "startActivity": 124,
+      "seed": "2026-07-04|124|39",
+      "variant": 898795,
+      "status": "complete",
+      "completeDate": "2026-07-05",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 40,
+      "type": "state",
+      "label": "State building",
+      "ring": "inner",
+      "x": 13,
+      "y": 5,
+      "targetStories": 9,
+      "startDate": "2026-07-05",
+      "startActivity": 126,
+      "seed": "2026-07-05|126|40",
+      "variant": 355233,
+      "status": "complete",
+      "completeDate": "2026-07-08",
+      "storiesBuilt": 9,
+      "progress": 1
+    },
+    {
+      "id": 41,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 16,
+      "y": 8,
+      "targetStories": 6,
+      "startDate": "2026-07-08",
+      "startActivity": 128,
+      "seed": "2026-07-08|128|41",
+      "variant": 912358,
+      "status": "complete",
+      "completeDate": "2026-07-09",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 42,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 17,
+      "y": 11,
+      "targetStories": 6,
+      "startDate": "2026-07-09",
+      "startActivity": 129,
+      "seed": "2026-07-09|129|42",
+      "variant": 153102,
+      "status": "complete",
+      "completeDate": "2026-07-11",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 43,
+      "type": "museum",
+      "label": "Museum",
+      "ring": "inner",
+      "x": 16,
+      "y": 14,
+      "targetStories": 14,
+      "startDate": "2026-07-11",
+      "startActivity": 131,
+      "seed": "2026-07-11|131|43",
+      "variant": 74617,
+      "status": "complete",
+      "completeDate": "2026-07-17",
+      "storiesBuilt": 14,
+      "progress": 1
+    },
+    {
+      "id": 44,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "inner",
+      "x": 14,
+      "y": 16,
+      "targetStories": 11,
+      "startDate": "2026-07-17",
+      "startActivity": 134,
+      "seed": "2026-07-17|134|44",
+      "variant": 507400,
+      "status": "complete",
+      "completeDate": "2026-07-20",
+      "storiesBuilt": 11,
+      "progress": 1
+    },
+    {
+      "id": 45,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "inner",
+      "x": 11,
+      "y": 17,
+      "targetStories": 10,
+      "startDate": "2026-07-20",
+      "startActivity": 137,
+      "seed": "2026-07-20|137|45",
+      "variant": 608010,
+      "status": "complete",
+      "completeDate": "2026-07-26",
+      "storiesBuilt": 10,
+      "progress": 1
+    },
+    {
+      "id": 46,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "inner",
+      "x": 10,
+      "y": 17,
+      "targetStories": 10,
+      "startDate": "2026-07-26",
+      "startActivity": 139,
+      "seed": "2026-07-26|139|46",
+      "variant": 244435,
+      "status": "complete",
+      "completeDate": "2026-08-01",
+      "storiesBuilt": 10,
+      "progress": 1
+    },
+    {
+      "id": 47,
+      "type": "state",
+      "label": "State building",
+      "ring": "inner",
+      "x": 7,
+      "y": 16,
+      "targetStories": 9,
+      "startDate": "2026-08-01",
+      "startActivity": 144,
+      "seed": "2026-08-01|144|47",
+      "variant": 435901,
+      "status": "complete",
+      "completeDate": "2026-08-05",
+      "storiesBuilt": 9,
+      "progress": 1
+    },
+    {
+      "id": 48,
+      "type": "museum",
+      "label": "Museum",
+      "ring": "inner",
+      "x": 5,
+      "y": 14,
+      "targetStories": 14,
+      "startDate": "2026-08-05",
+      "startActivity": 148,
+      "seed": "2026-08-05|148|48",
+      "variant": 590346,
+      "status": "complete",
+      "completeDate": "2026-08-09",
+      "storiesBuilt": 14,
+      "progress": 1
+    },
+    {
+      "id": 49,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 4,
+      "y": 11,
+      "targetStories": 6,
+      "startDate": "2026-08-09",
+      "startActivity": 152,
+      "seed": "2026-08-09|152|49",
+      "variant": 316663,
+      "status": "complete",
+      "completeDate": "2026-08-10",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 50,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 4,
+      "y": 10,
+      "targetStories": 6,
+      "startDate": "2026-08-10",
+      "startActivity": 153,
+      "seed": "2026-08-10|153|50",
+      "variant": 539117,
+      "status": "complete",
+      "completeDate": "2026-08-16",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 51,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 5,
+      "y": 7,
+      "targetStories": 6,
+      "startDate": "2026-08-16",
+      "startActivity": 156,
+      "seed": "2026-08-16|156|51",
+      "variant": 898577,
+      "status": "complete",
+      "completeDate": "2026-08-17",
+      "storiesBuilt": 6,
+      "progress": 1
+    },
+    {
+      "id": 52,
+      "type": "office",
+      "label": "Mid-rise office",
+      "ring": "inner",
+      "x": 7,
+      "y": 5,
+      "targetStories": 8,
+      "startDate": "2026-08-17",
+      "startActivity": 158,
+      "seed": "2026-08-17|158|52",
+      "variant": 536251,
+      "status": "complete",
+      "completeDate": "2026-08-22",
+      "storiesBuilt": 8,
+      "progress": 1
+    },
+    {
+      "id": 53,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "inner",
+      "x": 10,
+      "y": 4,
+      "targetStories": 5,
+      "startDate": "2026-08-22",
+      "startActivity": 160,
+      "seed": "2026-08-22|160|53",
+      "variant": 405307,
+      "status": "complete",
+      "completeDate": "2026-08-24",
+      "storiesBuilt": 5,
+      "progress": 1
+    },
+    {
+      "id": 54,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 11,
+      "y": 4,
+      "targetStories": 3,
+      "startDate": "2026-08-24",
+      "startActivity": 163,
+      "seed": "2026-08-24|163|54",
+      "variant": 172849,
+      "status": "complete",
+      "completeDate": "2026-08-24",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 55,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 14,
+      "y": 5,
+      "targetStories": 2,
+      "startDate": "2026-08-24",
+      "startActivity": 163,
+      "seed": "2026-08-24|163|55",
+      "variant": 266951,
+      "status": "complete",
+      "completeDate": "2026-08-26",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 56,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 16,
+      "y": 7,
+      "targetStories": 2,
+      "startDate": "2026-08-26",
+      "startActivity": 165,
+      "seed": "2026-08-26|165|56",
+      "variant": 275720,
+      "status": "complete",
+      "completeDate": "2026-08-26",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 57,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 17,
+      "y": 10,
+      "targetStories": 2,
+      "startDate": "2026-08-26",
+      "startActivity": 165,
+      "seed": "2026-08-26|165|57",
+      "variant": 805385,
+      "status": "complete",
+      "completeDate": "2026-08-26",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 58,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "outer",
+      "x": 17,
+      "y": 13,
+      "targetStories": 4,
+      "startDate": "2026-08-26",
+      "startActivity": 165,
+      "seed": "2026-08-26|165|58",
+      "variant": 469818,
+      "status": "complete",
+      "completeDate": "2026-08-28",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 59,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 13,
+      "y": 17,
+      "targetStories": 3,
+      "startDate": "2026-08-28",
+      "startActivity": 167,
+      "seed": "2026-08-28|167|59",
+      "variant": 443242,
+      "status": "complete",
+      "completeDate": "2026-08-28",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 60,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 8,
+      "y": 17,
+      "targetStories": 3,
+      "startDate": "2026-08-28",
+      "startActivity": 167,
+      "seed": "2026-08-28|167|60",
+      "variant": 691614,
+      "status": "complete",
+      "completeDate": "2026-08-29",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 61,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 4,
+      "y": 13,
+      "targetStories": 3,
+      "startDate": "2026-08-29",
+      "startActivity": 168,
+      "seed": "2026-08-29|168|61",
+      "variant": 168008,
+      "status": "complete",
+      "completeDate": "2026-08-29",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 62,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 4,
+      "y": 8,
+      "targetStories": 2,
+      "startDate": "2026-08-29",
+      "startActivity": 168,
+      "seed": "2026-08-29|168|62",
+      "variant": 611217,
+      "status": "complete",
+      "completeDate": "2026-08-29",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 63,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 8,
+      "y": 4,
+      "targetStories": 3,
+      "startDate": "2026-08-29",
+      "startActivity": 168,
+      "seed": "2026-08-29|168|63",
+      "variant": 338813,
+      "status": "complete",
+      "completeDate": "2026-08-30",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 64,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 13,
+      "y": 4,
+      "targetStories": 2,
+      "startDate": "2026-08-30",
+      "startActivity": 169,
+      "seed": "2026-08-30|169|64",
+      "variant": 936921,
+      "status": "complete",
+      "completeDate": "2026-08-30",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 65,
+      "type": "museum",
+      "label": "Museum",
+      "ring": "outer",
+      "x": 17,
+      "y": 8,
+      "targetStories": 12,
+      "startDate": "2026-08-30",
+      "startActivity": 169,
+      "seed": "2026-08-30|169|65",
+      "variant": 533772,
+      "status": "complete",
+      "completeDate": "2026-09-04",
+      "storiesBuilt": 12,
+      "progress": 1
+    },
+    {
+      "id": 66,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 17,
+      "y": 14,
+      "targetStories": 3,
+      "startDate": "2026-09-04",
+      "startActivity": 173,
+      "seed": "2026-09-04|173|66",
+      "variant": 566681,
+      "status": "complete",
+      "completeDate": "2026-09-06",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 67,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 14,
+      "y": 17,
+      "targetStories": 3,
+      "startDate": "2026-09-06",
+      "startActivity": 175,
+      "seed": "2026-09-06|175|67",
+      "variant": 341359,
+      "status": "complete",
+      "completeDate": "2026-09-06",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 68,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 7,
+      "y": 17,
+      "targetStories": 3,
+      "startDate": "2026-09-06",
+      "startActivity": 175,
+      "seed": "2026-09-06|175|68",
+      "variant": 668738,
+      "status": "complete",
+      "completeDate": "2026-09-07",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 69,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 4,
+      "y": 14,
+      "targetStories": 2,
+      "startDate": "2026-09-07",
+      "startActivity": 176,
+      "seed": "2026-09-07|176|69",
+      "variant": 575974,
+      "status": "complete",
+      "completeDate": "2026-09-07",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 70,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 4,
+      "y": 7,
+      "targetStories": 3,
+      "startDate": "2026-09-07",
+      "startActivity": 176,
+      "seed": "2026-09-07|176|70",
+      "variant": 593011,
+      "status": "complete",
+      "completeDate": "2026-09-13",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 71,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 7,
+      "y": 4,
+      "targetStories": 2,
+      "startDate": "2026-09-13",
+      "startActivity": 177,
+      "seed": "2026-09-13|177|71",
+      "variant": 621743,
+      "status": "complete",
+      "completeDate": "2026-09-13",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 72,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 14,
+      "y": 4,
+      "targetStories": 3,
+      "startDate": "2026-09-13",
+      "startActivity": 177,
+      "seed": "2026-09-13|177|72",
+      "variant": 297583,
+      "status": "complete",
+      "completeDate": "2026-09-14",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 73,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 17,
+      "y": 7,
+      "targetStories": 3,
+      "startDate": "2026-09-14",
+      "startActivity": 178,
+      "seed": "2026-09-14|178|73",
+      "variant": 486540,
+      "status": "complete",
+      "completeDate": "2026-09-14",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 74,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 16,
+      "y": 16,
+      "targetStories": 2,
+      "startDate": "2026-09-14",
+      "startActivity": 178,
+      "seed": "2026-09-14|178|74",
+      "variant": 914224,
+      "status": "complete",
+      "completeDate": "2026-09-14",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 75,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 5,
+      "y": 16,
+      "targetStories": 3,
+      "startDate": "2026-09-14",
+      "startActivity": 178,
+      "seed": "2026-09-14|178|75",
+      "variant": 246174,
+      "status": "complete",
+      "completeDate": "2026-09-20",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 76,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 5,
+      "y": 5,
+      "targetStories": 2,
+      "startDate": "2026-09-20",
+      "startActivity": 180,
+      "seed": "2026-09-20|180|76",
+      "variant": 264344,
+      "status": "complete",
+      "completeDate": "2026-09-20",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 77,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 16,
+      "y": 5,
+      "targetStories": 2,
+      "startDate": "2026-09-20",
+      "startActivity": 180,
+      "seed": "2026-09-20|180|77",
+      "variant": 489105,
+      "status": "complete",
+      "completeDate": "2026-09-26",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 78,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 17,
+      "y": 16,
+      "targetStories": 2,
+      "startDate": "2026-09-26",
+      "startActivity": 181,
+      "seed": "2026-09-26|181|78",
+      "variant": 474100,
+      "status": "complete",
+      "completeDate": "2026-09-26",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 79,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 16,
+      "y": 17,
+      "targetStories": 3,
+      "startDate": "2026-09-26",
+      "startActivity": 181,
+      "seed": "2026-09-26|181|79",
+      "variant": 194852,
+      "status": "complete",
+      "completeDate": "2026-09-28",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 80,
+      "type": "museum",
+      "label": "Museum",
+      "ring": "outer",
+      "x": 4,
+      "y": 16,
+      "targetStories": 15,
+      "startDate": "2026-09-28",
+      "startActivity": 182,
+      "seed": "2026-09-28|182|80",
+      "variant": 22285,
+      "status": "complete",
+      "completeDate": "2026-10-07",
+      "storiesBuilt": 15,
+      "progress": 1
+    },
+    {
+      "id": 81,
+      "type": "museum",
+      "label": "Museum",
+      "ring": "outer",
+      "x": 2,
+      "y": 10,
+      "targetStories": 14,
+      "startDate": "2026-10-07",
+      "startActivity": 184,
+      "seed": "2026-10-07|184|81",
+      "variant": 517093,
+      "status": "complete",
+      "completeDate": "2026-10-13",
+      "storiesBuilt": 14,
+      "progress": 1
+    },
+    {
+      "id": 82,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 4,
+      "y": 5,
+      "targetStories": 3,
+      "startDate": "2026-10-13",
+      "startActivity": 188,
+      "seed": "2026-10-13|188|82",
+      "variant": 54268,
+      "status": "complete",
+      "completeDate": "2026-10-13",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 83,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 5,
+      "y": 4,
+      "targetStories": 2,
+      "startDate": "2026-10-13",
+      "startActivity": 188,
+      "seed": "2026-10-13|188|83",
+      "variant": 312001,
+      "status": "complete",
+      "completeDate": "2026-10-13",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 84,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 10,
+      "y": 2,
+      "targetStories": 2,
+      "startDate": "2026-10-13",
+      "startActivity": 188,
+      "seed": "2026-10-13|188|84",
+      "variant": 467923,
+      "status": "complete",
+      "completeDate": "2026-10-17",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 85,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 11,
+      "y": 2,
+      "targetStories": 3,
+      "startDate": "2026-10-17",
+      "startActivity": 191,
+      "seed": "2026-10-17|191|85",
+      "variant": 520273,
+      "status": "complete",
+      "completeDate": "2026-10-17",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 86,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 16,
+      "y": 4,
+      "targetStories": 2,
+      "startDate": "2026-10-17",
+      "startActivity": 191,
+      "seed": "2026-10-17|191|86",
+      "variant": 517960,
+      "status": "complete",
+      "completeDate": "2026-10-21",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 87,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 17,
+      "y": 5,
+      "targetStories": 3,
+      "startDate": "2026-10-21",
+      "startActivity": 193,
+      "seed": "2026-10-21|193|87",
+      "variant": 662231,
+      "status": "complete",
+      "completeDate": "2026-10-21",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 88,
+      "type": "mixeduse",
+      "label": "Mixed-use apartments",
+      "ring": "outer",
+      "x": 19,
+      "y": 13,
+      "targetStories": 4,
+      "startDate": "2026-10-21",
+      "startActivity": 193,
+      "seed": "2026-10-21|193|88",
+      "variant": 390503,
+      "status": "complete",
+      "completeDate": "2026-10-23",
+      "storiesBuilt": 4,
+      "progress": 1
+    },
+    {
+      "id": 89,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 13,
+      "y": 19,
+      "targetStories": 3,
+      "startDate": "2026-10-23",
+      "startActivity": 194,
+      "seed": "2026-10-23|194|89",
+      "variant": 987520,
+      "status": "complete",
+      "completeDate": "2026-10-23",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 90,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 8,
+      "y": 19,
+      "targetStories": 2,
+      "startDate": "2026-10-23",
+      "startActivity": 194,
+      "seed": "2026-10-23|194|90",
+      "variant": 447572,
+      "status": "complete",
+      "completeDate": "2026-10-23",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 91,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 2,
+      "y": 13,
+      "targetStories": 3,
+      "startDate": "2026-10-23",
+      "startActivity": 194,
+      "seed": "2026-10-23|194|91",
+      "variant": 563883,
+      "status": "complete",
+      "completeDate": "2026-10-24",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 92,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 2,
+      "y": 8,
+      "targetStories": 2,
+      "startDate": "2026-10-24",
+      "startActivity": 195,
+      "seed": "2026-10-24|195|92",
+      "variant": 922258,
+      "status": "complete",
+      "completeDate": "2026-10-24",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 93,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 8,
+      "y": 2,
+      "targetStories": 3,
+      "startDate": "2026-10-24",
+      "startActivity": 195,
+      "seed": "2026-10-24|195|93",
+      "variant": 877557,
+      "status": "complete",
+      "completeDate": "2026-10-24",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 94,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 13,
+      "y": 2,
+      "targetStories": 3,
+      "startDate": "2026-10-24",
+      "startActivity": 195,
+      "seed": "2026-10-24|195|94",
+      "variant": 465116,
+      "status": "complete",
+      "completeDate": "2026-10-25",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 95,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 19,
+      "y": 8,
+      "targetStories": 2,
+      "startDate": "2026-10-25",
+      "startActivity": 196,
+      "seed": "2026-10-25|196|95",
+      "variant": 438046,
+      "status": "complete",
+      "completeDate": "2026-10-25",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 96,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 19,
+      "y": 14,
+      "targetStories": 3,
+      "startDate": "2026-10-25",
+      "startActivity": 196,
+      "seed": "2026-10-25|196|96",
+      "variant": 806573,
+      "status": "complete",
+      "completeDate": "2026-10-28",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 97,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 17,
+      "y": 17,
+      "targetStories": 3,
+      "startDate": "2026-10-28",
+      "startActivity": 197,
+      "seed": "2026-10-28|197|97",
+      "variant": 627747,
+      "status": "complete",
+      "completeDate": "2026-10-28",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 98,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 14,
+      "y": 19,
+      "targetStories": 2,
+      "startDate": "2026-10-28",
+      "startActivity": 197,
+      "seed": "2026-10-28|197|98",
+      "variant": 398165,
+      "status": "complete",
+      "completeDate": "2026-10-28",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 99,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 7,
+      "y": 19,
+      "targetStories": 2,
+      "startDate": "2026-10-28",
+      "startActivity": 197,
+      "seed": "2026-10-28|197|99",
+      "variant": 259207,
+      "status": "complete",
+      "completeDate": "2026-10-29",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 100,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 4,
+      "y": 17,
+      "targetStories": 2,
+      "startDate": "2026-10-29",
+      "startActivity": 198,
+      "seed": "2026-10-29|198|100",
+      "variant": 837775,
+      "status": "complete",
+      "completeDate": "2026-10-29",
+      "storiesBuilt": 2,
+      "progress": 1
+    },
+    {
+      "id": 101,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 2,
+      "y": 14,
+      "targetStories": 3,
+      "startDate": "2026-10-29",
+      "startActivity": 198,
+      "seed": "2026-10-29|198|101",
+      "variant": 626233,
+      "status": "complete",
+      "completeDate": "2026-10-29",
+      "storiesBuilt": 3,
+      "progress": 1
+    },
+    {
+      "id": 102,
+      "type": "rowhouse",
+      "label": "Rowhouse / Victorian",
+      "ring": "outer",
+      "x": 2,
+      "y": 7,
+      "targetStories": 2,
+      "startDate": "2026-10-29",
+      "startActivity": 198,
+      "seed": "2026-10-29|198|102",
+      "variant": 338208,
+      "status": "in_progress",
+      "completeDate": null,
+      "storiesBuilt": 0.15,
+      "progress": 0.075
+    }
+  ],
+  "landmarks": [
+    {
+      "key": "courthouse",
+      "name": "Courthouse",
+      "date": "2015-06-25",
+      "note": "12 runs in 30 days ending 2015-06-25",
+      "x": 13,
+      "y": 14,
+      "ring": "civic"
+    },
+    {
+      "key": "artMuseum",
+      "name": "Denver Art Museum",
+      "date": "2015-07-14",
+      "note": "pace PR 8:17/mi on 5.04 mi (prev best 8:27/mi)",
+      "x": 14,
+      "y": 13,
+      "ring": "civic"
+    },
+    {
+      "key": "unionStation",
+      "name": "Union Station",
+      "date": "2015-07-19",
+      "note": "cumulative 102.12 run mi",
+      "x": 14,
+      "y": 14,
+      "ring": "civic"
+    },
+    {
+      "key": "capitol",
+      "name": "State Capitol",
+      "date": "2026-05-06",
+      "note": "finished after 13.1 run mi",
+      "x": 13,
+      "y": 13,
+      "ring": "civic",
+      "buildingId": 14
+    }
+  ],
+  "parks": [
+    {
+      "name": "Cheesman Park",
+      "week": "2015-08-31",
+      "date": "2015-09-06",
+      "runsThatWeek": 1,
+      "x": 7,
+      "y": 11,
+      "ring": "inner",
+      "named": true
+    },
+    {
+      "name": "Washington Park",
+      "week": "2015-09-07",
+      "date": "2015-09-13",
+      "runsThatWeek": 1,
+      "x": 7,
+      "y": 10,
+      "ring": "inner",
+      "named": true
+    },
+    {
+      "name": "City Park",
+      "week": "2015-11-16",
+      "date": "2015-11-22",
+      "runsThatWeek": 1,
+      "x": 8,
+      "y": 8,
+      "ring": "inner",
+      "named": true
+    },
+    {
+      "name": "Neighborhood Park #1",
+      "week": "2015-12-07",
+      "date": "2015-12-13",
+      "runsThatWeek": 1,
+      "x": 10,
+      "y": 7,
+      "ring": "inner",
+      "named": false
+    },
+    {
+      "name": "Neighborhood Park #2",
+      "week": "2023-08-21",
+      "date": "2023-08-27",
+      "runsThatWeek": 1,
+      "x": 11,
+      "y": 7,
+      "ring": "inner",
+      "named": false
+    },
+    {
+      "name": "Neighborhood Park #3",
+      "week": "2023-08-28",
+      "date": "2023-09-03",
+      "runsThatWeek": 1,
+      "x": 13,
+      "y": 8,
+      "ring": "inner",
+      "named": false
+    },
+    {
+      "name": "Neighborhood Park #4",
+      "week": "2023-09-04",
+      "date": "2023-09-10",
+      "runsThatWeek": 1,
+      "x": 14,
+      "y": 10,
+      "ring": "inner",
+      "named": false
+    },
+    {
+      "name": "Neighborhood Park #5",
+      "week": "2023-09-11",
+      "date": "2023-09-17",
+      "runsThatWeek": 1,
+      "x": 8,
+      "y": 14,
+      "ring": "inner",
+      "named": false
+    },
+    {
+      "name": "Neighborhood Park #6",
+      "week": "2026-09-21",
+      "date": "2026-09-27",
+      "runsThatWeek": 1,
+      "x": 5,
+      "y": 17,
+      "ring": "outer",
+      "named": false
+    },
+    {
+      "name": "Neighborhood Park #7",
+      "week": "2026-09-28",
+      "date": "2026-10-04",
+      "runsThatWeek": 1,
+      "x": 2,
+      "y": 11,
+      "ring": "outer",
+      "named": false
+    }
+  ],
+  "sideQuests": [
+    {
+      "name": "Coors Field",
+      "kind": "ride",
+      "threshold": 10,
+      "date": "2015-06-23",
+      "ytdAtEarn": "16.21 ride mi",
+      "year": 2015,
+      "block": [
+        6,
+        1
+      ],
+      "x": 19,
+      "y": 4,
+      "w": 2,
+      "h": 2
+    },
+    {
+      "name": "Ball Arena",
+      "kind": "ride",
+      "threshold": 25,
+      "date": "2026-05-30",
+      "ytdAtEarn": "25.76 ride mi",
+      "year": 2026,
+      "block": [
+        6,
+        3
+      ],
+      "x": 19,
+      "y": 10,
+      "w": 2,
+      "h": 2
+    },
+    {
+      "name": "Confluence Park bridge",
+      "kind": "walk",
+      "threshold": 10,
+      "date": "2026-06-29",
+      "ytdAtEarn": "10.11 walk mi",
+      "year": 2026,
+      "block": [
+        3,
+        6
+      ],
+      "x": 10,
+      "y": 19,
+      "w": 2,
+      "h": 2
+    },
+    {
+      "name": "16th Street Mall",
+      "kind": "walk",
+      "threshold": 25,
+      "date": "2026-08-06",
+      "ytdAtEarn": "25.5 walk mi",
+      "year": 2026,
+      "block": [
+        6,
+        5
+      ],
+      "x": 19,
+      "y": 16,
+      "w": 2,
+      "h": 2
+    },
+    {
+      "name": "Red Rocks Amphitheatre",
+      "kind": "walk",
+      "threshold": 50,
+      "date": "2026-10-20",
+      "ytdAtEarn": "51.97 walk mi",
+      "year": 2026,
+      "block": [
+        0,
+        0
+      ],
+      "x": 1,
+      "y": 1,
+      "w": 2,
+      "h": 2
+    }
+  ],
+  "summary": {
+    "asOf": "2026-10-29",
+    "activities": {
+      "ride": {
+        "count": 16,
+        "miles": 72.33
+      },
+      "run": {
+        "count": 146,
+        "miles": 711.25
+      },
+      "walk": {
+        "count": 36,
+        "miles": 51.97
+      }
+    },
+    "totalRunMiles": 711.25,
+    "totalStoriesBuilt": 711.25,
+    "storiesInCompletedRegularBuildings": 698,
+    "buildingsCompleted": 101,
+    "completedByType": {
+      "skyscraper": 9,
+      "office": 13,
+      "mixeduse": 26,
+      "state": 4,
+      "museum": 5,
+      "rowhouse": 43
+    },
+    "capitol": {
+      "status": "complete",
+      "startDate": "2026-05-03",
+      "completeDate": "2026-05-06"
+    },
+    "inProgress": [
+      {
+        "id": 102,
+        "type": "rowhouse",
+        "label": "Rowhouse / Victorian",
+        "ring": "outer",
+        "targetStories": 2,
+        "storiesBuilt": 0.15,
+        "progressPct": 7.5,
+        "startDate": "2026-10-29"
+      }
+    ],
+    "landmarksEarned": [
+      {
+        "name": "Courthouse",
+        "date": "2015-06-25",
+        "note": "12 runs in 30 days ending 2015-06-25"
+      },
+      {
+        "name": "Denver Art Museum",
+        "date": "2015-07-14",
+        "note": "pace PR 8:17/mi on 5.04 mi (prev best 8:27/mi)"
+      },
+      {
+        "name": "Union Station",
+        "date": "2015-07-19",
+        "note": "cumulative 102.12 run mi"
+      },
+      {
+        "name": "State Capitol",
+        "date": "2026-05-06",
+        "note": "finished after 13.1 run mi"
+      }
+    ],
+    "landmarksLocked": [
+      {
+        "key": "cathedral",
+        "name": "Cathedral Basilica",
+        "need": "needs a single run >= 13.1 mi (longest so far 8.52 mi) or 26.2 cumulative mi from runs >= 10 mi (have 0)"
+      }
+    ],
+    "parks": [
+      {
+        "name": "Cheesman Park",
+        "week": "2015-08-31",
+        "date": "2015-09-06",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Washington Park",
+        "week": "2015-09-07",
+        "date": "2015-09-13",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "City Park",
+        "week": "2015-11-16",
+        "date": "2015-11-22",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #1",
+        "week": "2015-12-07",
+        "date": "2015-12-13",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #2",
+        "week": "2023-08-21",
+        "date": "2023-08-27",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #3",
+        "week": "2023-08-28",
+        "date": "2023-09-03",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #4",
+        "week": "2023-09-04",
+        "date": "2023-09-10",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #5",
+        "week": "2023-09-11",
+        "date": "2023-09-17",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #6",
+        "week": "2026-09-21",
+        "date": "2026-09-27",
+        "runsThatWeek": 1
+      },
+      {
+        "name": "Neighborhood Park #7",
+        "week": "2026-09-28",
+        "date": "2026-10-04",
+        "runsThatWeek": 1
+      }
+    ],
+    "sideQuestsEarned": [
+      {
+        "name": "Coors Field",
+        "date": "2015-06-23",
+        "ytdAtEarn": "16.21 ride mi"
+      },
+      {
+        "name": "Ball Arena",
+        "date": "2026-05-30",
+        "ytdAtEarn": "25.76 ride mi"
+      },
+      {
+        "name": "Confluence Park bridge",
+        "date": "2026-06-29",
+        "ytdAtEarn": "10.11 walk mi"
+      },
+      {
+        "name": "16th Street Mall",
+        "date": "2026-08-06",
+        "ytdAtEarn": "25.5 walk mi"
+      },
+      {
+        "name": "Red Rocks Amphitheatre",
+        "date": "2026-10-20",
+        "ytdAtEarn": "51.97 walk mi"
+      }
+    ],
+    "sideQuestsLocked": [
+      {
+        "name": "Empower Field at Mile High",
+        "kind": "ride",
+        "need": "50 ride mi in one calendar year (2026 YTD: 42.05)"
+      },
+      {
+        "name": "Big Blue Bear",
+        "kind": "weights",
+        "need": "1 session in one calendar year (2026 YTD: 0)"
+      },
+      {
+        "name": "Denver Athletic Club",
+        "kind": "weights",
+        "need": "10 sessions in one calendar year (2026 YTD: 0)"
+      }
+    ],
+    "ytd": {
+      "2015": {
+        "ride": 21.88,
+        "walk": 0,
+        "weights": 0
+      },
+      "2019": {
+        "ride": 8.4,
+        "walk": 0,
+        "weights": 0
+      },
+      "2026": {
+        "ride": 42.05,
+        "walk": 51.97,
+        "weights": 0
+      }
+    },
+    "lotsUsed": 111,
+    "lotsTotal": 160
+  },
+  "log": [
+    "2015-06-22  Completed #1 Skyscraper (24 st) on core lot 11,11",
+    "2015-06-23  Side quest: Coors Field (2015 YTD 16.21 ride mi >= 10)",
+    "2015-06-25  Landmark: Courthouse (12 runs in 30 days ending 2015-06-25)",
+    "2015-06-26  Completed #2 Mid-rise office (11 st) on core lot 10,11",
+    "2015-07-06  Completed #3 Skyscraper (23 st) on core lot 10,10",
+    "2015-07-14  Landmark: Denver Art Museum (pace PR 8:17/mi on 5.04 mi (prev best 8:27/mi))",
+    "2015-07-15  Completed #4 Skyscraper (27 st) on core lot 11,10",
+    "2015-07-18  Completed #5 Mid-rise office (12 st) on core lot 13,11",
+    "2015-07-19  Landmark: Union Station (cumulative 102.12 run mi)",
+    "2015-07-22  Completed #6 Mid-rise office (11 st) on core lot 11,13",
+    "2015-09-03  Completed #7 Skyscraper (28 st) on core lot 10,13",
+    "2015-09-06  Park: Cheesman Park (week of 2015-08-31 had 1 run)",
+    "2015-09-13  Park: Washington Park (week of 2015-09-07 had 1 run)",
+    "2015-11-22  Park: City Park (week of 2015-11-16 had 1 run)",
+    "2015-11-29  Completed #8 Skyscraper (20 st) on core lot 8,11",
+    "2015-12-07  Completed #9 Mid-rise office (12 st) on core lot 8,10",
+    "2015-12-13  Park: Neighborhood Park #1 (week of 2015-12-07 had 1 run)",
+    "2016-05-26  Completed #10 Mid-rise office (9 st) on core lot 10,8",
+    "2023-08-27  Park: Neighborhood Park #2 (week of 2023-08-21 had 1 run)",
+    "2023-09-03  Park: Neighborhood Park #3 (week of 2023-08-28 had 1 run)",
+    "2023-09-10  Park: Neighborhood Park #4 (week of 2023-09-04 had 1 run)",
+    "2023-09-17  Park: Neighborhood Park #5 (week of 2023-09-11 had 1 run)",
+    "2026-04-19  Completed #11 Skyscraper (27 st) on core lot 11,8",
+    "2026-04-26  Completed #12 Skyscraper (26 st) on core lot 13,10",
+    "2026-05-03  Completed #13 Skyscraper (20 st) on core lot 14,11",
+    "2026-05-03  State Capitol unlocked at 250 cumulative run mi; construction begins",
+    "2026-05-06  Completed #14 State Capitol (13.1 st) on civic lot 13,13",
+    "2026-05-12  Completed #15 Mid-rise office (10 st) on core lot 11,14",
+    "2026-05-18  Completed #16 Skyscraper (21 st) on core lot 10,14",
+    "2026-05-20  Completed #17 Mid-rise office (9 st) on core lot 8,13",
+    "2026-05-24  Completed #18 Mid-rise office (11 st) on inner lot 7,13",
+    "2026-05-25  Completed #19 Mixed-use apartments (6 st) on inner lot 7,8",
+    "2026-05-25  Completed #20 Mixed-use apartments (5 st) on inner lot 8,7",
+    "2026-05-27  Completed #21 Mixed-use apartments (5 st) on inner lot 13,7",
+    "2026-05-29  Completed #22 Mixed-use apartments (4 st) on inner lot 14,8",
+    "2026-05-30  Side quest: Ball Arena (2026 YTD 25.76 ride mi >= 25)",
+    "2026-05-31  Completed #23 Mixed-use apartments (6 st) on inner lot 7,14",
+    "2026-06-03  Completed #24 Mixed-use apartments (4 st) on inner lot 7,7",
+    "2026-06-08  Completed #25 State building (12 st) on inner lot 14,7",
+    "2026-06-08  Completed #26 Mixed-use apartments (4 st) on inner lot 16,11",
+    "2026-06-13  Completed #27 Mid-rise office (8 st) on inner lot 11,16",
+    "2026-06-15  Completed #28 Mixed-use apartments (4 st) on inner lot 10,16",
+    "2026-06-17  Completed #29 Mixed-use apartments (5 st) on inner lot 5,11",
+    "2026-06-17  Completed #30 Mixed-use apartments (4 st) on inner lot 5,10",
+    "2026-06-19  Completed #31 Mixed-use apartments (6 st) on inner lot 10,5",
+    "2026-06-22  Completed #32 Mixed-use apartments (4 st) on inner lot 11,5",
+    "2026-06-24  Completed #33 Mixed-use apartments (5 st) on inner lot 16,10",
+    "2026-06-25  Completed #34 Mixed-use apartments (6 st) on inner lot 16,13",
+    "2026-06-27  Completed #35 Mixed-use apartments (4 st) on inner lot 13,16",
+    "2026-06-27  Completed #36 Mixed-use apartments (5 st) on inner lot 8,16",
+    "2026-06-29  Completed #37 Mixed-use apartments (4 st) on inner lot 5,13",
+    "2026-06-29  Side quest: Confluence Park bridge (2026 YTD 10.11 walk mi >= 10)",
+    "2026-07-04  Completed #38 State building (12 st) on inner lot 5,8",
+    "2026-07-05  Completed #39 Mixed-use apartments (6 st) on inner lot 8,5",
+    "2026-07-08  Completed #40 State building (9 st) on inner lot 13,5",
+    "2026-07-09  Completed #41 Mixed-use apartments (6 st) on inner lot 16,8",
+    "2026-07-11  Completed #42 Mixed-use apartments (6 st) on inner lot 17,11",
+    "2026-07-17  Completed #43 Museum (14 st) on inner lot 16,14",
+    "2026-07-20  Completed #44 Mid-rise office (11 st) on inner lot 14,16",
+    "2026-07-26  Completed #45 Mid-rise office (10 st) on inner lot 11,17",
+    "2026-08-01  Completed #46 Mid-rise office (10 st) on inner lot 10,17",
+    "2026-08-05  Completed #47 State building (9 st) on inner lot 7,16",
+    "2026-08-06  Side quest: 16th Street Mall (2026 YTD 25.5 walk mi >= 25)",
+    "2026-08-09  Completed #48 Museum (14 st) on inner lot 5,14",
+    "2026-08-10  Completed #49 Mixed-use apartments (6 st) on inner lot 4,11",
+    "2026-08-16  Completed #50 Mixed-use apartments (6 st) on inner lot 4,10",
+    "2026-08-17  Completed #51 Mixed-use apartments (6 st) on inner lot 5,7",
+    "2026-08-22  Completed #52 Mid-rise office (8 st) on inner lot 7,5",
+    "2026-08-24  Completed #53 Mixed-use apartments (5 st) on inner lot 10,4",
+    "2026-08-24  Completed #54 Rowhouse / Victorian (3 st) on outer lot 11,4",
+    "2026-08-26  Completed #55 Rowhouse / Victorian (2 st) on outer lot 14,5",
+    "2026-08-26  Completed #56 Rowhouse / Victorian (2 st) on outer lot 16,7",
+    "2026-08-26  Completed #57 Rowhouse / Victorian (2 st) on outer lot 17,10",
+    "2026-08-28  Completed #58 Mixed-use apartments (4 st) on outer lot 17,13",
+    "2026-08-28  Completed #59 Rowhouse / Victorian (3 st) on outer lot 13,17",
+    "2026-08-29  Completed #60 Rowhouse / Victorian (3 st) on outer lot 8,17",
+    "2026-08-29  Completed #61 Rowhouse / Victorian (3 st) on outer lot 4,13",
+    "2026-08-29  Completed #62 Rowhouse / Victorian (2 st) on outer lot 4,8",
+    "2026-08-30  Completed #63 Rowhouse / Victorian (3 st) on outer lot 8,4",
+    "2026-08-30  Completed #64 Rowhouse / Victorian (2 st) on outer lot 13,4",
+    "2026-09-04  Completed #65 Museum (12 st) on outer lot 17,8",
+    "2026-09-06  Completed #66 Rowhouse / Victorian (3 st) on outer lot 17,14",
+    "2026-09-06  Completed #67 Rowhouse / Victorian (3 st) on outer lot 14,17",
+    "2026-09-07  Completed #68 Rowhouse / Victorian (3 st) on outer lot 7,17",
+    "2026-09-07  Completed #69 Rowhouse / Victorian (2 st) on outer lot 4,14",
+    "2026-09-13  Completed #70 Rowhouse / Victorian (3 st) on outer lot 4,7",
+    "2026-09-13  Completed #71 Rowhouse / Victorian (2 st) on outer lot 7,4",
+    "2026-09-14  Completed #72 Rowhouse / Victorian (3 st) on outer lot 14,4",
+    "2026-09-14  Completed #73 Rowhouse / Victorian (3 st) on outer lot 17,7",
+    "2026-09-14  Completed #74 Rowhouse / Victorian (2 st) on outer lot 16,16",
+    "2026-09-20  Completed #75 Rowhouse / Victorian (3 st) on outer lot 5,16",
+    "2026-09-20  Completed #76 Rowhouse / Victorian (2 st) on outer lot 5,5",
+    "2026-09-26  Completed #77 Rowhouse / Victorian (2 st) on outer lot 16,5",
+    "2026-09-26  Completed #78 Rowhouse / Victorian (2 st) on outer lot 17,16",
+    "2026-09-27  Park: Neighborhood Park #6 (week of 2026-09-21 had 1 run)",
+    "2026-09-28  Completed #79 Rowhouse / Victorian (3 st) on outer lot 16,17",
+    "2026-10-04  Park: Neighborhood Park #7 (week of 2026-09-28 had 1 run)",
+    "2026-10-07  Completed #80 Museum (15 st) on outer lot 4,16",
+    "2026-10-13  Completed #81 Museum (14 st) on outer lot 2,10",
+    "2026-10-13  Completed #82 Rowhouse / Victorian (3 st) on outer lot 4,5",
+    "2026-10-13  Completed #83 Rowhouse / Victorian (2 st) on outer lot 5,4",
+    "2026-10-17  Completed #84 Rowhouse / Victorian (2 st) on outer lot 10,2",
+    "2026-10-17  Completed #85 Rowhouse / Victorian (3 st) on outer lot 11,2",
+    "2026-10-20  Side quest: Red Rocks Amphitheatre (2026 YTD 51.97 walk mi >= 50)",
+    "2026-10-21  Completed #86 Rowhouse / Victorian (2 st) on outer lot 16,4",
+    "2026-10-21  Completed #87 Rowhouse / Victorian (3 st) on outer lot 17,5",
+    "2026-10-23  Completed #88 Mixed-use apartments (4 st) on outer lot 19,13",
+    "2026-10-23  Completed #89 Rowhouse / Victorian (3 st) on outer lot 13,19",
+    "2026-10-23  Completed #90 Rowhouse / Victorian (2 st) on outer lot 8,19",
+    "2026-10-24  Completed #91 Rowhouse / Victorian (3 st) on outer lot 2,13",
+    "2026-10-24  Completed #92 Rowhouse / Victorian (2 st) on outer lot 2,8",
+    "2026-10-24  Completed #93 Rowhouse / Victorian (3 st) on outer lot 8,2",
+    "2026-10-25  Completed #94 Rowhouse / Victorian (3 st) on outer lot 13,2",
+    "2026-10-25  Completed #95 Rowhouse / Victorian (2 st) on outer lot 19,8",
+    "2026-10-28  Completed #96 Rowhouse / Victorian (3 st) on outer lot 19,14",
+    "2026-10-28  Completed #97 Rowhouse / Victorian (3 st) on outer lot 17,17",
+    "2026-10-28  Completed #98 Rowhouse / Victorian (2 st) on outer lot 14,19",
+    "2026-10-29  Completed #99 Rowhouse / Victorian (2 st) on outer lot 7,19",
+    "2026-10-29  Completed #100 Rowhouse / Victorian (2 st) on outer lot 4,17",
+    "2026-10-29  Completed #101 Rowhouse / Victorian (3 st) on outer lot 2,14"
+  ]
+}

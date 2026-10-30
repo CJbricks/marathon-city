@@ -1,0 +1,157 @@
+MARATHON CITY — as of 2026-10-29
+Run miles: 711.25  (= 711.25 stories of construction)
+Buildings completed: 101 (9 skyscraper, 13 office, 26 mixeduse, 4 state, 5 museum, 43 rowhouse, + State Capitol)
+Stories in completed regular buildings: 698
+In progress: #102 Rowhouse / Victorian (outer) 0.15/2 stories (7.5%), started 2026-10-29
+Landmarks earned:
+  2015-06-25  Courthouse — 12 runs in 30 days ending 2015-06-25
+  2015-07-14  Denver Art Museum — pace PR 8:17/mi on 5.04 mi (prev best 8:27/mi)
+  2015-07-19  Union Station — cumulative 102.12 run mi
+  2026-05-06  State Capitol — finished after 13.1 run mi
+Landmarks locked:
+  Cathedral Basilica — needs a single run >= 13.1 mi (longest so far 8.52 mi) or 26.2 cumulative mi from runs >= 10 mi (have 0)
+Parks (10):
+  2015-09-06  Cheesman Park (week of 2015-08-31: 1 run)
+  2015-09-13  Washington Park (week of 2015-09-07: 1 run)
+  2015-11-22  City Park (week of 2015-11-16: 1 run)
+  2015-12-13  Neighborhood Park #1 (week of 2015-12-07: 1 run)
+  2023-08-27  Neighborhood Park #2 (week of 2023-08-21: 1 run)
+  2023-09-03  Neighborhood Park #3 (week of 2023-08-28: 1 run)
+  2023-09-10  Neighborhood Park #4 (week of 2023-09-04: 1 run)
+  2023-09-17  Neighborhood Park #5 (week of 2023-09-11: 1 run)
+  2026-09-27  Neighborhood Park #6 (week of 2026-09-21: 1 run)
+  2026-10-04  Neighborhood Park #7 (week of 2026-09-28: 1 run)
+Side quests earned:
+  2015-06-23  Coors Field — YTD 16.21 ride mi
+  2026-05-30  Ball Arena — YTD 25.76 ride mi
+  2026-06-29  Confluence Park bridge — YTD 10.11 walk mi
+  2026-08-06  16th Street Mall — YTD 25.5 walk mi
+  2026-10-20  Red Rocks Amphitheatre — YTD 51.97 walk mi
+Side quests locked:
+  Empower Field at Mile High — 50 ride mi in one calendar year (2026 YTD: 42.05)
+  Big Blue Bear — 1 session in one calendar year (2026 YTD: 0)
+  Denver Athletic Club — 10 sessions in one calendar year (2026 YTD: 0)
+YTD totals: {"2015":{"ride":21.88,"walk":0,"weights":0},"2019":{"ride":8.4,"walk":0,"weights":0},"2026":{"ride":42.05,"walk":51.97,"weights":0}}
+Lots used: 111/160
+
+EVENT LOG
+2015-06-22  Completed #1 Skyscraper (24 st) on core lot 11,11
+2015-06-23  Side quest: Coors Field (2015 YTD 16.21 ride mi >= 10)
+2015-06-25  Landmark: Courthouse (12 runs in 30 days ending 2015-06-25)
+2015-06-26  Completed #2 Mid-rise office (11 st) on core lot 10,11
+2015-07-06  Completed #3 Skyscraper (23 st) on core lot 10,10
+2015-07-14  Landmark: Denver Art Museum (pace PR 8:17/mi on 5.04 mi (prev best 8:27/mi))
+2015-07-15  Completed #4 Skyscraper (27 st) on core lot 11,10
+2015-07-18  Completed #5 Mid-rise office (12 st) on core lot 13,11
+2015-07-19  Landmark: Union Station (cumulative 102.12 run mi)
+2015-07-22  Completed #6 Mid-rise office (11 st) on core lot 11,13
+2015-09-03  Completed #7 Skyscraper (28 st) on core lot 10,13
+2015-09-06  Park: Cheesman Park (week of 2015-08-31 had 1 run)
+2015-09-13  Park: Washington Park (week of 2015-09-07 had 1 run)
+2015-11-22  Park: City Park (week of 2015-11-16 had 1 run)
+2015-11-29  Completed #8 Skyscraper (20 st) on core lot 8,11
+2015-12-07  Completed #9 Mid-rise office (12 st) on core lot 8,10
+2015-12-13  Park: Neighborhood Park #1 (week of 2015-12-07 had 1 run)
+2016-05-26  Completed #10 Mid-rise office (9 st) on core lot 10,8
+2023-08-27  Park: Neighborhood Park #2 (week of 2023-08-21 had 1 run)
+2023-09-03  Park: Neighborhood Park #3 (week of 2023-08-28 had 1 run)
+2023-09-10  Park: Neighborhood Park #4 (week of 2023-09-04 had 1 run)
+2023-09-17  Park: Neighborhood Park #5 (week of 2023-09-11 had 1 run)
+2026-04-19  Completed #11 Skyscraper (27 st) on core lot 11,8
+2026-04-26  Completed #12 Skyscraper (26 st) on core lot 13,10
+2026-05-03  Completed #13 Skyscraper (20 st) on core lot 14,11
+2026-05-03  State Capitol unlocked at 250 cumulative run mi; construction begins
+2026-05-06  Completed #14 State Capitol (13.1 st) on civic lot 13,13
+2026-05-12  Completed #15 Mid-rise office (10 st) on core lot 11,14
+2026-05-18  Completed #16 Skyscraper (21 st) on core lot 10,14
+2026-05-20  Completed #17 Mid-rise office (9 st) on core lot 8,13
+2026-05-24  Completed #18 Mid-rise office (11 st) on inner lot 7,13
+2026-05-25  Completed #19 Mixed-use apartments (6 st) on inner lot 7,8
+2026-05-25  Completed #20 Mixed-use apartments (5 st) on inner lot 8,7
+2026-05-27  Completed #21 Mixed-use apartments (5 st) on inner lot 13,7
+2026-05-29  Completed #22 Mixed-use apartments (4 st) on inner lot 14,8
+2026-05-30  Side quest: Ball Arena (2026 YTD 25.76 ride mi >= 25)
+2026-05-31  Completed #23 Mixed-use apartments (6 st) on inner lot 7,14
+2026-06-03  Completed #24 Mixed-use apartments (4 st) on inner lot 7,7
+2026-06-08  Completed #25 State building (12 st) on inner lot 14,7
+2026-06-08  Completed #26 Mixed-use apartments (4 st) on inner lot 16,11
+2026-06-13  Completed #27 Mid-rise office (8 st) on inner lot 11,16
+2026-06-15  Completed #28 Mixed-use apartments (4 st) on inner lot 10,16
+2026-06-17  Completed #29 Mixed-use apartments (5 st) on inner lot 5,11
+2026-06-17  Completed #30 Mixed-use apartments (4 st) on inner lot 5,10
+2026-06-19  Completed #31 Mixed-use apartments (6 st) on inner lot 10,5
+2026-06-22  Completed #32 Mixed-use apartments (4 st) on inner lot 11,5
+2026-06-24  Completed #33 Mixed-use apartments (5 st) on inner lot 16,10
+2026-06-25  Completed #34 Mixed-use apartments (6 st) on inner lot 16,13
+2026-06-27  Completed #35 Mixed-use apartments (4 st) on inner lot 13,16
+2026-06-27  Completed #36 Mixed-use apartments (5 st) on inner lot 8,16
+2026-06-29  Completed #37 Mixed-use apartments (4 st) on inner lot 5,13
+2026-06-29  Side quest: Confluence Park bridge (2026 YTD 10.11 walk mi >= 10)
+2026-07-04  Completed #38 State building (12 st) on inner lot 5,8
+2026-07-05  Completed #39 Mixed-use apartments (6 st) on inner lot 8,5
+2026-07-08  Completed #40 State building (9 st) on inner lot 13,5
+2026-07-09  Completed #41 Mixed-use apartments (6 st) on inner lot 16,8
+2026-07-11  Completed #42 Mixed-use apartments (6 st) on inner lot 17,11
+2026-07-17  Completed #43 Museum (14 st) on inner lot 16,14
+2026-07-20  Completed #44 Mid-rise office (11 st) on inner lot 14,16
+2026-07-26  Completed #45 Mid-rise office (10 st) on inner lot 11,17
+2026-08-01  Completed #46 Mid-rise office (10 st) on inner lot 10,17
+2026-08-05  Completed #47 State building (9 st) on inner lot 7,16
+2026-08-06  Side quest: 16th Street Mall (2026 YTD 25.5 walk mi >= 25)
+2026-08-09  Completed #48 Museum (14 st) on inner lot 5,14
+2026-08-10  Completed #49 Mixed-use apartments (6 st) on inner lot 4,11
+2026-08-16  Completed #50 Mixed-use apartments (6 st) on inner lot 4,10
+2026-08-17  Completed #51 Mixed-use apartments (6 st) on inner lot 5,7
+2026-08-22  Completed #52 Mid-rise office (8 st) on inner lot 7,5
+2026-08-24  Completed #53 Mixed-use apartments (5 st) on inner lot 10,4
+2026-08-24  Completed #54 Rowhouse / Victorian (3 st) on outer lot 11,4
+2026-08-26  Completed #55 Rowhouse / Victorian (2 st) on outer lot 14,5
+2026-08-26  Completed #56 Rowhouse / Victorian (2 st) on outer lot 16,7
+2026-08-26  Completed #57 Rowhouse / Victorian (2 st) on outer lot 17,10
+2026-08-28  Completed #58 Mixed-use apartments (4 st) on outer lot 17,13
+2026-08-28  Completed #59 Rowhouse / Victorian (3 st) on outer lot 13,17
+2026-08-29  Completed #60 Rowhouse / Victorian (3 st) on outer lot 8,17
+2026-08-29  Completed #61 Rowhouse / Victorian (3 st) on outer lot 4,13
+2026-08-29  Completed #62 Rowhouse / Victorian (2 st) on outer lot 4,8
+2026-08-30  Completed #63 Rowhouse / Victorian (3 st) on outer lot 8,4
+2026-08-30  Completed #64 Rowhouse / Victorian (2 st) on outer lot 13,4
+2026-09-04  Completed #65 Museum (12 st) on outer lot 17,8
+2026-09-06  Completed #66 Rowhouse / Victorian (3 st) on outer lot 17,14
+2026-09-06  Completed #67 Rowhouse / Victorian (3 st) on outer lot 14,17
+2026-09-07  Completed #68 Rowhouse / Victorian (3 st) on outer lot 7,17
+2026-09-07  Completed #69 Rowhouse / Victorian (2 st) on outer lot 4,14
+2026-09-13  Completed #70 Rowhouse / Victorian (3 st) on outer lot 4,7
+2026-09-13  Completed #71 Rowhouse / Victorian (2 st) on outer lot 7,4
+2026-09-14  Completed #72 Rowhouse / Victorian (3 st) on outer lot 14,4
+2026-09-14  Completed #73 Rowhouse / Victorian (3 st) on outer lot 17,7
+2026-09-14  Completed #74 Rowhouse / Victorian (2 st) on outer lot 16,16
+2026-09-20  Completed #75 Rowhouse / Victorian (3 st) on outer lot 5,16
+2026-09-20  Completed #76 Rowhouse / Victorian (2 st) on outer lot 5,5
+2026-09-26  Completed #77 Rowhouse / Victorian (2 st) on outer lot 16,5
+2026-09-26  Completed #78 Rowhouse / Victorian (2 st) on outer lot 17,16
+2026-09-27  Park: Neighborhood Park #6 (week of 2026-09-21 had 1 run)
+2026-09-28  Completed #79 Rowhouse / Victorian (3 st) on outer lot 16,17
+2026-10-04  Park: Neighborhood Park #7 (week of 2026-09-28 had 1 run)
+2026-10-07  Completed #80 Museum (15 st) on outer lot 4,16
+2026-10-13  Completed #81 Museum (14 st) on outer lot 2,10
+2026-10-13  Completed #82 Rowhouse / Victorian (3 st) on outer lot 4,5
+2026-10-13  Completed #83 Rowhouse / Victorian (2 st) on outer lot 5,4
+2026-10-17  Completed #84 Rowhouse / Victorian (2 st) on outer lot 10,2
+2026-10-17  Completed #85 Rowhouse / Victorian (3 st) on outer lot 11,2
+2026-10-20  Side quest: Red Rocks Amphitheatre (2026 YTD 51.97 walk mi >= 50)
+2026-10-21  Completed #86 Rowhouse / Victorian (2 st) on outer lot 16,4
+2026-10-21  Completed #87 Rowhouse / Victorian (3 st) on outer lot 17,5
+2026-10-23  Completed #88 Mixed-use apartments (4 st) on outer lot 19,13
+2026-10-23  Completed #89 Rowhouse / Victorian (3 st) on outer lot 13,19
+2026-10-23  Completed #90 Rowhouse / Victorian (2 st) on outer lot 8,19
+2026-10-24  Completed #91 Rowhouse / Victorian (3 st) on outer lot 2,13
+2026-10-24  Completed #92 Rowhouse / Victorian (2 st) on outer lot 2,8
+2026-10-24  Completed #93 Rowhouse / Victorian (3 st) on outer lot 8,2
+2026-10-25  Completed #94 Rowhouse / Victorian (3 st) on outer lot 13,2
+2026-10-25  Completed #95 Rowhouse / Victorian (2 st) on outer lot 19,8
+2026-10-28  Completed #96 Rowhouse / Victorian (3 st) on outer lot 19,14
+2026-10-28  Completed #97 Rowhouse / Victorian (3 st) on outer lot 17,17
+2026-10-28  Completed #98 Rowhouse / Victorian (2 st) on outer lot 14,19
+2026-10-29  Completed #99 Rowhouse / Victorian (2 st) on outer lot 7,19
+2026-10-29  Completed #100 Rowhouse / Victorian (2 st) on outer lot 4,17
+2026-10-29  Completed #101 Rowhouse / Victorian (3 st) on outer lot 2,14
