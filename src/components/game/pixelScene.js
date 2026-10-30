@@ -264,20 +264,25 @@ function drawBuilding(data, b, ambient, night) {
   }
 
   if (b.type === "museum") {
+    // One gallery block and a single titanium shard. This used to call
+    // mix(color, ambient). mix() multiplies by one brightness number.
+    // ambient is an [r, g, b] array, so every channel became NaN and the
+    // canvas stored 0. The two shard faces were solid black and read as
+    // twin cathedral spires. The demo map has five museums, which is why
+    // four or five black spires showed up. mul() tints each channel.
     const base = mul(hex(pick(rand, ["#c8a878", "#b8c0c8", "#e4e0d6"])), ambient);
-    const h1 = Math.round(h * 0.55);
-    box(data, x + 0.15, y + 0.2, x + 0.85, y + 0.85, 0, h1, base);
-    windows(data, x + 0.15, y + 0.2, x + 0.85, y + 0.85, h1, (side, t, n, k) => {
+    const h1 = Math.max(STORY, Math.round(h * 0.6));
+    box(data, x + 0.12, y + 0.18, x + 0.88, y + 0.88, 0, h1, base);
+    windows(data, x + 0.12, y + 0.18, x + 0.88, y + 0.88, h1, (side, t, n, k) => {
       if (t <= 1 || t >= n - 1) return null;
       if (side === "L" && k > 2 && k < 8 && t % 3 === 1) return hex("#7ab0d0");
       return null;
     });
-    const shard = mix(hex("#d5dde4"), ambient);
-    const a = project(x + 0.2, y + 0.7, h1);
-    const b = project(x + 0.95, y + 0.75, h1);
-    const tip = project(x + 0.55, y + 0.35, h + 10);
-    fillPoly(data, [a, b, tip], shard);
-    fillPoly(data, [b, project(x + 0.95, y + 0.2, h1), [tip[0] + 6, tip[1] + 4]], mix(shard, 0.7));
+    const shard = mul(hex("#dfe6ee"), ambient);
+    const footL = project(x + 0.35, y + 0.55, h1);
+    const footR = project(x + 0.72, y + 0.62, h1);
+    const tip = project(x + 0.5, y + 0.42, h1 + 14);
+    fillPoly(data, [footL, footR, tip], shard);
     return;
   }
 

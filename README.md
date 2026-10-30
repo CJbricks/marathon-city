@@ -50,9 +50,9 @@ One mile is one story. A run that does not finish a building leaves the leftover
 | State building | 8–12 |
 | Museum | 10–15 |
 
-The State Capitol is its own building. It takes 13.1 miles. In the prototype it unlocks at 250 cumulative run miles, pauses whatever is already under construction, spends the next 13.1 miles, and then lets that earlier building resume.
+The State Capitol is its own building, and the city gets at most one. It takes 13.1 miles. It unlocks at 250 cumulative run miles, pauses whatever is already under construction, spends the next 13.1 miles, and then lets that earlier building resume.
 
-Downtown lots prefer offices and skyscrapers. The inner ring prefers mixed-use. The outer ring prefers rowhouses. State buildings and museums are sprinkled through every ring. The prototype map is a 7×7 grid of blocks, with a Civic Center block in front of downtown for the landmarks.
+Downtown lots prefer offices and skyscrapers. The inner ring prefers mixed-use. The outer ring prefers rowhouses. State buildings and museums are sprinkled through every ring. Museums stay 10–15 stories and still appear from those weights, and the city stops at 10 of them. The map is a 7×7 grid of blocks, with a Civic Center block in front of downtown for the one-of-a-kind landmarks.
 
 ## Landmarks, parks, and side quests
 
@@ -61,7 +61,7 @@ Landmarks unlock from milestones:
 - **Union Station** at 100 run miles.
 - **The Courthouse** for a streak. The prototype uses 12 runs inside 30 days.
 - **The Denver Art Museum** for a pace PR. The prototype counts a PR only on a run of at least 5 miles, and only after the first 20 runs.
-- **The Cathedral Basilica** for a single run of at least 13.1 miles. The prototype also accepts 26.2 cumulative miles from runs of at least 10 miles.
+- **The Cathedral Basilica** at one per 200 banked run miles, with no ceiling unless `max` is set in `src/lib/rules.js`. 700 miles is 3. 1000 miles is 5. A single 13.1 mile run does not unlock one early.
 
 Parks are Cheesman Park, Washington Park, City Park, and the Confluence bridge. In the current simulator, a quiet calendar week (at most one run, and only when the gap between runs is 21 days or less) awards the named parks in order — Cheesman, Washington Park, City Park — and later quiet weeks become numbered neighborhood parks. The Confluence bridge is earned there as a year-to-date walk milestone.
 
@@ -71,7 +71,7 @@ Side quests use year-to-date totals and, once earned, stay earned:
 - **Walk:** the 16th Street Mall and Red Rocks Amphitheatre (25 and 50 walk miles in the prototype).
 - **Lifting:** the Big Blue Bear and the Denver Athletic Club (1 session and 10 sessions in the prototype).
 
-`prototype/rules.js` is the editable source for all of these numbers. `prototype/summary.txt` is the replay of the sample log as of 2026-10-29: about 705 run miles, 98 finished buildings, and the Capitol complete.
+`src/lib/rules.js` is the editable source for these numbers, including `perCity` on museums and `milesPer` / `max` on landmarks. `prototype/summary.txt` is the older replay, from before cathedrals followed the mileage bank.
 
 ## Logging a run
 
