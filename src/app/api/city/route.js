@@ -1,9 +1,9 @@
 // POST /api/city
 // Creates a save after the opening flow: a city (only Denver in the beta),
-// all-history or a start date, or demo mode. Demo copies prototype/activities.txt
-// in so the skyline exists with no Strava keys. Replacing a save clears the
-// old activities first; Strava tokens are kept so the owner is not sent
-// through OAuth again.
+// all-history or a start date, or demo mode, plus an optional race date.
+// Demo copies prototype/activities.txt in so the skyline exists with no
+// Strava keys. Replacing a save clears the old activities first; Strava
+// tokens are kept so the owner is not sent through OAuth again.
 
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
@@ -30,6 +30,8 @@ export async function POST(request) {
     startDate,
     lastSyncedAt: demo ? new Date().toISOString() : null,
     demo,
+    raceDate: body.raceDate || null,
+    raceName: body.raceName ? String(body.raceName).trim() : null,
     createdAt: new Date().toISOString(),
   };
   await store.saveCity(userId, save);

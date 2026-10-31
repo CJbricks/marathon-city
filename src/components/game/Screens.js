@@ -4,7 +4,8 @@
 // size as the prototype intro, and the stage is scaled to the window so a
 // phone shows the whole card without a horizontal scrollbar. Labels match
 // the prototype: Resume City, New City, the five-city picker (only Denver
-// is READY), Connect with Strava, and All history or a start date.
+// is READY), Connect with Strava, all history or a start date, then the
+// race-day question.
 
 import { useEffect, useState } from "react";
 
@@ -16,21 +17,21 @@ function localToday() {
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
 
-function Stage({ children }) {
+function Stage({ children, height = 200 }) {
   const [scale, setScale] = useState(1);
   useEffect(() => {
     const fit = () => {
-      const w = Math.min(window.innerWidth - 16, (window.innerHeight - 16) * (320 / 200));
+      const w = Math.min(window.innerWidth - 16, (window.innerHeight - 16) * (320 / height));
       setScale(Math.max(0.5, w / 320));
     };
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, []);
+  }, [height]);
   return (
     <div className="stage-wrap">
-      <div className="stage-sizer" style={{ width: 320 * scale, height: 200 * scale }}>
-        <div className="stage-px" style={{ transform: `scale(${scale})` }}>
+      <div className="stage-sizer" style={{ width: 320 * scale, height: height * scale }}>
+        <div className="stage-px" style={{ transform: `scale(${scale})`, height }}>
           <div className="sky-stripes" />
           {children}
           <div className="sky-stripes bottom" />
@@ -160,8 +161,48 @@ export function StartScreen({ onBuild }) {
         <small>DEFAULTS TO TODAY</small>
       </div>
       <button type="button" className="pixel-btn gold" onClick={() => onBuild(mode, date)}>
-        BUILD
+        NEXT
       </button>
+    </Stage>
+  );
+}
+
+export function RaceScreen({ initialDate, initialName, onDone, onBack }) {
+  const [yes, setYes] = useState(Boolean(initialDate));
+  const [date, setDate] = useState(initialDate || "2027-02-14");
+  const [name, setName] = useState(initialName || "");
+  return (
+    <Stage height={248}>
+      <h2 className="pixel-heading">RACE DAY</h2>
+      <p className="pixel-note">ARE YOU TRAINING FOR A SPECIFIC DATE?</p>
+      <div className="btn-row">
+        <button type="button" className={yes ? "pixel-btn gold" : "pixel-btn"} onClick={() => setYes(true)}>
+          YES
+        </button>
+        <button type="button" className="pixel-btn" onClick={() => onDone(null, null)}>
+          NO
+        </button>
+      </div>
+      {yes ? (
+        <>
+          <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          <input
+            type="text"
+            value={name}
+            maxLength={32}
+            placeholder="AUSTIN MARATHON"
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button type="button" className="pixel-btn gold" onClick={() => onDone(date, name.trim() || null)}>
+            NEXT
+          </button>
+        </>
+      ) : null}
+      {onBack ? (
+        <button type="button" className="pixel-btn" onClick={onBack}>
+          BACK
+        </button>
+      ) : null}
     </Stage>
   );
 }

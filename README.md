@@ -63,6 +63,8 @@ Landmarks unlock from milestones:
 - **The Denver Art Museum** for a pace PR. The prototype counts a PR only on a run of at least 5 miles, and only after the first 20 runs.
 - **The Cathedral Basilica** at one per 200 banked run miles, with no ceiling unless `max` is set in `src/lib/rules.js`. 700 miles is 3. 1000 miles is 5. A single 13.1 mile run does not unlock one early.
 
+After you pick a start date, the app asks if you are training for a specific day. Yes saves a date and an optional name, such as Austin Marathon on 2027-02-14. No skips it. On that local calendar day the city plays confetti and a small parade, and shows the name if you gave one. Change it later from the city menu. `?raceday=1` previews the celebration on any day. The counts and the timing live in `raceDay` inside `src/lib/rules.js`.
+
 Parks are Cheesman Park, Washington Park, City Park, and the Confluence bridge. In the current simulator, a quiet calendar week (at most one run, and only when the gap between runs is 21 days or less) awards the named parks in order — Cheesman, Washington Park, City Park — and later quiet weeks become numbered neighborhood parks. The Confluence bridge is earned there as a year-to-date walk milestone.
 
 Side quests use year-to-date totals and, once earned, stay earned:

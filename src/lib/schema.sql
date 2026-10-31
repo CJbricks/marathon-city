@@ -35,5 +35,12 @@ CREATE TABLE IF NOT EXISTS city_saves (
   start_date TEXT,
   last_synced_at TIMESTAMPTZ,
   demo BOOLEAN NOT NULL DEFAULT FALSE,
+  race_date TEXT,
+  race_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Existing databases already have city_saves from before race day.
+-- Adding the columns here is a no-op once they exist.
+ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS race_date TEXT;
+ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS race_name TEXT;

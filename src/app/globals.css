@@ -227,19 +227,62 @@ a.pixel-btn {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
-.hud-top,
 .hud {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
+  padding: 8px 8px 12px;
   background: #05143a;
   color: #fdd835;
-  font-size: 8px;
-}
-.hud {
+  font-size: 7px;
+  line-height: 1.5;
   border-top: 4px solid #fdd835;
-  padding-bottom: 12px;
+}
+.hud span {
+  text-align: center;
+  min-width: 0;
+}
+@media (min-width: 720px) {
+  .hud {
+    grid-template-columns: repeat(4, 1fr);
+    font-size: 8px;
+  }
+}
+.menu-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+}
+.race-name,
+.mile-pop {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  max-width: 90vw;
+  background: #0d2a6b;
+  color: #fdd835;
+  border: 3px solid #fdd835;
+  font-family: var(--font-pixel), monospace;
+  font-size: 8px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  text-align: center;
+}
+.race-name { top: 44px; }
+.mile-pop { top: 78px; background: #fdd835; color: #05143a; }
+.stage-px input[type="text"],
+.stage-px input[type="date"] {
+  font-family: var(--font-pixel), monospace;
+  font-size: 7px;
+  width: 220px;
+  max-width: 100%;
+  background: #05143a;
+  color: #fff;
+  border: 2px solid #fdd835;
+  padding: 4px;
 }
 .story-pop,
 .plane-banner,
@@ -283,6 +326,11 @@ a.pixel-btn {
   font-size: 8px;
   color: #fff;
   z-index: 2;
+}
+.modal .pixel-btn {
+  display: block;
+  width: 100%;
+  margin: 6px 0;
 }
 .modal input {
   display: block;

@@ -11,7 +11,10 @@
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
+import rules from "@/lib/rules";
 import { SCENE_H, SCENE_W, paintScene, project, sceneSignature } from "./pixelScene";
+
+const CONFETTI = [0xfdd835, 0xd62828, 0xffffff, 0xf57c00, 0x43a047, 0x1e88e5];
 
 // ?time=22:00 previews a clock hour without waiting for it. The live view
 // still uses the device clock when the query is absent.
@@ -53,13 +56,29 @@ function drawPlane(g, x, y) {
   px(22, 1, 3, 2, 0xf0c020);
 }
 
-export default function CityView({ city, fx }) {
+function drawParade(g, city, now) {
+  g.clear();
+  if (!city?.map) return;
+  const { tiles, period } = city.map;
+  const v = period;
+  const span = Math.max(1, tiles - 3);
+  const lap = (now % rules.raceDay.paradeMs) / rules.raceDay.paradeMs;
+  for (let i = 0; i < 6; i++) {
+    const u = 1 + ((lap + i / 6) % 1) * span;
+    const [x, y] = project(u, v, 3);
+    const color = CONFETTI[i % CONFETTI.length];
+    g.rect(Math.round(x), Math.round(y) - 7, 3, 4).fill({ color });
+    g.rect(Math.round(x) + 1, Math.round(y) - 9, 2, 2).fill({ color: 0xfdd835 });
+  }
+}
+
+export default function CityView({ city, fx, celebrate }) {
   const hostRef = useRef(null);
-  const stateRef = useRef({ city, fx });
+  const stateRef = useRef({ city, fx, celebrate });
 
   useEffect(() => {
-    stateRef.current = { city, fx };
-  }, [city, fx]);
+    stateRef.current = { city, fx, celebrate };
+  }, [city, fx, celebrate]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -97,9 +116,13 @@ export default function CityView({ city, fx }) {
       const citySprite = new Sprite(Texture.EMPTY);
       const crane = new Graphics();
       const dust = new Graphics();
-      world.addChild(citySprite, crane, dust);
+      // Parade lives in scene space so it follows the street when you pan,
+      // but it is not part of the cached city texture.
+      const parade = new Graphics();
+      world.addChild(citySprite, crane, dust, parade);
       const screenFx = new Graphics();
       application.stage.addChild(world, screenFx);
+      const bits = [];
 
       // Cover the view, don't letterbox it. The painted picture already
       // includes sky and prairie, so cropping an edge still looks like the
@@ -152,6 +175,9 @@ export default function CityView({ city, fx }) {
           crane.clear();
           dust.clear();
         }
+        const celebrating = stateRef.current.celebrate;
+        parade.clear();
+        if (celebrating) drawParade(parade, shown, performance.now());
         screenFx.clear();
         if (liveFx?.plane) {
           const w = application.screen.width;
@@ -159,6 +185,28 @@ export default function CityView({ city, fx }) {
           const x = w * (0.06 + liveFx.plane.progress * 0.5) + 160;
           const y = application.screen.height * 0.12 + Math.round(Math.sin(liveFx.plane.progress * 10) * 4);
           drawPlane(screenFx, x, y);
+        }
+        if (celebrating) {
+          const w = application.screen.width;
+          const h = application.screen.height;
+          const count = rules.raceDay.confetti;
+          while (bits.length < count) {
+            bits.push({
+              x: Math.random() * w,
+              y: Math.random() * h,
+              vy: 0.8 + Math.random() * 1.4,
+              c: CONFETTI[bits.length % CONFETTI.length],
+            });
+          }
+          for (const bit of bits) {
+            bit.y += bit.vy;
+            bit.x += Math.sin(bit.y * 0.08) * 0.4;
+            if (bit.y > h) {
+              bit.y = -4;
+              bit.x = Math.random() * w;
+            }
+            screenFx.rect(Math.round(bit.x), Math.round(bit.y), 3, 3).fill({ color: bit.c });
+          }
         }
         frames += 1;
         const now = performance.now();
