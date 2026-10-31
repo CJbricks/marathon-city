@@ -116,6 +116,14 @@ const rules = {
       { name: "Denver Athletic Club", sessions: 10 },
     ],
   },
+
+  // Race day is a local calendar date on the save, not a milestone.
+  // The celebration lasts that whole local day. confetti and paradeMs
+  // only change the overlay; they do not rebuild the city texture.
+  raceDay: {
+    confetti: 36,
+    paradeMs: 9000,
+  },
 };
 
 export default rules;

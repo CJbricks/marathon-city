@@ -10,6 +10,7 @@ src/lib/simulate.js        Pure replay. Activities in, city out. No database, no
 src/lib/replay.js          Applies the save's start date, then calls simulate.
 src/lib/lighting.js        Device-clock sky, from the prototype keyframes.
 src/lib/quotes.js          Lines for the loading screen and the plane banner.
+src/lib/raceDay.js         Local-calendar check for the saved race date.
 src/lib/db.js              Postgres if DATABASE_URL is set, otherwise .data/store.json.
 src/lib/schema.sql         Tables. `npm run migrate` applies this.
 src/lib/strava.js          OAuth URL, token exchange, refresh, activity fetch.
@@ -69,6 +70,8 @@ Route handlers and `src/lib/db.js`, `strava.js`, `demo.js`, and `session.js` are
 Edit `src/lib/rules.js`. Heights, the 100-mile Union Station line, the park week rule, and the side-quest totals are all in that object. Key order inside `ringWeights` matters, because the weighted picker walks the keys in insertion order.
 
 Limits live in the same file. `buildingTypes.museum.perCity` is how many museums the picker may start (10). Story heights stay `min` and `max`. Each milestone landmark has `max: 1`, so Union Station, the Courthouse, the Art Museum, and the Capitol cannot stack. The Cathedral is `milesPer: 200` and `max: null`: the city gets `floor(banked run miles / 200)` of them, and a number in `max` would cut that off. Set `max` back to a number if you ever want a ceiling. A 13.1 mile run does not create one early, because that would put a cathedral in a city that has not banked 200 miles.
+
+`raceDay` in that same file only tunes the celebration: how many confetti bits, and how long one parade loop takes. The date itself is not a rule. It is `raceDate` and `raceName` on the city save, written by the opening question and by the menu. `isRaceDay` in `src/lib/raceDay.js` compares that date to the device's local calendar day, not UTC, so the parade lasts from local midnight to the next local midnight. The parade and confetti are a Pixi layer on top of the cached city texture. They do not call `paintScene`, so the skyline is not redrawn every frame. `?raceday=1` forces the overlay for a screenshot.
 
 Then run `npm test`. The demo-log test checks 704.95 miles, exactly 3 cathedrals, 1 capitol, and at most 10 museums. Another test checks 1000 miles gives 5 cathedrals, and that `max: 2` holds them there. Two replays of the same log must still match, and a partial mile still carries onto the next run. Cathedrals take lots when they unlock, so building coordinates are not identical to `prototype/city.json`.
 

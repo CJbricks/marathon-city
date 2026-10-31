@@ -11,9 +11,18 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { isRaceDay, uniqueLandmarkCount } from "@/lib/raceDay";
 import { randomQuote } from "@/lib/quotes";
 import { replay, shouldFlyPlane } from "@/lib/replay";
-import { LoadingScreen, ManualDialog, PickerScreen, StartScreen, StravaScreen, TitleScreen } from "./Screens";
+import {
+  LoadingScreen,
+  ManualDialog,
+  PickerScreen,
+  RaceScreen,
+  StartScreen,
+  StravaScreen,
+  TitleScreen,
+} from "./Screens";
 
 const CityView = dynamic(() => import("./CityView"), { ssr: false });
 
@@ -41,6 +50,9 @@ export default function Game() {
   const [playing, setPlaying] = useState(false);
   const [manual, setManual] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const [forceRace, setForceRace] = useState(false);
   const [banner, setBanner] = useState("");
   const [bannerLeft, setBannerLeft] = useState("18%");
   const flew = useRef(false);
@@ -71,6 +83,7 @@ export default function Game() {
     // cannot cause a hydration mismatch.
     const timer = setTimeout(() => {
       setQuote((current) => current || randomQuote());
+      setForceRace(new URLSearchParams(window.location.search).get("raceday") === "1");
       try {
         const cached = JSON.parse(sessionStorage.getItem(CACHE) || "null");
         if (cached?.save) {
@@ -273,21 +286,53 @@ export default function Game() {
   if (screen === "start") {
     return (
       <StartScreen
-        onBuild={(mode, date) => createCity({ city: "Denver", startMode: mode, startDate: date })}
+        onBuild={(mode, date) => {
+          setDraft({ city: "Denver", startMode: mode, startDate: date });
+          setScreen("race");
+        }}
+      />
+    );
+  }
+  if (screen === "race") {
+    return (
+      <RaceScreen
+        initialDate={payload.save?.raceDate}
+        initialName={payload.save?.raceName}
+        onBack={() => setScreen(draft ? "start" : "city")}
+        onDone={async (raceDate, raceName) => {
+          if (draft) {
+            await createCity({ ...draft, raceDate, raceName });
+            setDraft(null);
+            return;
+          }
+          const response = await fetch("/api/city/race", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ raceDate, raceName }),
+          });
+          const body = await response.json();
+          if (response.ok) {
+            setPayload(body);
+            cacheWrite(body);
+          }
+          setScreen("city");
+        }}
       />
     );
   }
 
   const summary = payload.city?.summary;
+  const celebrate = forceRace || isRaceDay(payload.save?.raceDate);
+  const landmarks = uniqueLandmarkCount(payload.city);
   return (
     <div className="city-screen">
-      <CityView city={payload.city} fx={fx} />
-      <header className="hud-top">
-        <span>{summary ? `${summary.totalRunMiles} MI` : ""}</span>
-        <span>{summary ? `${summary.buildingsCompleted} BLDG` : ""}</span>
-        <span>{fx?.milesShown != null ? `${fx.milesShown.toFixed(2)} MI` : ""}</span>
-      </header>
+      <CityView city={payload.city} fx={fx} celebrate={celebrate} />
+      <button type="button" className="pixel-btn menu-btn" onClick={() => setMenu(true)}>
+        MENU
+      </button>
       {fx?.label ? <p className="story-pop">{fx.label}</p> : null}
+      {fx?.milesShown != null ? <p className="mile-pop">{fx.milesShown.toFixed(2)} MI</p> : null}
+      {celebrate && payload.save?.raceName ? <p className="race-name">{payload.save.raceName}</p> : null}
       {banner ? (
         <p className="plane-banner" style={{ left: bannerLeft }}>
           {banner}
@@ -295,13 +340,28 @@ export default function Game() {
       ) : null}
       {notice ? <p className="hud-note">{notice}</p> : null}
       <footer className="hud">
-        <button type="button" className="pixel-btn gold" disabled={playing} onClick={logRun}>
-          LOG RUN
-        </button>
-        <button type="button" className="pixel-btn" onClick={() => setConfirmReset(true)}>
-          RESET
-        </button>
+        <span>{summary ? `${summary.totalRunMiles} MI` : "0 MI"}</span>
+        <span>{payload.save?.city || "DENVER"}</span>
+        <span>{summary ? `${payload.city.buildings.length} BLDG` : "0 BLDG"}</span>
+        <span>{`${landmarks} LANDMARKS`}</span>
       </footer>
+      {menu ? (
+        <div className="modal">
+          <p>MENU</p>
+          <button type="button" className="pixel-btn gold" disabled={playing} onClick={() => { setMenu(false); logRun(); }}>
+            LOG RUN
+          </button>
+          <button type="button" className="pixel-btn" onClick={() => { setMenu(false); setScreen("race"); }}>
+            RACE DAY
+          </button>
+          <button type="button" className="pixel-btn" onClick={() => { setMenu(false); setConfirmReset(true); }}>
+            RESET
+          </button>
+          <button type="button" className="pixel-btn" onClick={() => setMenu(false)}>
+            CLOSE
+          </button>
+        </div>
+      ) : null}
       {manual ? <ManualDialog busy={playing} onCancel={() => setManual(false)} onSubmit={submitManual} /> : null}
       {confirmReset ? (
         <div className="modal">

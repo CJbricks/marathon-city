@@ -145,23 +145,27 @@ function createPostgresStore() {
         startDate: row.start_date,
         lastSyncedAt: row.last_synced_at ? new Date(row.last_synced_at).toISOString() : null,
         demo: row.demo,
+        raceDate: row.race_date || null,
+        raceName: row.race_name || null,
         createdAt: new Date(row.created_at).toISOString(),
       };
     },
     async saveCity(userId, save) {
       await ensureSchema(sql);
       await sql`
-        INSERT INTO city_saves (user_id, city, start_mode, start_date, last_synced_at, demo)
+        INSERT INTO city_saves (user_id, city, start_mode, start_date, last_synced_at, demo, race_date, race_name)
         VALUES (
           ${userId}, ${save.city}, ${save.startMode}, ${save.startDate},
-          ${save.lastSyncedAt}, ${Boolean(save.demo)}
+          ${save.lastSyncedAt}, ${Boolean(save.demo)}, ${save.raceDate || null}, ${save.raceName || null}
         )
         ON CONFLICT (user_id) DO UPDATE SET
           city = EXCLUDED.city,
           start_mode = EXCLUDED.start_mode,
           start_date = EXCLUDED.start_date,
           last_synced_at = EXCLUDED.last_synced_at,
-          demo = EXCLUDED.demo
+          demo = EXCLUDED.demo,
+          race_date = EXCLUDED.race_date,
+          race_name = EXCLUDED.race_name
       `;
       return save;
     },
