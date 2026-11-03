@@ -72,6 +72,15 @@ export async function validTokens(store, userId) {
   return next;
 }
 
+// Prefer sport_type. Strava's older `type` field says "Run" for a trail
+// run, and the simulator would then miss the trail name. Both spellings
+// land in rules.types.run, so the miles still build the city.
+export function stravaActivityType(activity) {
+  const sport = activity?.sport_type || activity?.type || "Workout";
+  if (sport === "TrailRun" || sport === "Trail Run") return "TrailRun";
+  return sport;
+}
+
 function localDay(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
@@ -95,7 +104,7 @@ export async function fetchActivitiesSince(accessToken, afterUnix) {
       const when = a.start_date_local || a.start_date;
       all.push({
         stravaId: String(a.id),
-        type: a.type || "Workout",
+        type: stravaActivityType(a),
         date: localDay(when),
         miles: Math.round((a.distance / 1609.344) * 100) / 100,
         seconds: a.moving_time || 0,

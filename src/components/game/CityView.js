@@ -4,9 +4,9 @@
 // buildings into one small canvas. This file uploads that canvas as a Pixi
 // texture and scales it with nearest-neighbor, so a 640×500 picture becomes
 // the view without a blur filter. The texture is replaced only when the
-// city or the time-of-day phase changes. The crane and the plane are the
-// only things the ticker moves, which is what keeps a phone from repainting
-// a hundred buildings at 60fps.
+// city or the time-of-day phase changes. The crane, the plane, the parade,
+// and the transit lines are drawn on top of that texture. A moving bus
+// never calls paintScene, so the skyline stays cached.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
@@ -54,6 +54,67 @@ function drawPlane(g, x, y) {
   px(6, -3, 8, 3, 0xfdd835);
   px(18, 0, 4, 3, 0x0d2a6b);
   px(22, 1, 3, 2, 0xf0c020);
+}
+
+// Each unlocked ultra owns one existing road. The mode list in rules.js
+// decides bike, bus, or light rail, and the index picks which road so a
+// later ultra does not sit on the same stripe.
+function transitRoad(piece, map) {
+  const { tiles, period } = map;
+  const lanes = [];
+  for (let v = period; v < tiles; v += period) lanes.push({ axis: "h", fixed: v });
+  for (let u = period; u < tiles; u += period) lanes.push({ axis: "v", fixed: u });
+  const lane = lanes[piece.index % lanes.length];
+  const lap = Math.floor(piece.index / lanes.length);
+  return {
+    ...lane,
+    start: 1 + (lap % 3),
+    end: Math.max(3, tiles - 2 - (lap % 2)),
+  };
+}
+
+function pointOnRoad(span, t) {
+  const along = span.start + (span.end - span.start) * t;
+  const u = span.axis === "h" ? along : span.fixed;
+  const v = span.axis === "h" ? span.fixed : along;
+  return project(u, v, 2);
+}
+
+function drawTransit(g, city, now) {
+  g.clear();
+  const pieces = city?.transit;
+  if (!pieces?.length || !city.map) return;
+  for (const piece of pieces) {
+    const span = transitRoad(piece, city.map);
+    if (piece.mode === "bike") {
+      for (let i = 0; i < 16; i += 2) {
+        const [x, y] = pointOnRoad(span, i / 16);
+        g.rect(Math.round(x), Math.round(y), 4, 2).fill({ color: 0x2e7d32 });
+        g.rect(Math.round(x) + 1, Math.round(y), 2, 1).fill({ color: 0xfdd835 });
+      }
+    } else if (piece.mode === "bus") {
+      for (let i = 0; i <= 4; i++) {
+        const [x, y] = pointOnRoad(span, i / 4);
+        g.rect(Math.round(x) - 1, Math.round(y) - 4, 2, 4).fill({ color: 0xf57c00 });
+        g.rect(Math.round(x) - 2, Math.round(y), 4, 2).fill({ color: 0xfdd835 });
+      }
+      const t = (now / 9000 + piece.index * 0.17) % 1;
+      const [x, y] = pointOnRoad(span, t);
+      g.rect(Math.round(x) - 4, Math.round(y) - 5, 8, 4).fill({ color: 0xfdd835 });
+      g.rect(Math.round(x) - 2, Math.round(y) - 4, 2, 2).fill({ color: 0x1e88e5 });
+    } else {
+      for (let i = 0; i <= 20; i++) {
+        const [x, y] = pointOnRoad(span, i / 20);
+        g.rect(Math.round(x), Math.round(y), 2, 1).fill({ color: 0xd0d0d0 });
+        g.rect(Math.round(x) + 3, Math.round(y) - 1, 2, 1).fill({ color: 0x9a9a9a });
+      }
+      const t = (now / 7000 + piece.index * 0.13) % 1;
+      const [x, y] = pointOnRoad(span, t);
+      g.rect(Math.round(x) - 5, Math.round(y) - 6, 12, 4).fill({ color: 0xd62828 });
+      g.rect(Math.round(x) - 3, Math.round(y) - 5, 2, 2).fill({ color: 0xffffff });
+      g.rect(Math.round(x) + 2, Math.round(y) - 5, 2, 2).fill({ color: 0xffffff });
+    }
+  }
 }
 
 function drawParade(g, city, now) {
@@ -119,7 +180,8 @@ export default function CityView({ city, fx, celebrate }) {
       // Parade lives in scene space so it follows the street when you pan,
       // but it is not part of the cached city texture.
       const parade = new Graphics();
-      world.addChild(citySprite, crane, dust, parade);
+      const transit = new Graphics();
+      world.addChild(citySprite, transit, crane, dust, parade);
       const screenFx = new Graphics();
       application.stage.addChild(world, screenFx);
       const bits = [];
@@ -176,6 +238,7 @@ export default function CityView({ city, fx, celebrate }) {
           dust.clear();
         }
         const celebrating = stateRef.current.celebrate;
+        drawTransit(transit, shown, performance.now());
         parade.clear();
         if (celebrating) drawParade(parade, shown, performance.now());
         screenFx.clear();

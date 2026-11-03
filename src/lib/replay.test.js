@@ -14,6 +14,16 @@ describe("shouldFlyPlane", () => {
     expect(shouldFlyPlane(runs.slice(0, 8), runs[7])).toBe(false);
     expect(shouldFlyPlane(runs, runs[5])).toBe(false);
   });
+
+  it("counts a trail run toward the flyover", () => {
+    const trail = [
+      { type: "TrailRun", miles: 8 },
+      { type: "Run", miles: 6 },
+      { type: "Run", miles: 6 },
+      { type: "Trail Run", miles: 7 },
+    ];
+    expect(shouldFlyPlane(trail, trail[3])).toBe(true);
+  });
 });
 
 describe("visibleActivities", () => {

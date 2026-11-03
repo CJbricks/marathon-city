@@ -20,10 +20,16 @@ export function replay(activities, save, asOf = utcToday()) {
   return simulate(visibleActivities(activities, save), { ...rules, asOfDate: asOf });
 }
 
+// Trail runs sit in rules.types.run, so the flyover and the build animation
+// treat them as runs. A ride still skips both.
+export function isRunActivity(activity) {
+  return Boolean(activity && rules.types.run.includes(activity.type));
+}
+
 // Every 4th run longer than 5 miles gets the plane. `runs` includes the
 // run being played, in chronological order.
 export function shouldFlyPlane(runs, run) {
-  if (!run || run.type !== "Run" || Number(run.miles) <= 5) return false;
-  const n = runs.filter((r) => r.type === "Run" && Number(r.miles) > 5).length;
+  if (!isRunActivity(run) || Number(run.miles) <= 5) return false;
+  const n = runs.filter((r) => isRunActivity(r) && Number(r.miles) > 5).length;
   return n > 0 && n % 4 === 0;
 }

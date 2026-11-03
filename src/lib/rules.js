@@ -10,8 +10,11 @@ const rules = {
   asOfDate: "2026-10-29",
 
   // Activity type names as they appear in Strava and in activities.txt.
+  // Trail runs share the run kind, so their miles build stories, parks,
+  // and the same milestones as a road run. Strava sends sport_type
+  // "TrailRun"; a hand-written log may say "Trail Run".
   types: {
-    run: ["Run"],
+    run: ["Run", "TrailRun", "Trail Run"],
     ride: ["Ride"],
     walk: ["Walk"],
     weights: ["WeightTraining", "Weight Training", "Workout"],
@@ -100,21 +103,33 @@ const rules = {
     genericName: "Neighborhood Park",
   },
 
+  // halfMarathon and fullMarathon are lifetime ordered lists. One qualifying
+  // run unlocks the next unused name and then stops, so a single long run
+  // cannot skip ahead. Walks stay year-to-date miles inside one calendar year.
+  // Rides and weight sessions do not consult these lists.
   sideQuests: {
-    ride: [
-      { name: "Coors Field", miles: 10 },
-      { name: "Ball Arena", miles: 25 },
-      { name: "Empower Field at Mile High", miles: 50 },
-    ],
+    halfMarathon: {
+      miles: 13.1,
+      names: ["Coors Field", "Ball Arena", "Empower Field at Mile High"],
+    },
+    fullMarathon: {
+      miles: 26.2,
+      names: ["Big Blue Bear", "Denver Athletic Club"],
+    },
     walk: [
       { name: "Confluence Park bridge", miles: 10 },
       { name: "16th Street Mall", miles: 25 },
       { name: "Red Rocks Amphitheatre", miles: 50 },
     ],
-    weights: [
-      { name: "Big Blue Bear", sessions: 1 },
-      { name: "Denver Athletic Club", sessions: 10 },
-    ],
+  },
+
+  // A single run strictly longer than overMiles unlocks the next transit
+  // piece. types cycles forever: the fourth ultra is another bike route.
+  // The city draws these on the overlay, so this list never repaints the
+  // cached skyline texture.
+  transit: {
+    overMiles: 26.2,
+    types: ["bike", "bus", "lightRail"],
   },
 
   // Race day is a local calendar date on the save, not a milestone.
