@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { isRaceDay, uniqueLandmarkCount } from "@/lib/raceDay";
 import { randomQuote } from "@/lib/quotes";
-import { replay, shouldFlyPlane } from "@/lib/replay";
+import { isRunActivity, replay, shouldFlyPlane } from "@/lib/replay";
 import {
   LoadingScreen,
   ManualDialog,
@@ -169,7 +169,7 @@ export default function Game() {
     const asOf = nextPayload.asOf;
     for (let i = 0; i < fresh.length; i++) {
       const run = fresh[i];
-      if (run.type !== "Run") {
+      if (!isRunActivity(run)) {
         base = [...base, run];
         continue;
       }

@@ -604,5 +604,7 @@ export function sceneSignature(city, phase) {
   const buildings = city.buildings.map((b) => `${b.id}:${b.status}:${b.storiesBuilt}`).join(";");
   const marks = city.landmarks.map((l) => l.key).join(",");
   const quests = city.sideQuests.map((q) => q.name).join(",");
+  // Transit is left out. CityView redraws those stripes every frame, and a
+  // moving bus must not throw away the cached city texture.
   return `${phase}|${buildings}|${marks}|${city.parks.length}|${quests}`;
 }

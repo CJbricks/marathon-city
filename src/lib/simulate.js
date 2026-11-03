@@ -1,6 +1,6 @@
 // Deterministic city replay.
 // Give it the same activities and the same rules and it returns the same
-// lots, heights, landmarks, parks, and side quests. Nothing here is random
+// lots, heights, landmarks, parks, side quests, and transit lines. Nothing here is random
 // in the usual sense: building types come from a seeded generator, and the
 // seed is the activity date plus its position, so a re-run cannot reshuffle
 // the skyline.
@@ -322,29 +322,26 @@ export function simulate(input, rules = rulesDefault) {
 
   const ytd = {};
   const sqEarned = new Set();
+  const transit = [];
+
+  // Walks are the only year-to-date quests left. A ride or a lifting
+  // session returns here without earning a block.
   function checkSideQuests(act) {
+    if (act.kind !== "walk") return;
     const y = act.date.slice(0, 4);
-    ytd[y] = ytd[y] || { ride: 0, walk: 0, weights: 0 };
-    if (act.kind === "ride") ytd[y].ride += act.h;
-    else if (act.kind === "walk") ytd[y].walk += act.h;
-    else if (act.kind === "weights") ytd[y].weights += 1;
-    else return;
-    const list = R.sideQuests[act.kind] || [];
+    ytd[y] = ytd[y] || { walk: 0 };
+    ytd[y].walk += act.h;
+    const list = R.sideQuests.walk || [];
     for (const q of list) {
       if (sqEarned.has(q.name)) continue;
-      const ok =
-        q.miles != null ? ytd[y][act.kind] >= hund(q.miles) : ytd[y][act.kind] >= q.sessions;
-      if (!ok) continue;
+      if (ytd[y].walk < hund(q.miles)) continue;
       sqEarned.add(q.name);
       const [bx, by] = M.sideQuestBlocks[q.name];
-      const val =
-        act.kind === "weights"
-          ? `${ytd[y].weights} sessions`
-          : `${mi(ytd[y][act.kind])} ${act.kind} mi`;
+      const val = `${mi(ytd[y].walk)} walk mi`;
       sideQuests.push({
         name: q.name,
-        kind: act.kind,
-        threshold: q.miles ?? q.sessions,
+        kind: "walk",
+        threshold: q.miles,
         date: act.date,
         ytdAtEarn: val,
         year: +y,
@@ -352,8 +349,51 @@ export function simulate(input, rules = rulesDefault) {
         x: bx * period + 1,
         y: by * period + 1,
       });
-      log.push(`${act.date}  Side quest: ${q.name} (${y} YTD ${val} >= ${q.miles ?? q.sessions})`);
+      log.push(`${act.date}  Side quest: ${q.name} (${y} YTD ${val} >= ${q.miles})`);
     }
+  }
+
+  // One qualifying effort unlocks the next name in the list. A 26.2 mile
+  // run can earn the next half and the next full, because it clears both
+  // thresholds, and it still earns only one of each.
+  function awardOrderedQuest(quest, act, kind) {
+    if (!quest?.names?.length || act.h < hund(quest.miles)) return;
+    const have = sideQuests.filter((q) => q.kind === kind).length;
+    if (have >= quest.names.length) return;
+    const name = quest.names[have];
+    const [bx, by] = M.sideQuestBlocks[name];
+    sideQuests.push({
+      name,
+      kind,
+      threshold: quest.miles,
+      date: act.date,
+      ytdAtEarn: `${mi(act.h)} mi run`,
+      year: +act.date.slice(0, 4),
+      block: [bx, by],
+      x: bx * period + 1,
+      y: by * period + 1,
+    });
+    log.push(`${act.date}  Side quest: ${name} (${mi(act.h)} mi run >= ${quest.miles})`);
+  }
+
+  // Ultras are strictly longer than the marathon line. Equality stays on
+  // the full-marathon list and does not lay track. The mode list wraps,
+  // and there is no maximum number of segments.
+  function awardTransit(act) {
+    const cfg = R.transit;
+    if (!cfg?.types?.length) return;
+    const limit = cfg.overMiles ?? 26.2;
+    if (act.h <= hund(limit)) return;
+    const index = transit.length;
+    const mode = cfg.types[index % cfg.types.length];
+    transit.push({
+      id: index + 1,
+      mode,
+      date: act.date,
+      miles: mi(act.h),
+      index,
+    });
+    log.push(`${act.date}  Transit: ${mode} (${mi(act.h)} mi run > ${limit})`);
   }
 
   for (const act of acts) {
@@ -467,6 +507,9 @@ export function simulate(input, rules = rulesDefault) {
         );
       }
     }
+    awardOrderedQuest(R.sideQuests.halfMarathon, act, "half");
+    awardOrderedQuest(R.sideQuests.fullMarathon, act, "full");
+    awardTransit(act);
   }
   awardParksThrough(addDays(R.asOfDate, 1));
 
@@ -511,6 +554,7 @@ export function simulate(input, rules = rulesDefault) {
     landmarks,
     parks,
     sideQuests,
+    transit,
     log,
     summary: {
       asOf: R.asOfDate,

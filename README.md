@@ -63,17 +63,22 @@ Landmarks unlock from milestones:
 - **The Denver Art Museum** for a pace PR. The prototype counts a PR only on a run of at least 5 miles, and only after the first 20 runs.
 - **The Cathedral Basilica** at one per 200 banked run miles, with no ceiling unless `max` is set in `src/lib/rules.js`. 700 miles is 3. 1000 miles is 5. A single 13.1 mile run does not unlock one early.
 
+Trail runs count as runs. Strava's `TrailRun` sport type and a log line that says `Trail Run` both add their miles to stories, Union Station, the Capitol, cathedrals, the courthouse streak, art-museum pace PRs, and parks.
+
 After you pick a start date, the app asks if you are training for a specific day. Yes saves a date and an optional name, such as Austin Marathon on 2027-02-14. No skips it. On that local calendar day the city plays confetti and a small parade, and shows the name if you gave one. Change it later from the city menu. `?raceday=1` previews the celebration on any day. The counts and the timing live in `raceDay` inside `src/lib/rules.js`.
 
 Parks are Cheesman Park, Washington Park, City Park, and the Confluence bridge. In the current simulator, a quiet calendar week (at most one run, and only when the gap between runs is 21 days or less) awards the named parks in order — Cheesman, Washington Park, City Park — and later quiet weeks become numbered neighborhood parks. The Confluence bridge is earned there as a year-to-date walk milestone.
 
-Side quests use year-to-date totals and, once earned, stay earned:
+Side quests, once earned, stay earned. The names and the mile lines live in `sideQuests` inside `src/lib/rules.js`.
 
-- **Bike:** Coors Field, Ball Arena, and Empower Field at Mile High (10, 25, and 50 ride miles in the prototype).
-- **Walk:** the 16th Street Mall and Red Rocks Amphitheatre (25 and 50 walk miles in the prototype).
-- **Lifting:** the Big Blue Bear and the Denver Athletic Club (1 session and 10 sessions in the prototype).
+- **Half marathon:** any single run or trail run of 13.1 miles or more unlocks the next stadium, in order: Coors Field, then Ball Arena, then Empower Field at Mile High. The count is lifetime. One run unlocks one stadium.
+- **Full marathon:** any single run or trail run of 26.2 miles or more unlocks the next athletic landmark, in order: the Big Blue Bear, then the Denver Athletic Club. A 26.2 mile run also clears the half-marathon line, so it can earn one stadium and the bear on the same day.
+- **Walk:** year-to-date miles, unchanged. The Confluence Park bridge is 10, the 16th Street Mall is 25, and Red Rocks Amphitheatre is 50.
+- **Rides and weight sessions** leave the skyline as it was.
 
-`src/lib/rules.js` is the editable source for these numbers, including `perCity` on museums and `milesPer` / `max` on landmarks. `prototype/summary.txt` is the older replay, from before cathedrals followed the mileage bank.
+A run or trail run longer than 26.2 miles unlocks the next transit line. The order in `transit.types` is a bike route, then a bus route, then a light-rail line, and then it starts over. There is no cap. Exactly 26.2 miles stays a marathon and does not lay track. The lines are pixel stripes on the overlay (a bike-lane dash, a bus with stops, a rail with a train) along roads that are already in the city. They are not part of the cached texture, so a moving bus does not repaint every building. Change `transit.overMiles` or `transit.types` in `src/lib/rules.js` to edit the threshold and the cycle.
+
+`src/lib/rules.js` is the editable source for these numbers, including `perCity` on museums and `milesPer` / `max` on landmarks. `prototype/summary.txt` is the older replay, from before cathedrals followed the mileage bank and from before stadiums moved off of ride miles.
 
 ## Logging a run
 
