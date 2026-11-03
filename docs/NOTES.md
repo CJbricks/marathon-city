@@ -9,7 +9,7 @@ src/lib/rules.js           The numbers. Heights, milestones, park and side-quest
 src/lib/simulate.js        Pure replay. Activities in, city out. No database, no DOM.
 src/lib/replay.js          Applies the save's start date, then calls simulate.
 src/lib/lighting.js        Device-clock sky, from the prototype keyframes.
-src/lib/quotes.js          Lines for the loading screen and the plane banner.
+src/lib/quotes.js          Reads prototype/quotes.json for the loading screen and the plane banner.
 src/lib/raceDay.js         Local-calendar check for the saved race date.
 src/lib/db.js              Postgres if DATABASE_URL is set, otherwise .data/store.json.
 src/lib/schema.sql         Tables. `npm run migrate` applies this.
