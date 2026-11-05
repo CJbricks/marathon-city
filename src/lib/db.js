@@ -1,13 +1,19 @@
 // Persistence. The database is the source of truth when DATABASE_URL is
-// set (Neon, Vercel Postgres, or any Postgres). With no URL, the same
-// methods write .data/store.json so the app still runs on a laptop before
-// the owner has a database. Route handlers import getStore() and do not
-// care which one they got.
+// set (Neon on Vercel, or any Postgres). With no URL, the same methods
+// write .data/store.json so the app still runs on a laptop. Route handlers
+// import getStore() and do not care which one they got.
+//
+// Runtime queries use the pooled DATABASE_URL. Schema changes run from
+// scripts/migrate.mjs on the unpooled URL during the Vercel build. The
+// ensureSchema call below is a safety net for a laptop that set
+// DATABASE_URL and has not migrated yet. Every statement in schema.sql is
+// idempotent, so repeating it does not wipe rows.
 
 import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
+import { postgresOptions, runtimeUrl, splitSchema } from "./pgClient.mjs";
 
 const SCHEMA = readFileSync(path.join(process.cwd(), "src/lib/schema.sql"), "utf8");
 
@@ -101,16 +107,37 @@ let schemaReady;
 
 function sqlClient() {
   if (!sqlSingleton) {
-    const url = process.env.DATABASE_URL;
-    const local = /localhost|127\.0\.0\.1/.test(url);
-    sqlSingleton = postgres(url, { ssl: local ? false : "require", max: 1 });
+    const url = runtimeUrl();
+    sqlSingleton = postgres(url, postgresOptions(url));
   }
   return sqlSingleton;
 }
 
 async function ensureSchema(sql) {
-  if (!schemaReady) schemaReady = sql.unsafe(SCHEMA);
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      for (const statement of splitSchema(SCHEMA)) {
+        await sql.unsafe(statement);
+      }
+    })().catch((error) => {
+      schemaReady = undefined;
+      throw error;
+    });
+  }
   await schemaReady;
+}
+
+// Used by /api/health. A failure is reported as flags, not as the driver's
+// message, because that message can contain the host or the URL.
+export async function checkDatabase() {
+  if (!runtimeUrl()) return { reachable: false, schemaReady: false };
+  try {
+    const sql = sqlClient();
+    const [row] = await sql`SELECT to_regclass('public.city_saves') AS ready`;
+    return { reachable: true, schemaReady: Boolean(row?.ready) };
+  } catch {
+    return { reachable: false, schemaReady: false };
+  }
 }
 
 function rowToActivity(r) {
@@ -229,10 +256,10 @@ function createPostgresStore() {
 
 let store;
 export function getStore() {
-  if (!store) store = process.env.DATABASE_URL ? createPostgresStore() : createJsonStore();
+  if (!store) store = runtimeUrl() ? createPostgresStore() : createJsonStore();
   return store;
 }
 
 export function storageKind() {
-  return process.env.DATABASE_URL ? "postgres" : "file";
+  return runtimeUrl() ? "postgres" : "file";
 }

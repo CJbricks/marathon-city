@@ -38,7 +38,7 @@ Someone opens `/`.
 
 1. `page.js` renders `Game`. The HTML shell (font, title, viewport) still comes from `layout.js` on the server.
 2. `Game` fetches `GET /api/session`. That Route Handler reads the `mc_user` cookie, creates one if it is missing, and asks the store for the save.
-3. The store is Postgres when `DATABASE_URL` is set, and `.data/store.json` otherwise. The route does not branch on that; `getStore()` does.
+3. The store is Postgres when `DATABASE_URL` is set, and `.data/store.json` otherwise. The route does not branch on that; `getStore()` does. `GET /api/health` reports which one is in use.
 4. `replay()` drops activities before a chosen start date and calls `simulate()` with today's UTC date as `asOf`. Parks only count for weeks that have ended by that date.
 5. The JSON comes back. `Game` keeps a copy in `sessionStorage` so the next refresh can draw before the network returns. The store is still the source of truth: the fresh response replaces the cache.
 6. If there is no save, the opening screens run: Resume or New, city picker, Strava, then all-history or a date. **Demo city** skips Strava and loads the sample log.
@@ -64,6 +64,21 @@ Route handlers and `src/lib/db.js`, `strava.js`, `demo.js`, and `session.js` are
 `simulate.js`, `rules.js`, `replay.js`, `lighting.js`, and `quotes.js` are imported by both sides. They must not import Node modules. That is what lets the animation replay a partial mile in the browser and land on the same city the server just saved.
 
 `Game` and `CityView` are Client Components (`"use client"`). `page.js` and `layout.js` are Server Components. A Server Component may render a Client Component. The client file is where state, timers, and the canvas live.
+
+## How the database gets set up on Vercel
+
+Neon is hosted Postgres. CJ attached it to the Vercel project, so Vercel injects the connection strings into Production and Preview. They are sensitive. The build can read them. A person should not copy them into the repo or into a chat log.
+
+Two strings matter:
+
+- `DATABASE_URL` is the pooled URL. The host name contains `-pooler`. The running app uses this one. A serverless function lives for one request, and the pooler lets many of those requests share a few real database connections. The driver turns prepared statements off for that host (`prepare: false` in `src/lib/pgClient.mjs`) because the pooler does not keep the session a prepared statement belongs to. SSL is required. Neon refuses a plain connection.
+- `DATABASE_URL_UNPOOLED` is the direct URL. `scripts/migrate.mjs` prefers it, and uses `DATABASE_URL` only when the unpooled one is absent. Creating tables wants a direct connection. The script logs which variable name it used, not the value.
+
+`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. Nothing in that file deletes rows. Every statement is written so running it again is a no-op, which is why it is safe on every deploy.
+
+The migration runs at build time, from the `vercel-build` script in `package.json`: migrate, then `next build`. Vercel already has the URL in the build environment, so the tables exist before the new deployment starts serving traffic. Nobody has to open a database console and paste SQL. If `DATABASE_URL` is unset, the script prints one line and exits successfully. `npm run build` on a laptop does not call the migration. `npm run migrate` still does, and it skips the same way when the URL is empty.
+
+`GET /api/health` is the check after a deploy. The JSON is only `ok`, `storage` (`postgres`, `file`, or `demo`), and `dbReachable`. `demo` means this process is on Vercel and no database URL was set, so there is nowhere durable to write a save. `file` is the laptop JSON store. A Postgres deploy that migrated cleanly looks like `{ "ok": true, "storage": "postgres", "dbReachable": true }`.
 
 ## How to change the rules
 
@@ -107,7 +122,8 @@ npm run dev       # http://localhost:3000
 npm test
 npm run lint
 npm run build
-npm run migrate   # only does work when DATABASE_URL is set
+npm run migrate   # skips with a log line when DATABASE_URL is unset
+                  # Vercel runs this automatically via vercel-build
 ```
 
 Node.js 20.9 or newer.
