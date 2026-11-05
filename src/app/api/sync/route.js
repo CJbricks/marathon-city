@@ -1,8 +1,10 @@
 // POST /api/sync
 // Log run. Pulls Strava activities that started after last_synced_at minus
-// one hour, drops any id already stored, then moves last_synced_at to now.
-// The hour of overlap is what keeps a run that was still uploading from
-// being missed; the primary key is what keeps the overlap from building it twice.
+// one hour, drops any id already stored on this city, then moves that
+// city's last_synced_at to now. The hour of overlap is what keeps a run
+// that was still uploading from being missed. The primary key
+// (save id, Strava id) keeps the overlap from building it twice. Another
+// saved city can still store the same Strava id for its own snapshot.
 // An empty pull does not move the timestamp, and the client asks for a distance.
 
 import { NextResponse } from "next/server";
@@ -64,7 +66,7 @@ export async function POST() {
   if (save.startMode === "date" && save.startDate) {
     fetched = fetched.filter((a) => a.date >= save.startDate);
   }
-  const fresh = sortNew(await store.addActivities(userId, fetched));
+  const fresh = sortNew(await store.addActivities(userId, save.id, fetched));
   console.log("strava sync stored", fresh.length, "of", fetched.length);
   if (fresh.length === 0) {
     const payload = await cityPayload(userId);

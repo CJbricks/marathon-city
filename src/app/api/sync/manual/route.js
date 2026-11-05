@@ -32,7 +32,7 @@ export async function POST(request) {
     title: "Manual run",
     seq: Math.floor(now.getTime() / 1000),
   };
-  const fresh = await store.addActivities(userId, [activity]);
+  const fresh = await store.addActivities(userId, save.id, [activity]);
   save.lastSyncedAt = now.toISOString();
   await store.saveCity(userId, save);
   const payload = await cityPayload(userId);

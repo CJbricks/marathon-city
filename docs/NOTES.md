@@ -11,14 +11,16 @@ src/lib/replay.js          Applies the save's start date, then calls simulate.
 src/lib/lighting.js        Device-clock sky, from the prototype keyframes.
 src/lib/quotes.js          Reads prototype/quotes.json for the loading screen and the plane banner.
 src/lib/raceDay.js         Local-calendar check for the saved race date.
+src/lib/saves.js           Save name, 3-slot cap, and the resume-list label.
 src/lib/db.js              Postgres if DATABASE_URL is set, otherwise .data/store.json.
 src/lib/schema.sql         Tables. `npm run migrate` applies this.
 src/lib/strava.js          OAuth URL, token exchange, refresh, activity fetch.
 src/lib/session.js         The httpOnly cookie that is only a user id.
 src/lib/demo.js            Reads prototype/activities.txt for Demo city.
 src/app/api/session        Loads the save and replays it.
-src/app/api/city           Creates a save (Denver, history or a date, or demo).
-src/app/api/city/reset     Deletes the save and its activities. Keeps Strava tokens.
+src/app/api/city           Creates one named save (Denver, history or a date, or demo).
+src/app/api/city/open      Switches which of the three saves is on screen.
+src/app/api/city/reset     Deletes the save on screen and its activities. Keeps the others and the Strava tokens.
 src/app/api/sync           Log run. Strava pull, dedupe, then move last_synced_at.
 src/app/api/sync/manual    A typed distance, stored like a Strava run.
 src/app/api/strava/start   Redirects to Strava.
@@ -41,8 +43,26 @@ Someone opens `/`.
 3. The store is Postgres when `DATABASE_URL` is set, and `.data/store.json` otherwise. The route does not branch on that; `getStore()` does. `GET /api/health` reports which one is in use.
 4. `replay()` drops activities before a chosen start date and calls `simulate()` with today's UTC date as `asOf`. Parks only count for weeks that have ended by that date.
 5. The JSON comes back. `Game` keeps a copy in `sessionStorage` so the next refresh can draw before the network returns. The store is still the source of truth: the fresh response replaces the cache.
-6. If there is no save, the opening screens run: Resume or New, city picker, Strava, then all-history or a date. **Demo city** skips Strava and loads the sample log.
-7. The city screen mounts `CityView`, which builds a Pixi canvas in the browser. Lighting calls `lightingAt(new Date())`, so it follows the phone clock.
+6. If there is no active save, the opening screens run. **Resume** lists the named cities (up to 3). **New City** asks for a name, then the city picker, Strava (only if it is not connected yet), all-history or a date, then the race-day question. **Demo city** skips Strava and loads the sample log under the name "Demo city".
+7. The city screen mounts `CityView`, which builds a Pixi canvas in the browser. Lighting calls `lightingAt(new Date())`, so it follows the phone clock. The bottom bar's middle label is the save's name, not the theme.
+
+## Named saves
+
+A person can keep three cities. Each one is a row in `city_saves` with its own `save_id`. The browser cookie is still only the user id. `active` is which of the three is on screen.
+
+The name is a label they type ("Training block", "CJ's Denver"), at most 24 characters. A blank name is refused. The theme stays Denver for the beta. The bottom bar shows the name so the three cities are easy to tell apart.
+
+What a save stores: the name, the theme, all-history or a start date, the race date and race name if they set one, the runs that belong to that city, and that city's own `last_synced_at`. Log run and the first-load Strava pull write runs onto the active save only. The same Strava id can sit on two saves. Inside one save, a repeat of that id is still ignored.
+
+The city on screen is not a drawing we keep. `replay()` builds it from that save's runs and its start date, the same way as before. The same runs and the same date range build the same skyline. Replacing a slot deletes that snapshot. It does not delete the ability to make it again: New City, the same dates, and Strava produce the same layout. The database is still the source of truth for the runs and the save row.
+
+Slots are 1, 2, and 3. Reset deletes the city on screen and frees its slot. The next new city takes the lowest open slot. When all three are full, New City asks which name to replace and then asks again on a confirm screen. The other two cities stay, including when you reset only the one you are playing.
+
+Resume lists each save with its name, where the miles start (all history, a date, or demo), and the mile total. Menu, then Cities, opens that list without leaving the city you were in. Opening one sets it active. If that city has never synced and Strava is connected, the page pulls runs once, same as the first sign-in.
+
+Demo city is the sample log, named "Demo city". It uses a slot too. It does not sync from Strava, because its `last_synced_at` is set when it is created.
+
+`src/lib/saves.js` holds the cap and the name check. Both the JSON file and Postgres call it, so a fourth city or a blank name cannot sneak in through one store only.
 
 ## Log run
 
@@ -80,7 +100,7 @@ Two strings matter:
 - `DATABASE_URL` is the pooled URL. The host name contains `-pooler`. The running app uses this one. A serverless function lives for one request, and the pooler lets many of those requests share a few real database connections. The driver turns prepared statements off for that host (`prepare: false` in `src/lib/pgClient.mjs`) because the pooler does not keep the session a prepared statement belongs to. SSL is required. Neon refuses a plain connection.
 - `DATABASE_URL_UNPOOLED` is the direct URL. `scripts/migrate.mjs` prefers it, and uses `DATABASE_URL` only when the unpooled one is absent. Creating tables wants a direct connection. The script logs which variable name it used, not the value.
 
-`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. Nothing in that file deletes rows. Every statement is written so running it again is a no-op, which is why it is safe on every deploy.
+`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. A database that still has one city per person gets `save_id`, `name`, `slot`, and `active` on that row. The row is kept: slot 1, active, named after its theme (so an old Denver save still says Denver). Its runs are pointed at that `save_id`. A run that belonged to no city is removed so the new key can be required. Cities that exist keep their runs. Every statement is written so running it again is a no-op, which is why it is safe on every deploy. The `DO` blocks are one statement each. Semicolons inside them change the old primary key. They are not separate commands.
 
 The migration runs at build time, from the `vercel-build` script in `package.json`: migrate, then `next build`. Vercel already has the URL in the build environment, so the tables exist before the new deployment starts serving traffic. Nobody has to open a database console and paste SQL. If `DATABASE_URL` is unset, the script prints one line and exits successfully. `npm run build` on a laptop does not call the migration. `npm run migrate` still does, and it skips the same way when the URL is empty.
 
