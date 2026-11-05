@@ -1,4 +1,7 @@
--- Marathon City tables. Safe to run more than once.
+-- Marathon City tables. The Vercel build runs this file on every deploy,
+-- so each statement has to be safe to repeat: CREATE TABLE IF NOT EXISTS,
+-- ADD COLUMN IF NOT EXISTS. A new table or column belongs in that form.
+-- Do not DROP or rewrite rows here.
 -- Dates are TEXT (YYYY-MM-DD) so a date cannot shift across timezones
 -- between Postgres and the JSON file store. last_synced_at is a real
 -- timestamp because the sync window is an instant, not a calendar day.

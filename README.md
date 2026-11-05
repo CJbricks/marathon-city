@@ -33,7 +33,7 @@ The connect button asks for the `read` and `activity:read_all` scopes. Tokens ar
 
 ### Database
 
-Set `DATABASE_URL` to a Neon, Vercel Postgres, or Supabase connection string, then run `npm run migrate`. The same script prints a note and exits if the variable is empty. Without it, the JSON file store is the source of truth for that machine.
+Set `DATABASE_URL` to a Neon, Vercel Postgres, or Supabase connection string, then run `npm run migrate`. The same script prints a note and exits if the variable is empty. Without it, the JSON file store is the source of truth for that machine. On Vercel the build runs that migration itself when the Neon integration has set the URL. `GET /api/health` reports `postgres`, `file`, or `demo` and whether the database answered. It does not return the connection string.
 
 `@pixi/react` is not installed. Release 8.0.5 is built on `react-reconciler` 0.31, which targets React 19.0, and this app uses React 19.3. The city view imports `pixi.js` directly.
 
