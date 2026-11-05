@@ -14,13 +14,24 @@ export function stravaConfigured() {
   );
 }
 
-export function authorizeUrl(state) {
+// Strava lists granted scopes on the callback, separated by commas.
+// activity:read is the public-only box. activity:read_all is the one that
+// includes private runs. The city is built from those runs, so the narrower
+// box is not enough.
+export function hasActivityReadAll(scope) {
+  return String(scope || "")
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .includes("activity:read_all");
+}
+
+export function authorizeUrl(state, { force = false } = {}) {
   const url = new URL(AUTH_URL);
   url.searchParams.set("client_id", process.env.STRAVA_CLIENT_ID);
   url.searchParams.set("redirect_uri", process.env.STRAVA_REDIRECT_URI);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("approval_prompt", "auto");
-  // read plus activity:read_all so private runs are included, not just public ones.
+  // force shows the checkboxes again after a connect that skipped private runs.
+  url.searchParams.set("approval_prompt", force ? "force" : "auto");
   url.searchParams.set("scope", "read,activity:read_all");
   url.searchParams.set("state", state);
   return url.toString();
@@ -66,10 +77,17 @@ export async function validTokens(store, userId) {
   const tokens = await store.getTokens(userId);
   if (!tokens) return null;
   const expires = new Date(tokens.expiresAt).getTime();
-  if (expires - Date.now() > 5 * 60 * 1000) return tokens;
-  const next = await refreshTokens(tokens);
-  await store.saveTokens(userId, next);
-  return next;
+  if (Number.isFinite(expires) && expires - Date.now() > 5 * 60 * 1000) return tokens;
+  try {
+    const next = await refreshTokens(tokens);
+    await store.saveTokens(userId, next);
+    console.log("strava token refreshed");
+    return next;
+  } catch {
+    // The message from Strava can echo request details. The status is enough.
+    console.error("strava token refresh failed");
+    throw new Error("Strava login expired. Connect again.");
+  }
 }
 
 // Prefer sport_type. Strava's older `type` field says "Run" for a trail
@@ -97,7 +115,14 @@ export async function fetchActivitiesSince(accessToken, afterUnix) {
     url.searchParams.set("page", String(page));
     url.searchParams.set("per_page", "200");
     const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!response.ok) throw new Error(`Strava activities failed (${response.status})`);
+    if (!response.ok) {
+      console.error("strava activities request failed", response.status);
+      throw new Error(
+        response.status === 401 || response.status === 403
+          ? "Strava refused the activity read. Connect again and allow all activities."
+          : "Strava did not return activities. Try Log run again.",
+      );
+    }
     const batch = await response.json();
     if (!Array.isArray(batch) || batch.length === 0) break;
     for (const a of batch) {
@@ -114,5 +139,6 @@ export async function fetchActivitiesSince(accessToken, afterUnix) {
     }
     if (batch.length < 200) break;
   }
+  console.log("strava activities fetched", all.length);
   return all;
 }

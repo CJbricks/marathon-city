@@ -313,6 +313,10 @@ a.pixel-btn {
   background: #d62828;
   color: #fff;
 }
+.hud-note.ok {
+  background: #fdd835;
+  color: #05143a;
+}
 .modal {
   position: absolute;
   left: 50%;

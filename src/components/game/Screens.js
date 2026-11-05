@@ -111,14 +111,14 @@ export function PickerScreen({ onNext, onBack }) {
   );
 }
 
-export function StravaScreen({ configured, notice, onSkip, onDemo }) {
+export function StravaScreen({ configured, notice, force, onSkip, onDemo }) {
   return (
     <Stage>
       <h2 className="pixel-heading">CONNECT STRAVA</h2>
       <p className="pixel-chip">DENVER</p>
       <p className="pixel-note">YOUR RUNS BUILD THE CITY</p>
       {configured ? (
-        <a className="pixel-btn strava" href="/api/strava/start">
+        <a className="pixel-btn strava" href={force ? "/api/strava/start?prompt=force" : "/api/strava/start"}>
           CONNECT WITH STRAVA
         </a>
       ) : (

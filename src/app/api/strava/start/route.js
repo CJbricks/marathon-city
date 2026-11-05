@@ -1,28 +1,27 @@
 // GET /api/strava/start
-// Sends the browser to Strava's own authorize page. `state` is a random
-// value we also store in a cookie; the callback rejects a redirect whose
-// state does not match, which is what stops another site from finishing
-// the login for this browser.
+// Sends the browser to Strava's authorize page. `state` is a random value
+// stored in a cookie; the callback rejects a redirect whose state does not
+// match. The cookie is set on this redirect response so it survives the
+// trip to Strava and back. ?prompt=force shows the permission checkboxes
+// again after a connect that left out private activities.
 
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { browserCookie } from "@/lib/browserCookie";
 import { authorizeUrl, stravaConfigured } from "@/lib/strava";
 
-export async function GET() {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(request) {
   if (!stravaConfigured()) {
     return NextResponse.json(
       { error: "Strava keys are not set. Add them to .env.local or use Demo city." },
       { status: 400 },
     );
   }
+  const force = new URL(request.url).searchParams.get("prompt") === "force";
   const state = crypto.randomUUID();
-  const jar = await cookies();
-  jar.set("mc_oauth", state, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 10,
-  });
-  return NextResponse.redirect(authorizeUrl(state));
+  const response = NextResponse.redirect(authorizeUrl(state, { force }));
+  response.cookies.set("mc_oauth", state, browserCookie(60 * 10));
+  return response;
 }

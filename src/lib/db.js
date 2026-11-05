@@ -3,19 +3,16 @@
 // write .data/store.json so the app still runs on a laptop. Route handlers
 // import getStore() and do not care which one they got.
 //
-// Runtime queries use the pooled DATABASE_URL. Schema changes run from
-// scripts/migrate.mjs on the unpooled URL during the Vercel build. The
-// ensureSchema call below is a safety net for a laptop that set
-// DATABASE_URL and has not migrated yet. Every statement in schema.sql is
-// idempotent, so repeating it does not wipe rows.
+// Runtime queries use the pooled DATABASE_URL. The tables are created by
+// scripts/migrate.mjs during the Vercel build, not on each request.
+// CREATE TABLE IF NOT EXISTS still emits a Postgres NOTICE when the table
+// is already there, and those notices were showing up on every /api/session.
+// A laptop with a new DATABASE_URL still runs `npm run migrate` once.
 
-import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
-import { postgresOptions, runtimeUrl, splitSchema } from "./pgClient.mjs";
-
-const SCHEMA = readFileSync(path.join(process.cwd(), "src/lib/schema.sql"), "utf8");
+import { postgresOptions, runtimeUrl } from "./pgClient.mjs";
 
 function empty() {
   return { users: {}, tokens: {}, activities: {}, saves: {} };
@@ -103,7 +100,6 @@ function createJsonStore() {
 }
 
 let sqlSingleton;
-let schemaReady;
 
 function sqlClient() {
   if (!sqlSingleton) {
@@ -111,20 +107,6 @@ function sqlClient() {
     sqlSingleton = postgres(url, postgresOptions(url));
   }
   return sqlSingleton;
-}
-
-async function ensureSchema(sql) {
-  if (!schemaReady) {
-    schemaReady = (async () => {
-      for (const statement of splitSchema(SCHEMA)) {
-        await sql.unsafe(statement);
-      }
-    })().catch((error) => {
-      schemaReady = undefined;
-      throw error;
-    });
-  }
-  await schemaReady;
 }
 
 // Used by /api/health. A failure is reported as flags, not as the driver's
@@ -157,13 +139,11 @@ function createPostgresStore() {
   return {
     kind: "postgres",
     async ensureUser(id) {
-      await ensureSchema(sql);
       await sql`INSERT INTO users (id) VALUES (${id}) ON CONFLICT (id) DO NOTHING`;
       const [row] = await sql`SELECT id, strava_athlete_id, created_at FROM users WHERE id = ${id}`;
       return { id: row.id, stravaAthleteId: row.strava_athlete_id, createdAt: row.created_at };
     },
     async getSave(userId) {
-      await ensureSchema(sql);
       const [row] = await sql`SELECT * FROM city_saves WHERE user_id = ${userId}`;
       if (!row) return null;
       return {
@@ -178,7 +158,6 @@ function createPostgresStore() {
       };
     },
     async saveCity(userId, save) {
-      await ensureSchema(sql);
       await sql`
         INSERT INTO city_saves (user_id, city, start_mode, start_date, last_synced_at, demo, race_date, race_name)
         VALUES (
@@ -197,19 +176,16 @@ function createPostgresStore() {
       return save;
     },
     async clearCity(userId) {
-      await ensureSchema(sql);
       await sql`DELETE FROM activities WHERE user_id = ${userId}`;
       await sql`DELETE FROM city_saves WHERE user_id = ${userId}`;
     },
     async listActivities(userId) {
-      await ensureSchema(sql);
       const rows = await sql`
         SELECT * FROM activities WHERE user_id = ${userId} ORDER BY activity_date, seq
       `;
       return rows.map(rowToActivity);
     },
     async addActivities(userId, rows) {
-      await ensureSchema(sql);
       const fresh = [];
       for (const a of rows) {
         const inserted = await sql`
@@ -226,7 +202,6 @@ function createPostgresStore() {
       return fresh;
     },
     async getTokens(userId) {
-      await ensureSchema(sql);
       const [row] = await sql`SELECT * FROM strava_tokens WHERE user_id = ${userId}`;
       if (!row) return null;
       return {
@@ -237,7 +212,6 @@ function createPostgresStore() {
       };
     },
     async saveTokens(userId, tokens) {
-      await ensureSchema(sql);
       await sql`
         INSERT INTO strava_tokens (user_id, access_token, refresh_token, expires_at)
         VALUES (${userId}, ${tokens.accessToken}, ${tokens.refreshToken}, ${tokens.expiresAt})
