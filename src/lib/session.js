@@ -3,21 +3,17 @@
 // them from JavaScript (the cookie is httpOnly).
 
 import { cookies } from "next/headers";
+import { browserCookie } from "./browserCookie.js";
 
 const NAME = "mc_user";
+export const USER_MAX_AGE = 60 * 60 * 24 * 400;
 
 export async function getUserId() {
   const jar = await cookies();
   let id = jar.get(NAME)?.value;
   if (!id) {
     id = crypto.randomUUID();
-    jar.set(NAME, id, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 400,
-    });
+    jar.set(NAME, id, browserCookie(USER_MAX_AGE));
   }
   return id;
 }

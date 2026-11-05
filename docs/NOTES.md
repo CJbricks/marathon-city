@@ -46,16 +46,22 @@ Someone opens `/`.
 
 ## Log run
 
-`POST /api/sync` is the button.
+`POST /api/sync` is the button. A connected city that has never synced calls it on its own, so the first sign-in does not wait for that press.
 
 - Demo mode, or no Strava token: the response says `needsManual`, and the page asks for a distance. `POST /api/sync/manual` stores that run. The stand-in pace is 10:00 per mile so a typed distance does not pretend to be a personal record.
 - Otherwise the handler refreshes the token if it is close to expiry, then asks Strava for activities after `last_synced_at` minus one hour. The first sync of a dated city starts at that date. The first sync of all-history starts at the beginning.
 - Rows already stored (same Strava id) are ignored. New rows are inserted. Only then is `last_synced_at` set to now. An empty pull does not move the timestamp.
 - The browser animates each new run in order: the crane moves, stories grow, a mile counter ticks, and `+1 STORY` flashes. Every 4th run longer than 5 miles then plays an 8-second plane with a random quote. Several runs play one after another. There is no webhook and no polling.
 
+## How Strava sign-in and sync work
+
+Connect is a full-page trip, not a fetch. `/api/strava/start` sends the browser to Strava and sets a short `mc_oauth` cookie (httpOnly, SameSite=Lax, Path=/, Secure on Vercel). Strava sends the browser back to `/api/strava/callback` with a `code`, a `state`, and the `scope` the owner actually checked. Lax is what lets that cookie come back on this redirect. The callback checks `state`, refuses the login when `activity:read_all` is missing (private runs would be left out, and the city would stay empty), exchanges the code, and stores the tokens on `strava_tokens` for the `mc_user` id. That user id is written on the redirect response itself, so the next `/api/session` is the same person who just connected. The logs for this path say `strava callback stored tokens` or `strava callback rejected`. They do not include the code or the tokens.
+
+The callback does not download runs. The start date is chosen on the next screen. When that city is saved, and again when a connected city has never synced (`lastSyncedAt` is empty), the page calls `POST /api/sync`. Log run calls the same route later. The route refreshes the token if it is close to expiry, then pages through Strava `/athlete/activities` (200 at a time). `sport_type` `TrailRun` is stored as a run. Rows already stored under that Strava id are skipped. `last_synced_at` moves only after the new rows are in the database. A handful of new runs animate in. A long history is drawn as the finished city, with a note of how many runs came in, because playing every past run looks like a blank skyline. A failure shows that same note in red. Vercel logs `strava sync stored N of M` or `strava sync fetch failed`.
+
 ## Strava
 
-`/api/strava/start` redirects to Strava with scopes `read,activity:read_all`. A random `state` is stored in a short-lived cookie and checked in `/api/strava/callback` before the code is exchanged. Tokens are columns in the store, not cookies and not `NEXT_PUBLIC_` variables.
+`/api/strava/start` redirects to Strava with scopes `read,activity:read_all`. A random `state` is stored in a short-lived cookie and checked in `/api/strava/callback` before the code is exchanged. Tokens are columns in the store, not cookies and not `NEXT_PUBLIC_` variables. `?prompt=force` shows the checkboxes again after a connect that left out all-activity access.
 
 ## Server and client
 

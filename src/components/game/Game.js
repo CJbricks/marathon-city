@@ -55,8 +55,11 @@ export default function Game() {
   const [forceRace, setForceRace] = useState(false);
   const [banner, setBanner] = useState("");
   const [bannerLeft, setBannerLeft] = useState("18%");
+  const [forceReconnect, setForceReconnect] = useState(false);
+  const [noticeOk, setNoticeOk] = useState(false);
   const flew = useRef(false);
   const playingRef = useRef(false);
+  const importRef = useRef(null);
 
   function startFlyover() {
     if (playingRef.current) return;
@@ -99,7 +102,7 @@ export default function Game() {
     if (strava) window.history.replaceState({}, "", "/");
     fetch("/api/session")
       .then((response) => response.json())
-      .then((body) => {
+      .then(async (body) => {
         setPayload(body);
         cacheWrite(body);
         if (body.save) setScreen("city");
@@ -114,8 +117,30 @@ export default function Game() {
           startFlyover();
         }
         if (strava === "error" || strava === "denied") {
+          setNoticeOk(false);
           setNotice("Strava did not connect. Try again, or build without it.");
           setScreen(body.save ? "city" : "strava");
+        }
+        if (strava === "scope") {
+          setNoticeOk(false);
+          setForceReconnect(true);
+          setNotice("Check the box for all activities, including private ones, then connect again.");
+          setScreen("strava");
+        }
+        if (strava === "connected" && !body.connected) {
+          setNoticeOk(false);
+          setNotice("Strava did not stay connected. Connect again.");
+          setScreen(body.save ? "city" : "strava");
+        }
+        // A city that has never synced stays empty until something asks
+        // Strava. The Log run button used to be the only ask, so a finished
+        // sign-in left a blank skyline. Pull once on load when that is the case.
+        const neverSynced = body.save && body.connected && !body.save.demo && !body.save.lastSyncedAt;
+        if (neverSynced) {
+          setScreen("city");
+          setNoticeOk(false);
+          setNotice("SYNCING STRAVA");
+          await importRef.current?.(body.activities || [], { askManual: false });
         }
       })
       .catch(() => {
@@ -141,6 +166,11 @@ export default function Game() {
     setPayload(next);
     cacheWrite(next);
     setScreen("city");
+    // The start-date choice is only known once the city row exists, so the
+    // first Strava pull happens here rather than on the OAuth redirect.
+    if (next.connected && !next.save?.demo) {
+      await importRef.current?.(next.activities || [], { askManual: false });
+    }
   }
 
   useEffect(() => {
@@ -217,20 +247,48 @@ export default function Game() {
     cacheWrite(nextPayload);
   }
 
-  async function logRun() {
-    setNotice("");
-    const prior = payload?.activities || [];
+  async function importStrava(prior, { askManual }) {
+    setNoticeOk(false);
+    setNotice("SYNCING STRAVA");
     const response = await fetch("/api/sync", { method: "POST" });
-    const body = await response.json();
+    const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setNotice(body.error || "Sync failed.");
+      setNotice(body.error || "SYNC FAILED. TRY LOG RUN.");
       return;
     }
-    if (body.needsManual) {
-      setManual(true);
+    const fresh = body.newActivities || [];
+    if (body.needsManual || fresh.length === 0) {
+      setPayload(body);
+      cacheWrite(body);
+      if (askManual && (body.save?.demo || body.connected)) {
+        setNotice("");
+        setManual(true);
+      } else if (!body.connected && !body.save?.demo) {
+        setNotice("STRAVA IS NOT CONNECTED.");
+      } else {
+        setNotice("NO NEW RUNS FROM STRAVA.");
+      }
       return;
     }
-    await playRuns(prior, body.newActivities || [], body);
+    // A full history can be hundreds of runs. Playing each one keeps the
+    // skyline on the first mile for a long time, which looks like a blank city.
+    if (fresh.length > 5) {
+      setPayload(body);
+      cacheWrite(body);
+      setNoticeOk(true);
+      setNotice(`${fresh.length} RUNS FROM STRAVA`);
+      return;
+    }
+    setNotice("");
+    await playRuns(prior, fresh, body);
+  }
+
+  useEffect(() => {
+    importRef.current = importStrava;
+  });
+
+  async function logRun() {
+    await importStrava(payload?.activities || [], { askManual: true });
   }
 
   async function submitManual(miles) {
@@ -278,6 +336,7 @@ export default function Game() {
       <StravaScreen
         configured={payload.stravaConfigured}
         notice={notice}
+        force={forceReconnect}
         onSkip={() => setScreen("start")}
         onDemo={() => createCity({ demo: true, city: "Denver" })}
       />
@@ -338,7 +397,7 @@ export default function Game() {
           {banner}
         </p>
       ) : null}
-      {notice ? <p className="hud-note">{notice}</p> : null}
+      {notice ? <p className={noticeOk ? "hud-note ok" : "hud-note"}>{notice}</p> : null}
       <footer className="hud">
         <span>{summary ? `${summary.totalRunMiles} MI` : "0 MI"}</span>
         <span>{payload.save?.city || "DENVER"}</span>

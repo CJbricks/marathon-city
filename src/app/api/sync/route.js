@@ -11,6 +11,9 @@ import { cityPayload } from "@/lib/payload";
 import { getUserId } from "@/lib/session";
 import { fetchActivitiesSince, validTokens } from "@/lib/strava";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 function sortNew(rows) {
   return [...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.seq - b.seq));
 }
@@ -27,8 +30,15 @@ export async function POST() {
     return NextResponse.json({ ...payload, needsManual: true, newActivities: [] });
   }
 
-  const tokens = await validTokens(store, userId);
+  let tokens;
+  try {
+    tokens = await validTokens(store, userId);
+  } catch (error) {
+    console.error("strava sync token refresh failed");
+    return NextResponse.json({ error: error.message || "Strava login expired. Connect again." }, { status: 401 });
+  }
   if (!tokens) {
+    console.error("strava sync has no tokens");
     const payload = await cityPayload(userId);
     return NextResponse.json({ ...payload, needsManual: true, newActivities: [] });
   }
@@ -39,17 +49,23 @@ export async function POST() {
   } else if (save.startMode === "date" && save.startDate) {
     after = Math.floor(new Date(`${save.startDate}T00:00:00Z`).getTime() / 1000);
   }
+  console.log("strava sync start", save.startMode || "all", after > 0 ? "window" : "full history");
 
   let fetched;
   try {
     fetched = await fetchActivitiesSince(tokens.accessToken, after);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 502 });
+    console.error("strava sync fetch failed");
+    return NextResponse.json(
+      { error: error.message || "Strava did not return activities. Try Log run again." },
+      { status: 502 },
+    );
   }
   if (save.startMode === "date" && save.startDate) {
     fetched = fetched.filter((a) => a.date >= save.startDate);
   }
   const fresh = sortNew(await store.addActivities(userId, fetched));
+  console.log("strava sync stored", fresh.length, "of", fetched.length);
   if (fresh.length === 0) {
     const payload = await cityPayload(userId);
     return NextResponse.json({ ...payload, needsManual: true, newActivities: [] });
