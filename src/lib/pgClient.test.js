@@ -37,6 +37,22 @@ describe("splitSchema", () => {
       "ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS race_name TEXT",
     ]);
   });
+
+  it("does not split a dollar-quoted DO block on its semicolons", () => {
+    const statements = splitSchema(`
+      ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS name TEXT;
+      DO $$
+      BEGIN
+        UPDATE city_saves SET name = 'Denver';
+      END $$;
+      CREATE INDEX IF NOT EXISTS city_saves_user ON city_saves (user_id);
+    `);
+    expect(statements).toHaveLength(3);
+    expect(statements[1]).toContain("BEGIN");
+    expect(statements[1]).toContain("UPDATE city_saves SET name = 'Denver'");
+    expect(statements[1]).toContain("END $$");
+    expect(statements[2]).toMatch(/^CREATE INDEX/);
+  });
 });
 
 describe("healthBody", () => {

@@ -3,22 +3,32 @@
 // The whole beta in one client tree: opening screens, then the city.
 // It is a Client Component because the screen changes without a new URL
 // and the Log run playback is a timer in the browser. The server still
-// owns the save. This file only fetches /api/* and draws what comes back.
+// owns the saves. This file only fetches /api/* and draws what comes back.
 //
 // A copy of the last payload sits in sessionStorage so a refresh can paint
 // the skyline before the network returns. The database (or the JSON file)
 // is still what the next response replays from.
+//
+// Naming a city happens before Strava. Strava sends the browser away and
+// back, which wipes React state, so the half-finished city (name, and
+// which slot it will replace) is also written to sessionStorage. When
+// Strava returns, that draft is what the date and race screens finish.
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { isRaceDay, uniqueLandmarkCount } from "@/lib/raceDay";
 import { randomQuote } from "@/lib/quotes";
 import { isRunActivity, replay, shouldFlyPlane } from "@/lib/replay";
+import { MAX_SAVES, cleanName } from "@/lib/saves";
 import {
+  ConfirmReplaceScreen,
   LoadingScreen,
   ManualDialog,
+  NameScreen,
   PickerScreen,
   RaceScreen,
+  ReplaceScreen,
+  ResumeScreen,
   StartScreen,
   StravaScreen,
   TitleScreen,
@@ -27,6 +37,7 @@ import {
 const CityView = dynamic(() => import("./CityView"), { ssr: false });
 
 const CACHE = "mc-city";
+const DRAFT_KEY = "mc-new-city";
 
 function cacheWrite(payload) {
   try {
@@ -35,6 +46,31 @@ function cacheWrite(payload) {
     // Private mode can refuse storage. The city still works; it just waits
     // on the network next time.
   }
+}
+
+function readDraft() {
+  try {
+    return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft) {
+  try {
+    if (draft?.pending) sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    else sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Same as the city cache. This visit still works. A reload mid-connect
+    // would ask for the name again.
+  }
+}
+
+function savesOf(payload) {
+  const listed = payload?.saves?.length ? payload.saves : payload?.save ? [payload.save] : [];
+  // A cache written before named saves has a city and no id. Ignore it
+  // here so Resume cannot open a slot the server does not know.
+  return listed.filter((save) => save?.id);
 }
 
 function sleep(ms) {
@@ -52,6 +88,7 @@ export default function Game() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [menu, setMenu] = useState(false);
   const [draft, setDraft] = useState(null);
+  const [replaceTarget, setReplaceTarget] = useState(null);
   const [forceRace, setForceRace] = useState(false);
   const [banner, setBanner] = useState("");
   const [bannerLeft, setBannerLeft] = useState("18%");
@@ -60,6 +97,11 @@ export default function Game() {
   const flew = useRef(false);
   const playingRef = useRef(false);
   const importRef = useRef(null);
+
+  function remember(next) {
+    setDraft(next);
+    writeDraft(next);
+  }
 
   function startFlyover() {
     if (playingRef.current) return;
@@ -89,7 +131,9 @@ export default function Game() {
       setForceRace(new URLSearchParams(window.location.search).get("raceday") === "1");
       try {
         const cached = JSON.parse(sessionStorage.getItem(CACHE) || "null");
-        if (cached?.save) {
+        // A draft means Strava is about to return into a new city. Painting
+        // the previous skyline here would flash the wrong save.
+        if (cached?.save && !readDraft()?.pending) {
           setPayload(cached);
           setScreen((current) => (current === "boot" ? "city" : current));
         }
@@ -99,48 +143,82 @@ export default function Game() {
     }, 0);
     const params = new URLSearchParams(window.location.search);
     const strava = params.get("strava");
+    const flyover = params.get("flyover") === "1";
     if (strava) window.history.replaceState({}, "", "/");
+    const pending = readDraft();
     fetch("/api/session")
       .then((response) => response.json())
       .then(async (body) => {
         setPayload(body);
         cacheWrite(body);
-        if (body.save) setScreen("city");
-        else if (strava === "connected") setScreen("start");
-        else setScreen("title");
-        if (
-          body.city &&
-          !flew.current &&
-          new URLSearchParams(window.location.search).get("flyover") === "1"
-        ) {
-          flew.current = true;
-          startFlyover();
-        }
-        if (strava === "error" || strava === "denied") {
+        // A new city that left for Strava still has a draft. Land on the
+        // date screen instead of the city that was already saved, or the
+        // name and the slot to replace would be thrown away.
+        const returning = Boolean(strava && pending?.pending);
+        if (returning && (strava === "error" || strava === "denied")) {
+          setDraft(pending);
           setNoticeOk(false);
           setNotice("Strava did not connect. Try again, or build without it.");
-          setScreen(body.save ? "city" : "strava");
-        }
-        if (strava === "scope") {
+          setScreen("strava");
+        } else if (returning && strava === "scope") {
+          setDraft(pending);
           setNoticeOk(false);
           setForceReconnect(true);
           setNotice("Check the box for all activities, including private ones, then connect again.");
           setScreen("strava");
-        }
-        if (strava === "connected" && !body.connected) {
+        } else if (returning && strava === "connected" && !body.connected) {
+          setDraft(pending);
+          setNoticeOk(false);
+          setNotice("Strava did not stay connected. Connect again.");
+          setScreen("strava");
+        } else if (returning && strava === "connected") {
+          setDraft(pending);
+          setScreen("start");
+        } else if (strava === "error" || strava === "denied") {
+          writeDraft(null);
+          setDraft(null);
+          setNoticeOk(false);
+          setNotice("Strava did not connect. Try again, or build without it.");
+          setScreen(body.save ? "city" : "strava");
+        } else if (strava === "scope") {
+          writeDraft(null);
+          setDraft(null);
+          setNoticeOk(false);
+          setForceReconnect(true);
+          setNotice("Check the box for all activities, including private ones, then connect again.");
+          setScreen("strava");
+        } else if (strava === "connected" && !body.connected) {
+          writeDraft(null);
+          setDraft(null);
           setNoticeOk(false);
           setNotice("Strava did not stay connected. Connect again.");
           setScreen(body.save ? "city" : "strava");
-        }
-        // A city that has never synced stays empty until something asks
-        // Strava. The Log run button used to be the only ask, so a finished
-        // sign-in left a blank skyline. Pull once on load when that is the case.
-        const neverSynced = body.save && body.connected && !body.save.demo && !body.save.lastSyncedAt;
-        if (neverSynced) {
+        } else if (strava === "connected" && !body.save) {
+          const next = pending?.pending ? pending : { pending: true, city: "Denver" };
+          setDraft(next);
+          writeDraft(next);
+          setScreen(cleanName(next.name) ? "start" : "name");
+        } else if (body.save) {
+          writeDraft(null);
+          setDraft(null);
           setScreen("city");
-          setNoticeOk(false);
-          setNotice("SYNCING STRAVA");
-          await importRef.current?.(body.activities || [], { askManual: false });
+          // A city that has never synced stays empty until something asks
+          // Strava. The Log run button used to be the only ask, so a finished
+          // sign-in left a blank skyline. Pull once on load when that is the case.
+          const neverSynced = body.connected && !body.save.demo && !body.save.lastSyncedAt;
+          if (neverSynced) {
+            setNoticeOk(false);
+            setNotice("SYNCING STRAVA");
+            await importRef.current?.(body.activities || [], { askManual: false });
+          }
+        } else {
+          writeDraft(null);
+          setDraft(null);
+          setScreen("title");
+        }
+        if (body.city && !returning && !flew.current && flyover) {
+          flew.current = true;
+          startFlyover();
         }
       })
       .catch(() => {
@@ -152,17 +230,29 @@ export default function Game() {
 
   async function createCity(body) {
     setScreen("boot");
+    setNotice("");
     const response = await fetch("/api/city", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        name: body.name,
+        city: "Denver",
+        startMode: body.startMode,
+        startDate: body.startDate,
+        raceDate: body.raceDate || null,
+        raceName: body.raceName || null,
+        demo: Boolean(body.demo),
+        replaceId: body.replaceId || null,
+      }),
     });
-    const next = await response.json();
+    const next = await response.json().catch(() => ({}));
     if (!response.ok) {
       setNotice(next.error || "Could not start the city.");
-      setScreen("title");
+      setScreen(response.status === 409 ? "replace" : "name");
       return;
     }
+    remember(null);
+    setReplaceTarget(null);
     setPayload(next);
     cacheWrite(next);
     setScreen("city");
@@ -170,6 +260,67 @@ export default function Game() {
     // first Strava pull happens here rather than on the OAuth redirect.
     if (next.connected && !next.save?.demo) {
       await importRef.current?.(next.activities || [], { askManual: false });
+    }
+  }
+
+  function startNew() {
+    const next = { pending: true, city: "Denver", demo: false, replaceId: null };
+    remember(next);
+    setReplaceTarget(null);
+    setNotice("");
+    setScreen(savesOf(payload).length >= MAX_SAVES ? "replace" : "name");
+  }
+
+  function startDemo() {
+    const next = { pending: true, city: "Denver", demo: true, name: "Demo city", replaceId: null };
+    remember(next);
+    setReplaceTarget(null);
+    setNotice("");
+    if (savesOf(payload).length >= MAX_SAVES) setScreen("replace");
+    else createCity(next);
+  }
+
+  function chooseReplace(save) {
+    setReplaceTarget(save);
+    setScreen("replace-confirm");
+  }
+
+  function confirmReplace() {
+    if (!replaceTarget) {
+      setScreen("replace");
+      return;
+    }
+    const next = { ...(draft || { pending: true, city: "Denver" }), pending: true, replaceId: replaceTarget.id };
+    remember(next);
+    if (next.demo) {
+      createCity({ ...next, name: cleanName(next.name) || "Demo city" });
+      return;
+    }
+    setScreen("name");
+  }
+
+  async function openSave(saveId) {
+    setScreen("boot");
+    setNotice("");
+    const response = await fetch("/api/city/open", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ saveId }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice(body.error || "Could not open that city.");
+      setScreen("resume");
+      return;
+    }
+    setPayload(body);
+    cacheWrite(body);
+    setScreen("city");
+    const neverSynced = body.save && body.connected && !body.save.demo && !body.save.lastSyncedAt;
+    if (neverSynced) {
+      setNoticeOk(false);
+      setNotice("SYNCING STRAVA");
+      await importRef.current?.(body.activities || [], { askManual: false });
     }
   }
 
@@ -313,23 +464,83 @@ export default function Game() {
     const body = await response.json();
     setPayload(body);
     cacheWrite(body);
-    setScreen("picker");
+    setScreen("title");
   }
+
+  const saves = savesOf(payload);
 
   if (screen === "boot" || !payload) return <LoadingScreen quote={quote} />;
   if (screen === "title") {
     return (
       <TitleScreen
-        save={payload.save}
-        summary={payload.city?.summary}
-        onResume={() => setScreen("city")}
-        onNew={() => setScreen("picker")}
-        onDemo={() => createCity({ demo: true, city: "Denver" })}
+        saves={saves}
+        playingName={payload.save?.name || ""}
+        notice={notice}
+        onResume={() => setScreen("resume")}
+        onNew={startNew}
+        onDemo={startDemo}
+        onBack={payload.save ? () => setScreen("city") : null}
+      />
+    );
+  }
+  if (screen === "resume") {
+    return (
+      <ResumeScreen
+        saves={saves}
+        onOpen={openSave}
+        onBack={() => setScreen("title")}
+      />
+    );
+  }
+  if (screen === "replace") {
+    return (
+      <ReplaceScreen
+        saves={saves}
+        notice={notice}
+        onBack={() => {
+          remember(null);
+          setScreen("title");
+        }}
+        onPick={chooseReplace}
+      />
+    );
+  }
+  if (screen === "replace-confirm") {
+    return (
+      <ConfirmReplaceScreen
+        save={replaceTarget}
+        onBack={() => setScreen("replace")}
+        onConfirm={confirmReplace}
+      />
+    );
+  }
+  if (screen === "name") {
+    return (
+      <NameScreen
+        initial={draft?.name || ""}
+        notice={notice}
+        onBack={() => {
+          if (draft?.replaceId) setScreen("replace-confirm");
+          else {
+            remember(null);
+            setScreen("title");
+          }
+        }}
+        onNext={(name) => {
+          remember({ ...(draft || {}), pending: true, city: "Denver", demo: false, name });
+          setNotice("");
+          setScreen("picker");
+        }}
       />
     );
   }
   if (screen === "picker") {
-    return <PickerScreen onBack={() => setScreen("title")} onNext={() => setScreen("strava")} />;
+    return (
+      <PickerScreen
+        onBack={() => setScreen("name")}
+        onNext={() => setScreen(payload.connected ? "start" : "strava")}
+      />
+    );
   }
   if (screen === "strava") {
     return (
@@ -337,16 +548,29 @@ export default function Game() {
         configured={payload.stravaConfigured}
         notice={notice}
         force={forceReconnect}
+        saveName={draft?.name || ""}
+        onBack={() => setScreen("picker")}
         onSkip={() => setScreen("start")}
-        onDemo={() => createCity({ demo: true, city: "Denver" })}
+        onDemo={() =>
+          createCity({
+            ...(draft || {}),
+            demo: true,
+            city: "Denver",
+            name: cleanName(draft?.name) || "Demo city",
+          })
+        }
       />
     );
   }
   if (screen === "start") {
     return (
       <StartScreen
+        saveName={draft?.name || ""}
+        initialMode={draft?.startMode}
+        initialDate={draft?.startDate}
+        onBack={() => setScreen(payload.connected ? "picker" : "strava")}
         onBuild={(mode, date) => {
-          setDraft({ city: "Denver", startMode: mode, startDate: date });
+          remember({ ...(draft || {}), pending: true, city: "Denver", startMode: mode, startDate: date });
           setScreen("race");
         }}
       />
@@ -355,13 +579,18 @@ export default function Game() {
   if (screen === "race") {
     return (
       <RaceScreen
-        initialDate={payload.save?.raceDate}
-        initialName={payload.save?.raceName}
-        onBack={() => setScreen(draft ? "start" : "city")}
+        initialDate={draft?.pending ? null : payload.save?.raceDate}
+        initialName={draft?.pending ? "" : payload.save?.raceName}
+        onBack={() => setScreen(draft?.pending ? "start" : "city")}
         onDone={async (raceDate, raceName) => {
-          if (draft) {
-            await createCity({ ...draft, raceDate, raceName });
-            setDraft(null);
+          if (draft?.pending) {
+            const next = { ...draft, raceDate, raceName };
+            remember(next);
+            if (!cleanName(next.name)) {
+              setScreen("name");
+              return;
+            }
+            await createCity(next);
             return;
           }
           const response = await fetch("/api/city/race", {
@@ -383,6 +612,7 @@ export default function Game() {
   const summary = payload.city?.summary;
   const celebrate = forceRace || isRaceDay(payload.save?.raceDate);
   const landmarks = uniqueLandmarkCount(payload.city);
+  const others = saves.length > 1;
   return (
     <div className="city-screen">
       <CityView city={payload.city} fx={fx} celebrate={celebrate} />
@@ -400,7 +630,7 @@ export default function Game() {
       {notice ? <p className={noticeOk ? "hud-note ok" : "hud-note"}>{notice}</p> : null}
       <footer className="hud">
         <span>{summary ? `${summary.totalRunMiles} MI` : "0 MI"}</span>
-        <span>{payload.save?.city || "DENVER"}</span>
+        <span>{payload.save?.name || "DENVER"}</span>
         <span>{summary ? `${payload.city.buildings.length} BLDG` : "0 BLDG"}</span>
         <span>{`${landmarks} LANDMARKS`}</span>
       </footer>
@@ -409,6 +639,9 @@ export default function Game() {
           <p>MENU</p>
           <button type="button" className="pixel-btn gold" disabled={playing} onClick={() => { setMenu(false); logRun(); }}>
             LOG RUN
+          </button>
+          <button type="button" className="pixel-btn" onClick={() => { setMenu(false); setNotice(""); setScreen("title"); }}>
+            CITIES
           </button>
           <button type="button" className="pixel-btn" onClick={() => { setMenu(false); setScreen("race"); }}>
             RACE DAY
@@ -424,7 +657,7 @@ export default function Game() {
       {manual ? <ManualDialog busy={playing} onCancel={() => setManual(false)} onSubmit={submitManual} /> : null}
       {confirmReset ? (
         <div className="modal">
-          <p>ERASE THIS CITY?</p>
+          <p>{others ? "ERASE THIS SAVE? THE OTHERS STAY." : "ERASE THIS CITY?"}</p>
           <div className="btn-row">
             <button type="button" className="pixel-btn" onClick={() => setConfirmReset(false)}>
               CANCEL

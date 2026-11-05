@@ -1,13 +1,14 @@
 "use client";
 
-// Opening-flow screens. They are laid out on a 320×200 stage, the same
-// size as the prototype intro, and the stage is scaled to the window so a
-// phone shows the whole card without a horizontal scrollbar. Labels match
+// Opening-flow screens, including the save name, the resume list, and the
+// replace confirm. They use the loading screen's stage: 320 wide, scaled
+// to the phone, pixel font, Nuggets stripes, and a gold frame. Labels match
 // the prototype: Resume City, New City, the five-city picker (only Denver
 // is READY), Connect with Strava, all history or a start date, then the
 // race-day question.
 
 import { useEffect, useState } from "react";
+import { MAX_SAVES, NAME_MAX, cleanName, saveLabel } from "@/lib/saves";
 
 export const CITIES = ["AUSTIN", "DENVER", "BOULDER", "NEW YORK", "TOKYO"];
 
@@ -53,31 +54,146 @@ export function LoadingScreen({ quote }) {
   );
 }
 
-export function TitleScreen({ save, summary, onResume, onNew, onDemo }) {
-  const last = summary?.inProgress?.[0]?.startDate;
-  const buildings = summary?.buildingsCompleted;
+export function TitleScreen({ saves, playingName, notice, onResume, onNew, onDemo, onBack }) {
+  const count = saves?.length || 0;
   return (
-    <Stage>
+    <Stage height={playingName || notice ? 240 : 210}>
       <p className="pixel-kicker">5280 FT</p>
       <h1 className="pixel-title">MARATHON CITY</h1>
       <div className="btn-row">
-        <button type="button" className="pixel-btn gold" disabled={!save} onClick={onResume}>
+        <button type="button" className="pixel-btn gold" disabled={count === 0} onClick={onResume}>
           RESUME CITY
         </button>
         <button type="button" className="pixel-btn" onClick={onNew}>
           NEW CITY
         </button>
       </div>
-      {save ? (
-        <div className="save-card">
-          DENVER - {buildings ?? 0} BUILDINGS
-          {last ? ` - LAST ${last}` : ""}
-        </div>
-      ) : (
-        <p className="pixel-note">NO SAVE YET</p>
-      )}
+      <p className="pixel-note">{count === 0 ? "NO SAVE YET" : `${count} OF ${MAX_SAVES} CITIES`}</p>
+      {playingName ? <p className="pixel-note">PLAYING {playingName}</p> : null}
+      {notice ? <p className="pixel-note warn">{notice}</p> : null}
       <button type="button" className="pixel-btn demo" onClick={onDemo}>
         DEMO CITY
+      </button>
+      {onBack ? (
+        <button type="button" className="pixel-btn" onClick={onBack}>
+          BACK
+        </button>
+      ) : null}
+    </Stage>
+  );
+}
+
+function SaveButtons({ saves, selectedId, onSelect }) {
+  return (
+    <div className="save-list">
+      {saves.map((save) => {
+        const on = selectedId ? save.id === selectedId : false;
+        const miles = Number(save.totalRunMiles || 0);
+        return (
+          <button
+            key={save.id || save.name}
+            type="button"
+            className={on ? "pixel-btn save-pick on" : "pixel-btn save-pick"}
+            onClick={() => onSelect(save)}
+          >
+            {save.name || save.city || "DENVER"}
+            <small>
+              {saveLabel(save)} - {miles} MI{save.active ? " - PLAYING" : ""}
+            </small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ResumeScreen({ saves, onOpen, onBack }) {
+  return (
+    <Stage height={280}>
+      <h2 className="pixel-heading">YOUR CITIES</h2>
+      <SaveButtons saves={saves} onSelect={(save) => onOpen(save.id)} />
+      <p className="pixel-note">{saves.length} OF {MAX_SAVES} CITIES</p>
+      <button type="button" className="pixel-btn" onClick={onBack}>
+        BACK
+      </button>
+    </Stage>
+  );
+}
+
+export function ReplaceScreen({ saves, notice, onPick, onBack }) {
+  const [selectedId, setSelectedId] = useState(saves[0]?.id || "");
+  const chosen = saves.find((save) => save.id === selectedId) || saves[0];
+  return (
+    <Stage height={300}>
+      <h2 className="pixel-heading">ALL 3 CITIES ARE FULL</h2>
+      <p className="pixel-note">PICK ONE TO REPLACE</p>
+      <SaveButtons saves={saves} selectedId={chosen?.id} onSelect={(save) => setSelectedId(save.id)} />
+      {notice ? <p className="pixel-note warn">{notice}</p> : null}
+      <div className="btn-row">
+        <button type="button" className="pixel-btn" onClick={onBack}>
+          BACK
+        </button>
+        <button type="button" className="pixel-btn gold" disabled={!chosen} onClick={() => onPick(chosen)}>
+          NEXT
+        </button>
+      </div>
+    </Stage>
+  );
+}
+
+export function ConfirmReplaceScreen({ save, onConfirm, onBack }) {
+  return (
+    <Stage height={240}>
+      <h2 className="pixel-heading">REPLACE THIS CITY?</h2>
+      <p className="pixel-chip">{save?.name}</p>
+      <p className="pixel-note">YOU CAN REBUILD IT LATER WITH THE SAME STRAVA DATES.</p>
+      <div className="btn-row">
+        <button type="button" className="pixel-btn" onClick={onBack}>
+          BACK
+        </button>
+        <button type="button" className="pixel-btn gold" onClick={onConfirm}>
+          REPLACE
+        </button>
+      </div>
+    </Stage>
+  );
+}
+
+export function NameScreen({ initial, notice, onNext, onBack }) {
+  const [name, setName] = useState(initial || "");
+  const ready = Boolean(cleanName(name));
+  return (
+    <Stage height={240}>
+      <h2 className="pixel-heading">NAME THIS CITY</h2>
+      <p className="pixel-note">THIS NAME IS THE SAVE FILE</p>
+      <form
+        className="name-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const cleaned = cleanName(name);
+          if (cleaned) onNext(cleaned);
+        }}
+      >
+        <input
+          type="text"
+          value={name}
+          maxLength={NAME_MAX}
+          autoFocus
+          autoComplete="off"
+          enterKeyHint="next"
+          spellCheck={false}
+          aria-label="City name"
+          placeholder="TRAINING BLOCK"
+          onChange={(event) => setName(event.target.value)}
+        />
+        <p className="pixel-note">{NAME_MAX} CHARACTERS MAX</p>
+        {notice ? <p className="pixel-note warn">{notice}</p> : null}
+        <button type="submit" className="pixel-btn gold" disabled={!ready}>
+          NEXT
+        </button>
+      </form>
+      <button type="button" className="pixel-btn" onClick={onBack}>
+        BACK
       </button>
     </Stage>
   );
@@ -111,11 +227,12 @@ export function PickerScreen({ onNext, onBack }) {
   );
 }
 
-export function StravaScreen({ configured, notice, force, onSkip, onDemo }) {
+export function StravaScreen({ configured, notice, force, saveName, onSkip, onBack, onDemo }) {
   return (
-    <Stage>
+    <Stage height={240}>
       <h2 className="pixel-heading">CONNECT STRAVA</h2>
       <p className="pixel-chip">DENVER</p>
+      {saveName ? <p className="pixel-note">{saveName}</p> : null}
       <p className="pixel-note">YOUR RUNS BUILD THE CITY</p>
       {configured ? (
         <a className="pixel-btn strava" href={force ? "/api/strava/start?prompt=force" : "/api/strava/start"}>
@@ -126,6 +243,9 @@ export function StravaScreen({ configured, notice, force, onSkip, onDemo }) {
       )}
       {notice ? <p className="pixel-note warn">{notice}</p> : null}
       <div className="btn-row">
+        <button type="button" className="pixel-btn" onClick={onBack}>
+          BACK
+        </button>
         <button type="button" className="pixel-btn" onClick={onSkip}>
           BUILD WITHOUT STRAVA
         </button>
@@ -138,12 +258,14 @@ export function StravaScreen({ configured, notice, force, onSkip, onDemo }) {
   );
 }
 
-export function StartScreen({ onBuild }) {
-  const [mode, setMode] = useState("date");
-  const [date, setDate] = useState(localToday);
+export function StartScreen({ saveName, initialMode, initialDate, onBuild, onBack }) {
+  // Back from the race question should not forget all-history vs a date.
+  const [mode, setMode] = useState(initialMode === "all" ? "all" : "date");
+  const [date, setDate] = useState(initialDate || localToday);
   return (
-    <Stage>
+    <Stage height={240}>
       <h2 className="pixel-heading">BUILD YOUR CITY</h2>
+      {saveName ? <p className="pixel-note">{saveName}</p> : null}
       <div className={mode === "all" ? "choice on" : "choice"} onClick={() => setMode("all")} role="button" tabIndex={0}>
         ALL STRAVA HISTORY
         <small>EVERY RUN SINCE DAY ONE</small>
@@ -160,9 +282,16 @@ export function StartScreen({ onBuild }) {
         />
         <small>DEFAULTS TO TODAY</small>
       </div>
-      <button type="button" className="pixel-btn gold" onClick={() => onBuild(mode, date)}>
-        NEXT
-      </button>
+      <div className="btn-row">
+        {onBack ? (
+          <button type="button" className="pixel-btn" onClick={onBack}>
+            BACK
+          </button>
+        ) : null}
+        <button type="button" className="pixel-btn gold" onClick={() => onBuild(mode, date)}>
+          NEXT
+        </button>
+      </div>
     </Stage>
   );
 }

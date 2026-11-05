@@ -91,6 +91,8 @@ canvas {
   color: #fff;
   font-size: 11px;
   font-weight: 400;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .pixel-kicker,
 .pixel-note,
@@ -99,8 +101,13 @@ canvas {
   color: #c9d6f2;
   font-size: 7px;
   line-height: 1.6;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .pixel-chip {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
   color: #fdd835;
   border: 2px solid #fdd835;
   padding: 2px 6px;
@@ -241,6 +248,41 @@ a.pixel-btn {
 .hud span {
   text-align: center;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.save-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.save-pick {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.save-pick small {
+  font-size: 6px;
+  color: #c9d6f2;
+}
+.pixel-btn.save-pick.on {
+  border-color: #fdd835;
+  color: #fdd835;
+}
+.name-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 @media (min-width: 720px) {
   .hud {

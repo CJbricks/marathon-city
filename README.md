@@ -90,10 +90,14 @@ The database is the source of truth: Vercel Postgres or Supabase. It stores the 
 
 ## Opening flow
 
-1. **Resume City** or **New City**.
-2. A city picker. Only Denver is enabled for the beta.
-3. Strava OAuth.
-4. A choice of all history, or a start date that defaults to today.
+1. **Resume City** or **New City**. Resume lists up to three named saves. The name on the save is not the theme.
+2. If all three slots are full, New City asks which save to replace and confirms. The same Strava dates rebuild that city.
+3. A name for the save, then the city picker. Only Denver is enabled for the beta.
+4. Strava OAuth, if it is not already connected.
+5. A choice of all history, or a start date that defaults to today.
+6. An optional race day. On that local date the city shows confetti and a parade.
+
+The menu's **Cities** item returns to this list without erasing the city on screen. The bottom bar shows the save's name.
 
 ![Intro screens: title, city picker, Strava, and start date](prototype/intro_sheet.png)
 

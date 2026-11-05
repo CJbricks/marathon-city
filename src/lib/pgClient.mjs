@@ -48,13 +48,35 @@ export function postgresOptions(url) {
 
 // schema.sql is a list of statements. Running them one at a time keeps a
 // pooled connection from rejecting a multi-command script. Semicolons
-// inside a quoted string stay part of that statement.
+// inside a quoted string stay part of that statement. A DO $$ block is
+// one statement too: the semicolons that move the old primary key live
+// inside the dollar quotes and must not be run on their own.
 export function splitSchema(sqlText) {
   const statements = [];
   let current = "";
   let inQuote = false;
+  let dollar = null;
   for (let i = 0; i < sqlText.length; i++) {
+    if (dollar) {
+      if (sqlText.startsWith(dollar, i)) {
+        current += dollar;
+        i += dollar.length - 1;
+        dollar = null;
+        continue;
+      }
+      current += sqlText[i];
+      continue;
+    }
     const ch = sqlText[i];
+    if (ch === "$") {
+      const match = sqlText.slice(i).match(/^\$[A-Za-z0-9_]*\$/);
+      if (match) {
+        dollar = match[0];
+        current += dollar;
+        i += dollar.length - 1;
+        continue;
+      }
+    }
     if (ch === "'") {
       if (inQuote && sqlText[i + 1] === "'") {
         current += "''";

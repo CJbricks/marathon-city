@@ -1,6 +1,7 @@
 // POST /api/city/reset
-// Forgets the save and its activities after the owner confirms. The Strava
-// connection stays, so the next city does not have to ask for permission again.
+// Forgets the city on screen and its runs, after the owner confirms.
+// The other named saves stay. The Strava connection stays too, so the
+// next city does not have to ask for permission again.
 
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
@@ -11,6 +12,7 @@ export async function POST() {
   const userId = await getUserId();
   const store = getStore();
   await store.ensureUser(userId);
-  await store.clearCity(userId);
+  const save = await store.getSave(userId);
+  if (save) await store.clearCity(userId, save.id);
   return NextResponse.json(await cityPayload(userId));
 }

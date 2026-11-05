@@ -23,6 +23,7 @@ export async function POST(request) {
   if (!save) return NextResponse.json({ error: "No city yet." }, { status: 400 });
   save.raceDate = cleanDate(body.raceDate);
   save.raceName = body.raceName ? String(body.raceName).trim() : null;
+  // getSave is the city on screen. The other two saves keep their own race days.
   await store.saveCity(userId, save);
   return NextResponse.json(await cityPayload(userId));
 }
