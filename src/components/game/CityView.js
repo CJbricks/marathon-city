@@ -1,18 +1,52 @@
 "use client";
 
-// Shows the painted city. pixelScene.js draws the sky, mountains, roads and
-// buildings into one small canvas. This file uploads that canvas as a Pixi
-// texture and scales it with nearest-neighbor, so a 640×500 picture becomes
-// the view without a blur filter. The texture is replaced only when the
-// city or the time-of-day phase changes. The crane, the plane, the parade,
-// and the transit lines are drawn on top of that texture. A moving bus
-// never calls paintScene, so the skyline stays cached.
+// Shows the painted city. The sky, mountains, and prairie are one texture
+// that stays put. The lots and buildings are a second texture, and only
+// that one follows a drag or a pinch. Both start at the size from
+// gridFit.js: the whole 640×500 picture fits inside the view, so a tall
+// phone does not zoom the diamond off the sides. The crane, the plane,
+// the parade, and the transit lines are drawn on top of the grid. A moving
+// bus never calls paintScene, so the skyline stays cached.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
-import { SCENE_H, SCENE_W, paintScene, project, sceneSignature } from "./pixelScene";
+import { dustPuffs } from "./dust";
+import { gridPlacement } from "./gridFit";
+import { HORIZON_Y, SCENE_H, SCENE_W, paintExtendedBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
+
+const DUST_LIGHT = 0xfff3c4;
+const DUST_DARK = 0xc4a574;
+
+function packRgb([r, g, b]) {
+  return (r << 16) + (g << 8) + b;
+}
+
+// Flat color behind the detailed picture. It covers any gap the 640×500
+// scene does not reach, with sky at the top and sandy ground at the bottom.
+// horizonY is where that picture's own ground starts, so the flat sand
+// meets the painted prairie instead of cutting across the mountains.
+function drawFill(g, w, h, light, horizonY) {
+  g.clear();
+  const horizon = Math.round(Math.max(0, Math.min(h, horizonY)));
+  g.rect(0, 0, w, h).fill({ color: packRgb(light.sky[0]) });
+  if (horizon < h) {
+    // Same tan as the painted prairie, including the time-of-day tint,
+    // so a gap does not show up as a lighter stripe.
+    const tint = light.ambient || [1, 1, 1];
+    const sand = [0xc4, 0xb5, 0x6a].map((v, i) => Math.round(v * (tint[i] ?? 1)));
+    g.rect(0, horizon, w, h - horizon).fill({ color: packRgb(sand) });
+  }
+}
+
+function adoptTexture(sprite, canvas) {
+  const texture = Texture.from(canvas);
+  texture.source.scaleMode = "nearest";
+  const previous = sprite.texture;
+  sprite.texture = texture;
+  if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+}
 
 const CONFETTI = [0xfdd835, 0xd62828, 0xffffff, 0xf57c00, 0x43a047, 0x1e88e5];
 
@@ -155,11 +189,16 @@ export default function CityView({ city, fx, celebrate }) {
     const boot = async () => {
       application = new Application();
       await application.init({
-        background: 0x87b4e0,
+        background: 0x5b8fd6,
         resizeTo: host,
         antialias: false,
         preference: "webgl",
         roundPixels: true,
+        // CSS pixels, not device pixels. autoDensity writes the canvas
+        // style so Safari cannot display the bitmap at three times the
+        // width and letterbox it in the middle of the phone.
+        resolution: 1,
+        autoDensity: true,
       });
       if (dead) {
         try {
@@ -173,6 +212,10 @@ export default function CityView({ city, fx, celebrate }) {
       application.canvas.style.imageRendering = "pixelated";
       host.appendChild(application.canvas);
 
+      const fill = new Graphics();
+      const backdrop = new Container();
+      const skySprite = new Sprite(Texture.EMPTY);
+      backdrop.addChild(skySprite);
       const world = new Container();
       const citySprite = new Sprite(Texture.EMPTY);
       const crane = new Graphics();
@@ -183,33 +226,42 @@ export default function CityView({ city, fx, celebrate }) {
       const transit = new Graphics();
       world.addChild(citySprite, transit, crane, dust, parade);
       const screenFx = new Graphics();
-      application.stage.addChild(world, screenFx);
+      application.stage.addChild(fill, backdrop, world, screenFx);
       const bits = [];
 
-      // Cover the view, don't letterbox it. The painted picture already
-      // includes sky and prairie, so cropping an edge still looks like the
-      // scene rather than the grey page behind the canvas.
+      // Contain, not cover. Covering a tall phone scaled the diamond up
+      // until both corners left the 390px width. gridPlacement fits the
+      // picture inside the view instead. The backdrop is placed once per
+      // resize and then stays. Only `world` is dragged and pinched.
+      let placed = gridPlacement(application.screen.width, application.screen.height);
+      const applyPlace = (container) => {
+        container.scale.set(placed.scale);
+        container.position.set(placed.x, placed.y);
+      };
       const fit = () => {
-        const s = Math.max(application.screen.width / SCENE_W, application.screen.height / SCENE_H);
-        world.scale.set(s);
-        world.position.set(
-          (application.screen.width - SCENE_W * s) / 2,
-          (application.screen.height - SCENE_H * s) / 2,
-        );
+        placed = gridPlacement(application.screen.width, application.screen.height);
+        applyPlace(backdrop);
+        applyPlace(world);
       };
       fit();
       application.renderer.on("resize", fit);
+      const observer = new ResizeObserver(() => {
+        const rect = host.getBoundingClientRect();
+        const w = Math.max(1, Math.floor(rect.width));
+        const h = Math.max(1, Math.floor(rect.height));
+        if (w !== application.screen.width || h !== application.screen.height) {
+          application.renderer.resize(w, h);
+        }
+      });
+      observer.observe(host);
 
+      let skyKey = "";
+      let fillKey = "";
       const upload = (live, light) => {
         const sig = sceneSignature(live, light.phase);
         if (sig === painted) return;
         painted = sig;
-        const canvas = paintScene(live, light);
-        const texture = Texture.from(canvas);
-        texture.source.scaleMode = "nearest";
-        const previous = citySprite.texture;
-        citySprite.texture = texture;
-        if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+        adoptTexture(citySprite, paintScene(live, light, { gridOnly: true }));
         texBytes = SCENE_W * SCENE_H * 4;
         host.dataset.texBytes = String(texBytes);
       };
@@ -219,8 +271,36 @@ export default function CityView({ city, fx, celebrate }) {
         const shown = liveFx?.city || live;
         if (!shown) return;
         const light = viewClock();
-        const [r, g, b] = light.sky[2];
+        const [r, g, b] = light.sky[0];
         application.renderer.background.color = (r << 16) + (g << 8) + b;
+        const key = `${light.phase}|${Math.round(application.screen.width)}|${Math.round(application.screen.height)}|${Math.round(placed.y)}|${placed.scale.toFixed(4)}`;
+        if (key !== fillKey) {
+          fillKey = key;
+          drawFill(
+            fill,
+            application.screen.width,
+            application.screen.height,
+            light,
+            placed.y + HORIZON_Y * placed.scale,
+          );
+        }
+        // Grow the pinned picture until it covers the screen, but keep the
+        // original 640×500 block on the same spot as the grid. A drag moves
+        // the grid only. The extra sky and ground stay here.
+        const extraTop = Math.ceil(Math.max(0, placed.y) / placed.scale);
+        const extraBottom = Math.ceil(
+          Math.max(0, application.screen.height - (placed.y + SCENE_H * placed.scale)) / placed.scale,
+        );
+        const extraLeft = Math.ceil(Math.max(0, placed.x) / placed.scale);
+        const extraRight = Math.ceil(
+          Math.max(0, application.screen.width - (placed.x + SCENE_W * placed.scale)) / placed.scale,
+        );
+        const nextSky = `${light.phase}|${extraTop}|${extraBottom}|${extraLeft}|${extraRight}`;
+        if (nextSky !== skyKey) {
+          skyKey = nextSky;
+          adoptTexture(skySprite, paintExtendedBackdrop(light, extraTop, extraBottom, extraLeft, extraRight));
+          skySprite.position.set(-extraLeft, -extraTop);
+        }
         upload(shown, light);
         const site = liveFx?.crane || shown.buildings.find((building) => building.status === "in_progress");
         if (site) {
@@ -229,9 +309,18 @@ export default function CityView({ city, fx, celebrate }) {
           drawCrane(crane, site.x, site.y, stories, bob);
           dust.clear();
           if (liveFx?.dust) {
-            const [dx, dy] = project(site.x + 0.7, site.y + 0.7, (site.stories ?? site.storiesBuilt ?? 0) * 3);
-            dust.circle(dx, dy, 3).fill({ color: 0xc4b08a, alpha: 0.85 });
-            dust.circle(dx + 5, dy - 3, 2).fill({ color: 0x8d7b63, alpha: 0.7 });
+            const puffs = dustPuffs(performance.now(), {
+              west: project(site.x, site.y + 1, 0),
+              east: project(site.x + 1, site.y, 0),
+              south: project(site.x + 1, site.y + 1, 0),
+            });
+            for (const puff of puffs) {
+              if (!puff.s) continue;
+              dust.rect(puff.x, puff.y, puff.s, puff.s).fill({ color: puff.tone ? DUST_DARK : DUST_LIGHT });
+              // A second pixel makes the speck read as a puff instead of a dot
+              // on the pavement. Still a rectangle, still the same eight slots.
+              if (!puff.tone) dust.rect(puff.x + 3, puff.y - 2, 2, 2).fill({ color: 0xfff6d0 });
+            }
           }
         } else {
           crane.clear();
@@ -311,6 +400,7 @@ export default function CityView({ city, fx, celebrate }) {
       canvas.addEventListener("pointercancel", up);
       canvas.addEventListener("wheel", wheel, { passive: false });
       host.cleanup = () => {
+        observer.disconnect();
         canvas.removeEventListener("pointerdown", down);
         canvas.removeEventListener("pointermove", move);
         canvas.removeEventListener("pointerup", up);

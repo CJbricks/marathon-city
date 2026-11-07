@@ -6,7 +6,9 @@
 --
 -- A person can keep MAX three named cities. city_saves.save_id is one
 -- city. user_id is the browser, and it is no longer the primary key,
--- because that key only allowed one row. The old single row is kept:
+-- because that key only allowed one row. Each city also has a 5-digit
+-- code so another browser can open that same city. The old single row
+-- is kept:
 -- the migration copies it to slot 1 and names it after its theme.
 -- activities.save_id says which city a run belongs to. Sync still
 -- ignores a Strava id that is already stored, but only inside that city,
@@ -45,9 +47,13 @@ CREATE TABLE IF NOT EXISTS city_saves (
   demo BOOLEAN NOT NULL DEFAULT FALSE,
   race_date TEXT,
   race_name TEXT,
+  -- Five digits, stored as text so 04821 does not become 4821.
+  -- The owner reads it off the menu and types it on another phone.
+  code TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT city_saves_slot_range CHECK (slot BETWEEN 1 AND 3),
-  CONSTRAINT city_saves_name_len CHECK (char_length(btrim(name)) BETWEEN 1 AND 24)
+  CONSTRAINT city_saves_name_len CHECK (char_length(btrim(name)) BETWEEN 1 AND 24),
+  CONSTRAINT city_saves_code_format CHECK (code ~ '^[0-9]{5}$')
 );
 
 CREATE TABLE IF NOT EXISTS activities (
@@ -74,6 +80,12 @@ ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS slot SMALLINT;
 ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS save_id TEXT;
+
+-- The city code and the "which city is this browser playing" pointer.
+-- Nullable here on purpose: rows that already exist get a code in the
+-- DO block below, and only then is the column required.
+ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS playing_save_id TEXT;
 
 -- Move the old one-city primary key onto save_id without deleting the row.
 -- The name falls back to the theme ("Denver") so the bottom bar still has
@@ -188,6 +200,64 @@ BEGIN
   END IF;
 END $$;
 
+-- Fill codes for cities that were saved before codes existed.
+-- Running this again finds no empty codes, so it changes nothing.
+-- The unique index comes after the fill so two cities cannot share a code.
+DO $$
+DECLARE
+  rec record;
+  candidate text;
+  guard int;
+BEGIN
+  FOR rec IN
+    SELECT save_id FROM city_saves
+    WHERE code IS NULL OR code !~ '^[0-9]{5}$'
+  LOOP
+    guard := 0;
+    LOOP
+      candidate := lpad((floor(random() * 100000))::int::text, 5, '0');
+      EXIT WHEN NOT EXISTS (SELECT 1 FROM city_saves WHERE code = candidate);
+      guard := guard + 1;
+      IF guard > 50 THEN
+        RAISE EXCEPTION 'could not assign a city code';
+      END IF;
+    END LOOP;
+    UPDATE city_saves SET code = candidate WHERE save_id = rec.save_id;
+  END LOOP;
+
+  ALTER TABLE city_saves ALTER COLUMN code SET NOT NULL;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.city_saves'::regclass
+      AND conname = 'city_saves_code_format'
+  ) THEN
+    ALTER TABLE city_saves
+      ADD CONSTRAINT city_saves_code_format CHECK (code ~ '^[0-9]{5}$');
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS city_saves_user ON city_saves (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS city_saves_user_slot ON city_saves (user_id, slot);
 CREATE UNIQUE INDEX IF NOT EXISTS city_saves_one_active ON city_saves (user_id) WHERE active;
+CREATE UNIQUE INDEX IF NOT EXISTS city_saves_code ON city_saves (code);
+
+-- A browser that typed a city code. The city's owner stays the same.
+-- last_synced_at here is this browser's Strava cursor, not the owner's,
+-- so one phone's sync does not hide the other phone's new runs.
+CREATE TABLE IF NOT EXISTS city_access (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  save_id TEXT NOT NULL REFERENCES city_saves(save_id) ON DELETE CASCADE,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, save_id)
+);
+
+-- Wrong city codes. The key is the device, the IP, or both.
+-- This is written by the code route only, not by a page load.
+CREATE TABLE IF NOT EXISTS code_attempts (
+  attempt_key TEXT PRIMARY KEY,
+  failures INTEGER NOT NULL DEFAULT 0,
+  window_started TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  locked_until TIMESTAMPTZ
+);
