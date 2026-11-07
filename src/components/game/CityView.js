@@ -2,18 +2,19 @@
 
 // Shows the painted city. The sky, mountains, and prairie are one texture
 // that stays put. The lots and buildings are a second texture, and only
-// that one follows a drag or a pinch. Both start at the same size: the
-// fit() math below is the mobile grid size and is not used to stretch the
-// city when the screen is tall. The crane, the plane, the parade, and the
-// transit lines are drawn on top of the grid. A moving bus never calls
-// paintScene, so the skyline stays cached.
+// that one follows a drag or a pinch. Both start at the size from
+// gridFit.js: the whole 640×500 picture fits inside the view, so a tall
+// phone does not zoom the diamond off the sides. The crane, the plane,
+// the parade, and the transit lines are drawn on top of the grid. A moving
+// bus never calls paintScene, so the skyline stays cached.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
 import { dustPuffs } from "./dust";
-import { SCENE_H, SCENE_W, paintBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
+import { gridPlacement } from "./gridFit";
+import { HORIZON_Y, SCENE_H, SCENE_W, paintExtendedBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
 const DUST_DARK = 0xc4a574;
@@ -24,11 +25,19 @@ function packRgb([r, g, b]) {
 
 // Flat color behind the detailed picture. It covers any gap the 640×500
 // scene does not reach, with sky at the top and sandy ground at the bottom.
-function drawFill(g, w, h, light) {
+// horizonY is where that picture's own ground starts, so the flat sand
+// meets the painted prairie instead of cutting across the mountains.
+function drawFill(g, w, h, light, horizonY) {
   g.clear();
-  const horizon = Math.round(h * (168 / SCENE_H));
+  const horizon = Math.round(Math.max(0, Math.min(h, horizonY)));
   g.rect(0, 0, w, h).fill({ color: packRgb(light.sky[0]) });
-  if (horizon < h) g.rect(0, horizon, w, h - horizon).fill({ color: 0xc4b56a });
+  if (horizon < h) {
+    // Same tan as the painted prairie, including the time-of-day tint,
+    // so a gap does not show up as a lighter stripe.
+    const tint = light.ambient || [1, 1, 1];
+    const sand = [0xc4, 0xb5, 0x6a].map((v, i) => Math.round(v * (tint[i] ?? 1)));
+    g.rect(0, horizon, w, h - horizon).fill({ color: packRgb(sand) });
+  }
 }
 
 function adoptTexture(sprite, canvas) {
@@ -220,21 +229,19 @@ export default function CityView({ city, fx, celebrate }) {
       application.stage.addChild(fill, backdrop, world, screenFx);
       const bits = [];
 
-      // Same placement the city has always used on a phone: scale until the
-      // 640×500 picture covers the view, then center it. The backdrop gets
-      // this placement once per resize and then stays. Only `world` is
-      // dragged and pinched, so the mountains do not follow the finger.
-      const place = (container) => {
-        const s = Math.max(application.screen.width / SCENE_W, application.screen.height / SCENE_H);
-        container.scale.set(s);
-        container.position.set(
-          (application.screen.width - SCENE_W * s) / 2,
-          (application.screen.height - SCENE_H * s) / 2,
-        );
+      // Contain, not cover. Covering a tall phone scaled the diamond up
+      // until both corners left the 390px width. gridPlacement fits the
+      // picture inside the view instead. The backdrop is placed once per
+      // resize and then stays. Only `world` is dragged and pinched.
+      let placed = gridPlacement(application.screen.width, application.screen.height);
+      const applyPlace = (container) => {
+        container.scale.set(placed.scale);
+        container.position.set(placed.x, placed.y);
       };
       const fit = () => {
-        place(backdrop);
-        place(world);
+        placed = gridPlacement(application.screen.width, application.screen.height);
+        applyPlace(backdrop);
+        applyPlace(world);
       };
       fit();
       application.renderer.on("resize", fit);
@@ -248,7 +255,7 @@ export default function CityView({ city, fx, celebrate }) {
       });
       observer.observe(host);
 
-      let skyPhase = "";
+      let skyKey = "";
       let fillKey = "";
       const upload = (live, light) => {
         const sig = sceneSignature(live, light.phase);
@@ -266,14 +273,33 @@ export default function CityView({ city, fx, celebrate }) {
         const light = viewClock();
         const [r, g, b] = light.sky[0];
         application.renderer.background.color = (r << 16) + (g << 8) + b;
-        const key = `${light.phase}|${Math.round(application.screen.width)}|${Math.round(application.screen.height)}`;
+        const key = `${light.phase}|${Math.round(application.screen.width)}|${Math.round(application.screen.height)}|${Math.round(placed.y)}|${placed.scale.toFixed(4)}`;
         if (key !== fillKey) {
           fillKey = key;
-          drawFill(fill, application.screen.width, application.screen.height, light);
+          drawFill(
+            fill,
+            application.screen.width,
+            application.screen.height,
+            light,
+            placed.y + HORIZON_Y * placed.scale,
+          );
         }
-        if (light.phase !== skyPhase) {
-          skyPhase = light.phase;
-          adoptTexture(skySprite, paintBackdrop(light));
+        // Grow the pinned picture until it covers the screen, but keep the
+        // original 640×500 block on the same spot as the grid. A drag moves
+        // the grid only. The extra sky and ground stay here.
+        const extraTop = Math.ceil(Math.max(0, placed.y) / placed.scale);
+        const extraBottom = Math.ceil(
+          Math.max(0, application.screen.height - (placed.y + SCENE_H * placed.scale)) / placed.scale,
+        );
+        const extraLeft = Math.ceil(Math.max(0, placed.x) / placed.scale);
+        const extraRight = Math.ceil(
+          Math.max(0, application.screen.width - (placed.x + SCENE_W * placed.scale)) / placed.scale,
+        );
+        const nextSky = `${light.phase}|${extraTop}|${extraBottom}|${extraLeft}|${extraRight}`;
+        if (nextSky !== skyKey) {
+          skyKey = nextSky;
+          adoptTexture(skySprite, paintExtendedBackdrop(light, extraTop, extraBottom, extraLeft, extraRight));
+          skySprite.position.set(-extraLeft, -extraTop);
         }
         upload(shown, light);
         const site = liveFx?.crane || shown.buildings.find((building) => building.status === "in_progress");

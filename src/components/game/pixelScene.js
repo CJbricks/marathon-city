@@ -20,6 +20,9 @@ export const SCENE_W = 640;
 export const SCENE_H = 500;
 const OX = 320;
 const OY = 176;
+// Where the painted sky stops and the prairie starts, in scene pixels.
+// CityView lines the flat full-screen ground up with this row.
+export const HORIZON_Y = OY - 8;
 const HW = 12;
 const HH = 6;
 const STORY = 3;
@@ -467,7 +470,7 @@ function skyAndLand(data, light) {
   const mid = light.sky[1];
   const horizon = light.sky[2];
   const bands = 8;
-  const horizonY = OY - 8;
+  const horizonY = HORIZON_Y;
   for (let y = 0; y < SCENE_H; y++) {
     const t = Math.min(1, y / horizonY);
     const c = t < 0.5 ? top.map((v, i) => Math.round(v + (mid[i] - v) * (t * 2))) : mid.map((v, i) => Math.round(v + (horizon[i] - v) * ((t - 0.5) * 2)));
@@ -568,8 +571,85 @@ function sceneCanvas() {
 // Sky, mountains, and the sandy ground. No buildings. CityView pins this
 // picture to the screen so a drag does not slide the mountains away.
 export function paintBackdrop(light) {
-  const { canvas, ctx, image } = sceneCanvas();
-  skyAndLand(image.data, light);
+  return paintExtendedBackdrop(light, 0, 0, 0, 0);
+}
+
+// The same sky and prairie, with extra rows and columns so the texture
+// reaches the edges of a tall or wide screen. The original 640×500 picture
+// stays in the middle and lines up with the grid. extra* are scene pixels.
+export function paintExtendedBackdrop(light, extraTop, extraBottom, extraLeft, extraRight) {
+  const top = Math.max(0, Math.min(4000, extraTop | 0));
+  const bottom = Math.max(0, Math.min(4000, extraBottom | 0));
+  const left = Math.max(0, Math.min(4000, extraLeft | 0));
+  const right = Math.max(0, Math.min(4000, extraRight | 0));
+  const width = SCENE_W + left + right;
+  const height = SCENE_H + top + bottom;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const image = ctx.createImageData(width, height);
+  const data = image.data;
+  const blit = (x, y, c) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const i = (y * width + x) * 4;
+    data[i] = c[0];
+    data[i + 1] = c[1];
+    data[i + 2] = c[2];
+    data[i + 3] = 255;
+  };
+
+  const skyTop = light.sky[0];
+  for (let y = 0; y < top; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const dither = y % 4 === 3 && (x + y) % 2 === 0;
+      blit(x, y, dither ? skyTop.map((v) => Math.min(255, v + 8)) : skyTop);
+    }
+  }
+
+  const ambient = light.ambient.map((v) => Math.max(0.25, Math.min(1.15, v)));
+  const base = sceneCanvas();
+  skyAndLand(base.image.data, light);
+  for (let y = 0; y < SCENE_H; y += 1) {
+    for (let x = 0; x < SCENE_W; x += 1) {
+      const i = (y * SCENE_W + x) * 4;
+      blit(x + left, y + top, [base.image.data[i], base.image.data[i + 1], base.image.data[i + 2]]);
+    }
+    if (y >= HORIZON_Y) {
+      // Repeating the edge pixel would copy a speckle down the margin
+      // and look like a stripe. Paint the prairie color instead.
+      const t = y - HORIZON_Y;
+      const raw = t < 10 ? hex("#7a7a44") : t < 36 ? hex("#a09654") : hex("#c4b56a");
+      const c = mul(raw, ambient);
+      for (let x = 0; x < left; x += 1) {
+        blit(x, y + top, (x * 3 + y * 5) % 17 === 0 ? mix(c, 0.86) : c);
+      }
+      for (let x = 0; x < right; x += 1) {
+        const sx = left + SCENE_W + x;
+        blit(sx, y + top, (sx * 3 + y * 5) % 17 === 0 ? mix(c, 0.86) : c);
+      }
+    } else {
+      const leftEdge = [
+        base.image.data[(y * SCENE_W) * 4],
+        base.image.data[(y * SCENE_W) * 4 + 1],
+        base.image.data[(y * SCENE_W) * 4 + 2],
+      ];
+      const rightIndex = (y * SCENE_W + SCENE_W - 1) * 4;
+      const rightEdge = [base.image.data[rightIndex], base.image.data[rightIndex + 1], base.image.data[rightIndex + 2]];
+      for (let x = 0; x < left; x += 1) blit(x, y + top, leftEdge);
+      for (let x = 0; x < right; x += 1) blit(left + SCENE_W + x, y + top, rightEdge);
+    }
+  }
+
+  const ground = mul(hex("#c4b56a"), ambient);
+  for (let y = 0; y < bottom; y += 1) {
+    const sceneY = SCENE_H + y;
+    for (let x = 0; x < width; x += 1) {
+      const speckle = (x * 3 + sceneY * 5) % 17 === 0 ? mix(ground, 0.86) : ground;
+      blit(x, top + SCENE_H + y, speckle);
+    }
+  }
+
   ctx.putImageData(image, 0, 0);
   return canvas;
 }
