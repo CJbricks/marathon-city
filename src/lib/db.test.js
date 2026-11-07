@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { peekAttempt, recordFailure } from "./cityCode.js";
 import { getStore, resetStoreCache } from "./db.js";
 import { cityPayload } from "./payload.js";
 import { SaveRejected } from "./saves.js";
@@ -48,6 +49,7 @@ describe("named saves", () => {
     expect(first.name).toBe("Training block");
     expect(first.slot).toBe(1);
     expect(first.active).toBe(true);
+    expect(first.code).toMatch(/^\d{5}$/);
     await store.addActivities("user-1", first.id, [run("easy", 3)]);
 
     const second = await store.createSave("user-1", {
@@ -62,6 +64,8 @@ describe("named saves", () => {
 
     expect(await store.listActivities(first.id)).toHaveLength(1);
     expect(await store.listActivities(second.id)).toHaveLength(1);
+    expect(second.code).toMatch(/^\d{5}$/);
+    expect(second.code).not.toBe(first.code);
     expect((await store.getSave("user-1")).id).toBe(second.id);
 
     await store.setActive("user-1", first.id);
@@ -118,6 +122,8 @@ describe("named saves", () => {
     const saves = await store.listSaves(userId);
     expect(saves).toHaveLength(1);
     expect(saves[0]).toMatchObject({ id: userId, name: "Denver", slot: 1, active: true });
+    expect(saves[0].code).toMatch(/^\d{5}$/);
+    expect((await store.listSaves(userId))[0].code).toBe(saves[0].code);
     expect(await store.listActivities(userId)).toHaveLength(1);
 
     const added = await store.createSave(userId, {
@@ -147,5 +153,48 @@ describe("named saves", () => {
       ["Fast", 8],
     ]);
     expect(body.city.summary.totalRunMiles).toBe(8);
+    expect(body.save.code).toMatch(/^\d{5}$/);
+    expect(body.save.ownerId).toBeUndefined();
+    expect(body.saves.every((save) => /^\d{5}$/.test(save.code))).toBe(true);
+  });
+
+  it("opens the same city from a code and keeps the owner's sync clock", async () => {
+    const store = getStore();
+    await store.ensureUser("owner");
+    await store.ensureUser("guest");
+    const city = await store.createSave("owner", { name: "Shared", city: "Denver", startMode: "all" });
+    expect(await store.claimCode("guest", "99999")).toBeNull();
+    const opened = await store.claimCode("guest", city.code);
+    expect(opened.id).toBe(city.id);
+    expect((await store.getSave("guest")).id).toBe(city.id);
+    expect((await store.getSave("guest")).lastSyncedAt).toBeNull();
+
+    await store.addActivities("guest", city.id, [run("guest-run", 4)]);
+    expect(await store.listActivities(city.id)).toHaveLength(1);
+    expect(await store.addActivities("stranger", city.id, [run("nope", 1)])).toEqual([]);
+
+    const stamped = await store.getSave("guest");
+    stamped.lastSyncedAt = "2026-11-07T00:00:00.000Z";
+    await store.saveCity("guest", stamped);
+    expect((await store.getSave("owner")).lastSyncedAt).toBeNull();
+    expect((await store.getSave("guest")).lastSyncedAt).toBe("2026-11-07T00:00:00.000Z");
+
+    const body = await cityPayload("guest");
+    expect(body.save.id).toBe(city.id);
+    expect(body.save.code).toBe(city.code);
+    expect(body.activities).toHaveLength(1);
+  });
+
+  it("stores a failed-code lock on the device key", async () => {
+    const store = getStore();
+    let state = null;
+    const now = 5_000_000;
+    for (let i = 0; i < 5; i += 1) {
+      state = recordFailure(state, now + i);
+      await store.setCodeAttempt("user:guest", state);
+    }
+    const saved = await store.getCodeAttempt("user:guest");
+    expect(peekAttempt(saved, now + 10).allowed).toBe(false);
+    expect(peekAttempt(saved, saved.lockedUntil + 1).allowed).toBe(true);
   });
 });

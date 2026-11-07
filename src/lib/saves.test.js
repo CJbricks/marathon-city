@@ -65,7 +65,7 @@ describe("named save migration", () => {
     const sql = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
     const statements = splitSchema(sql);
     const blocks = statements.filter((statement) => statement.startsWith("DO"));
-    expect(blocks).toHaveLength(2);
+    expect(blocks).toHaveLength(3);
     for (const block of blocks) {
       expect(block).toContain("BEGIN");
       expect(block).toContain("END $$");
@@ -75,5 +75,7 @@ describe("named save migration", () => {
     expect(statements.some((statement) => statement.includes("PRIMARY KEY (save_id)"))).toBe(true);
     expect(sql).toContain("CHECK (slot BETWEEN 1 AND 3)");
     expect(sql).toContain("BETWEEN 1 AND 24");
+    expect(sql).toContain("WHERE code IS NULL");
+    expect(sql).toContain("city_saves_code");
   });
 });

@@ -13,6 +13,8 @@
 // back, which wipes React state, so the half-finished city (name, and
 // which slot it will replace) is also written to sessionStorage. When
 // Strava returns, that draft is what the date and race screens finish.
+// A city code opens someone else's save on this phone. Logging a run
+// still needs this phone's own Strava login.
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
@@ -21,6 +23,7 @@ import { randomQuote } from "@/lib/quotes";
 import { isRunActivity, replay, shouldFlyPlane } from "@/lib/replay";
 import { MAX_SAVES, cleanName } from "@/lib/saves";
 import {
+  CodeScreen,
   ConfirmReplaceScreen,
   LoadingScreen,
   ManualDialog,
@@ -354,8 +357,10 @@ export default function Game() {
         base = [...base, run];
         continue;
       }
-      const steps = 12;
-      const ms = Math.max(1200, Number(run.miles) * 500);
+      // A little slower than the first version so the dust at the base
+      // of the lot is visible before the next story starts.
+      const steps = 14;
+      const ms = Math.max(1500, Number(run.miles) * 600);
       setBanner(fresh.length > 1 ? `RUN ${i + 1} OF ${fresh.length}` : "");
       for (let step = 1; step <= steps; step++) {
         const frac = step / steps;
@@ -439,7 +444,38 @@ export default function Game() {
   });
 
   async function logRun() {
+    // A shared city on a phone that has never signed into Strava cannot
+    // pull that phone's runs until it does. Demo cities still type a distance.
+    if (payload?.save && !payload.save.demo && !payload.connected && payload.stravaConfigured) {
+      setNotice("");
+      setScreen("strava-play");
+      return;
+    }
     await importStrava(payload?.activities || [], { askManual: true });
+  }
+
+  async function submitCode(code) {
+    setNotice("");
+    const response = await fetch("/api/city/code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNoticeOk(false);
+      setNotice(body.error || "That code did not work.");
+      return;
+    }
+    setPayload(body);
+    cacheWrite(body);
+    setScreen("city");
+    const neverSynced = body.save && body.connected && !body.save.demo && !body.save.lastSyncedAt;
+    if (neverSynced) {
+      setNoticeOk(false);
+      setNotice("SYNCING STRAVA");
+      await importRef.current?.(body.activities || [], { askManual: false });
+    }
   }
 
   async function submitManual(miles) {
@@ -479,7 +515,23 @@ export default function Game() {
         onResume={() => setScreen("resume")}
         onNew={startNew}
         onDemo={startDemo}
+        onCode={() => {
+          setNotice("");
+          setScreen("code");
+        }}
         onBack={payload.save ? () => setScreen("city") : null}
+      />
+    );
+  }
+  if (screen === "code") {
+    return (
+      <CodeScreen
+        notice={notice}
+        onBack={() => {
+          setNotice("");
+          setScreen("title");
+        }}
+        onSubmit={submitCode}
       />
     );
   }
@@ -539,6 +591,21 @@ export default function Game() {
       <PickerScreen
         onBack={() => setScreen("name")}
         onNext={() => setScreen(payload.connected ? "start" : "strava")}
+      />
+    );
+  }
+  if (screen === "strava-play") {
+    return (
+      <StravaScreen
+        configured={payload.stravaConfigured}
+        notice={notice}
+        force={forceReconnect}
+        saveName={payload.save?.name || ""}
+        playing
+        onBack={() => {
+          setNotice("");
+          setScreen("city");
+        }}
       />
     );
   }
@@ -629,14 +696,17 @@ export default function Game() {
       ) : null}
       {notice ? <p className={noticeOk ? "hud-note ok" : "hud-note"}>{notice}</p> : null}
       <footer className="hud">
-        <span>{summary ? `${summary.totalRunMiles} MI` : "0 MI"}</span>
-        <span>{payload.save?.name || "DENVER"}</span>
-        <span>{summary ? `${payload.city.buildings.length} BLDG` : "0 BLDG"}</span>
-        <span>{`${landmarks} LANDMARKS`}</span>
+        <span className="hud-left">{summary ? `${summary.totalRunMiles} MI` : "0 MI"}</span>
+        <span className="hud-name">{payload.save?.name || "DENVER"}</span>
+        <span className="hud-right">
+          <span>{summary ? `${payload.city.buildings.length} BLDG` : "0 BLDG"}</span>
+          <span>{`${landmarks} LANDMARKS`}</span>
+        </span>
       </footer>
       {menu ? (
         <div className="modal">
           <p>MENU</p>
+          {payload.save?.code ? <p className="pixel-chip">CODE {payload.save.code}</p> : null}
           <button type="button" className="pixel-btn gold" disabled={playing} onClick={() => { setMenu(false); logRun(); }}>
             LOG RUN
           </button>

@@ -1,13 +1,14 @@
 "use client";
 
-// Opening-flow screens, including the save name, the resume list, and the
-// replace confirm. They use the loading screen's stage: 320 wide, scaled
-// to the phone, pixel font, Nuggets stripes, and a gold frame. Labels match
-// the prototype: Resume City, New City, the five-city picker (only Denver
-// is READY), Connect with Strava, all history or a start date, then the
-// race-day question.
+// Opening-flow screens, including the save name, the resume list, the city
+// code, and the replace confirm. They use the loading screen's stage:
+// 320 wide, scaled to the phone, pixel font, Nuggets stripes, and a gold
+// frame. Labels match the prototype: Resume City, New City, the five-city
+// picker (only Denver is READY), Connect with Strava, all history or a
+// start date, then the race-day question.
 
 import { useEffect, useState } from "react";
+import { normalizeCityCode } from "@/lib/cityCode";
 import { MAX_SAVES, NAME_MAX, cleanName, saveLabel } from "@/lib/saves";
 
 export const CITIES = ["AUSTIN", "DENVER", "BOULDER", "NEW YORK", "TOKYO"];
@@ -54,10 +55,10 @@ export function LoadingScreen({ quote }) {
   );
 }
 
-export function TitleScreen({ saves, playingName, notice, onResume, onNew, onDemo, onBack }) {
+export function TitleScreen({ saves, playingName, notice, onResume, onNew, onDemo, onCode, onBack }) {
   const count = saves?.length || 0;
   return (
-    <Stage height={playingName || notice ? 240 : 210}>
+    <Stage height={playingName || notice ? 280 : 250}>
       <p className="pixel-kicker">5280 FT</p>
       <h1 className="pixel-title">MARATHON CITY</h1>
       <div className="btn-row">
@@ -73,6 +74,9 @@ export function TitleScreen({ saves, playingName, notice, onResume, onNew, onDem
       {notice ? <p className="pixel-note warn">{notice}</p> : null}
       <button type="button" className="pixel-btn demo" onClick={onDemo}>
         DEMO CITY
+      </button>
+      <button type="button" className="pixel-btn" onClick={onCode}>
+        ENTER CITY CODE
       </button>
       {onBack ? (
         <button type="button" className="pixel-btn" onClick={onBack}>
@@ -98,7 +102,8 @@ function SaveButtons({ saves, selectedId, onSelect }) {
           >
             {save.name || save.city || "DENVER"}
             <small>
-              {saveLabel(save)} - {miles} MI{save.active ? " - PLAYING" : ""}
+              {saveLabel(save)} - {miles} MI{save.code ? ` - CODE ${save.code}` : ""}
+              {save.active ? " - PLAYING" : ""}
             </small>
           </button>
         );
@@ -109,7 +114,7 @@ function SaveButtons({ saves, selectedId, onSelect }) {
 
 export function ResumeScreen({ saves, onOpen, onBack }) {
   return (
-    <Stage height={280}>
+    <Stage height={320}>
       <h2 className="pixel-heading">YOUR CITIES</h2>
       <SaveButtons saves={saves} onSelect={(save) => onOpen(save.id)} />
       <p className="pixel-note">{saves.length} OF {MAX_SAVES} CITIES</p>
@@ -124,7 +129,7 @@ export function ReplaceScreen({ saves, notice, onPick, onBack }) {
   const [selectedId, setSelectedId] = useState(saves[0]?.id || "");
   const chosen = saves.find((save) => save.id === selectedId) || saves[0];
   return (
-    <Stage height={300}>
+    <Stage height={340}>
       <h2 className="pixel-heading">ALL 3 CITIES ARE FULL</h2>
       <p className="pixel-note">PICK ONE TO REPLACE</p>
       <SaveButtons saves={saves} selectedId={chosen?.id} onSelect={(save) => setSelectedId(save.id)} />
@@ -227,13 +232,51 @@ export function PickerScreen({ onNext, onBack }) {
   );
 }
 
-export function StravaScreen({ configured, notice, force, saveName, onSkip, onBack, onDemo }) {
+export function CodeScreen({ notice, busy, onSubmit, onBack }) {
+  const [code, setCode] = useState("");
+  const ready = Boolean(normalizeCityCode(code));
   return (
     <Stage height={240}>
+      <h2 className="pixel-heading">ENTER CITY CODE</h2>
+      <p className="pixel-note">FIVE DIGITS FROM THE OTHER PHONE</p>
+      <form
+        className="name-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const cleaned = normalizeCityCode(code);
+          if (cleaned && !busy) onSubmit(cleaned);
+        }}
+      >
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          maxLength={5}
+          value={code}
+          aria-label="City code"
+          placeholder="04821"
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 5))}
+        />
+        {notice ? <p className="pixel-note warn">{notice}</p> : null}
+        <button type="submit" className="pixel-btn gold" disabled={!ready || busy}>
+          OPEN CITY
+        </button>
+      </form>
+      <button type="button" className="pixel-btn" onClick={onBack}>
+        BACK
+      </button>
+    </Stage>
+  );
+}
+
+export function StravaScreen({ configured, notice, force, saveName, playing, onSkip, onBack, onDemo }) {
+  return (
+    <Stage height={playing ? 220 : 240}>
       <h2 className="pixel-heading">CONNECT STRAVA</h2>
       <p className="pixel-chip">DENVER</p>
       {saveName ? <p className="pixel-note">{saveName}</p> : null}
-      <p className="pixel-note">YOUR RUNS BUILD THE CITY</p>
+      <p className="pixel-note">{playing ? "THIS PHONE SIGNS IN ON ITS OWN" : "YOUR RUNS BUILD THE CITY"}</p>
       {configured ? (
         <a className="pixel-btn strava" href={force ? "/api/strava/start?prompt=force" : "/api/strava/start"}>
           CONNECT WITH STRAVA
@@ -246,12 +289,16 @@ export function StravaScreen({ configured, notice, force, saveName, onSkip, onBa
         <button type="button" className="pixel-btn" onClick={onBack}>
           BACK
         </button>
-        <button type="button" className="pixel-btn" onClick={onSkip}>
-          BUILD WITHOUT STRAVA
-        </button>
-        <button type="button" className="pixel-btn" onClick={onDemo}>
-          DEMO
-        </button>
+        {playing ? null : (
+          <button type="button" className="pixel-btn" onClick={onSkip}>
+            BUILD WITHOUT STRAVA
+          </button>
+        )}
+        {playing ? null : (
+          <button type="button" className="pixel-btn" onClick={onDemo}>
+            DEMO
+          </button>
+        )}
       </div>
       <p className="pixel-note">READ-ONLY ACCESS TO YOUR ACTIVITIES</p>
     </Stage>

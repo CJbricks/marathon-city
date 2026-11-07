@@ -12,6 +12,7 @@ src/lib/lighting.js        Device-clock sky, from the prototype keyframes.
 src/lib/quotes.js          Reads prototype/quotes.json for the loading screen and the plane banner.
 src/lib/raceDay.js         Local-calendar check for the saved race date.
 src/lib/saves.js           Save name, 3-slot cap, and the resume-list label.
+src/lib/cityCode.js        Five-digit city code and the guess limit.
 src/lib/db.js              Postgres if DATABASE_URL is set, otherwise .data/store.json.
 src/lib/schema.sql         Tables. `npm run migrate` applies this.
 src/lib/strava.js          OAuth URL, token exchange, refresh, activity fetch.
@@ -20,6 +21,7 @@ src/lib/demo.js            Reads prototype/activities.txt for Demo city.
 src/app/api/session        Loads the save and replays it.
 src/app/api/city           Creates one named save (Denver, history or a date, or demo).
 src/app/api/city/open      Switches which of the three saves is on screen.
+src/app/api/city/code      Opens a city by its five-digit code.
 src/app/api/city/reset     Deletes the save on screen and its activities. Keeps the others and the Strava tokens.
 src/app/api/sync           Log run. Strava pull, dedupe, then move last_synced_at.
 src/app/api/sync/manual    A typed distance, stored like a Strava run.
@@ -28,7 +30,8 @@ src/app/api/strava/callback  Trades the code for tokens.
 src/components/game/Game.js      Screen flow and the Log run animation timer.
 src/components/game/Screens.js   Title, picker, Strava, start date, loading.
 src/components/game/pixelScene.js  Draws the pixel city into one small canvas.
-src/components/game/CityView.js  Shows that canvas in Pixi. Crane and plane move on top.
+src/components/game/dust.js      Pixel specks at the base of a building that is going up.
+src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
 src/app/layout.js          Font, title, viewport, Chakra provider.
 src/app/page.js            Mounts Game. Stays a Server Component.
 prototype/                 The original scripts and stills. The app does not execute them.
@@ -63,6 +66,22 @@ Resume lists each save with its name, where the miles start (all history, a date
 Demo city is the sample log, named "Demo city". It uses a slot too. It does not sync from Strava, because its `last_synced_at` is set when it is created.
 
 `src/lib/saves.js` holds the cap and the name check. Both the JSON file and Postgres call it, so a fourth city or a blank name cannot sneak in through one store only.
+
+## City codes
+
+Every save gets a five-digit code when it is created, for example `04821`. The digits are text, not a number, so the leading zero stays. Postgres keeps a unique index on that column, and the migration fills a code for any city that was saved before this existed. Running the migration again does not mint a second code. The JSON file on a laptop does the same fill the first time that file is read.
+
+The code is on the Resume list under the city's name, and in the Menu as `CODE 04821`. That is the thing to write down.
+
+**Enter city code** is on the opening screen, in the same pixel frame as the other screens. A correct code on another phone or browser loads that same city. It is not a copy. Runs added there show up for the owner too, and reset erases that city for both, because both are playing the one save. The new phone keeps its own user id. Strava tokens stay on that id, so **Log run** on a phone that has not signed in yet sends them through the existing Strava button. The client id and secret are still only in the server environment. A demo city does not ask for Strava. It still asks for a typed distance.
+
+Each phone keeps its own "last synced" clock. If they shared the city's clock, the second phone's sync would move the timestamp and the owner's next pull could skip runs.
+
+## The guess limit
+
+Five digits is 100,000 possibilities. A script could try them all. `src/lib/cityCode.js` allows five failures in a minute, then waits 30 seconds, then 60, then 120, up to 15 minutes. The wait is stored for the browser's user id and, when the request has one, for the IP. A new cookie on the same network still hits the IP row. A wrong code, a short code, and a locked guess all return the same sentence: "That code did not work." The route does not look the code up while the wait is active, so a locked guesser cannot learn whether a code is real. This is basic protection, not a secret. Someone patient can still guess a code. The tradeoff is that the owner can read five digits off the menu and type them on the couch, which a long random token would make miserable.
+
+The counter lives in `code_attempts`. A page load does not write it, and it does not run the schema. Schema changes still happen only in `scripts/migrate.mjs` at build time.
 
 ## Log run
 
@@ -100,7 +119,7 @@ Two strings matter:
 - `DATABASE_URL` is the pooled URL. The host name contains `-pooler`. The running app uses this one. A serverless function lives for one request, and the pooler lets many of those requests share a few real database connections. The driver turns prepared statements off for that host (`prepare: false` in `src/lib/pgClient.mjs`) because the pooler does not keep the session a prepared statement belongs to. SSL is required. Neon refuses a plain connection.
 - `DATABASE_URL_UNPOOLED` is the direct URL. `scripts/migrate.mjs` prefers it, and uses `DATABASE_URL` only when the unpooled one is absent. Creating tables wants a direct connection. The script logs which variable name it used, not the value.
 
-`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. A database that still has one city per person gets `save_id`, `name`, `slot`, and `active` on that row. The row is kept: slot 1, active, named after its theme (so an old Denver save still says Denver). Its runs are pointed at that `save_id`. A run that belonged to no city is removed so the new key can be required. Cities that exist keep their runs. Every statement is written so running it again is a no-op, which is why it is safe on every deploy. The `DO` blocks are one statement each. Semicolons inside them change the old primary key. They are not separate commands.
+`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. It also adds `code` on each city, `city_access` for a browser that opened a code, and `code_attempts` for wrong guesses. A database that still has one city per person gets `save_id`, `name`, `slot`, and `active` on that row. The row is kept: slot 1, active, named after its theme (so an old Denver save still says Denver). Its runs are pointed at that `save_id`. A run that belonged to no city is removed so the new key can be required. Cities that exist keep their runs. Every statement is written so running it again is a no-op, which is why it is safe on every deploy. The `DO` blocks are one statement each. Semicolons inside them change the old primary key. They are not separate commands.
 
 The migration runs at build time, from the `vercel-build` script in `package.json`: migrate, then `next build`. Vercel already has the URL in the build environment, so the tables exist before the new deployment starts serving traffic. Nobody has to open a database console and paste SQL. If `DATABASE_URL` is unset, the script prints one line and exits successfully. `npm run build` on a laptop does not call the migration. `npm run migrate` still does, and it skips the same way when the URL is empty.
 
@@ -126,7 +145,11 @@ The live city is not stored as pixels. It is rebuilt from the activity rows on e
 
 ## Art system
 
-The city is not a set of flat 3D boxes redrawn every frame. `pixelScene.js` paints one 640×500 picture, the same way `prototype/render.py` does, and `CityView.js` uploads it as a single Pixi texture. Nearest-neighbor scaling keeps the pixels square when the picture is enlarged. The texture is thrown away and painted again only when a building's story count changes or the clock moves to a new lighting phase (morning, midday, dusk, night). Between those moments the GPU just moves the texture. The crane, the plane, the race-day parade, and the transit lines are drawn on top, because those are the pieces that move every frame.
+The city is not a set of flat 3D boxes redrawn every frame. `pixelScene.js` paints two 640×500 pictures. `paintBackdrop` is the sky, the mountains, and the sandy ground. `paintScene` with `gridOnly` is the lots, roads, and buildings, and every other pixel in that picture is clear. `CityView.js` uploads each as a Pixi texture and scales both with nearest-neighbor. The grid texture is thrown away and painted again only when a building's story count changes or the clock moves to a new lighting phase (morning, midday, dusk, night). The backdrop is painted again only when the phase changes.
+
+The two pictures start in the same place. `fit` scales the 640×500 picture until it covers the view and then centers it. That scale is the city's size on a phone. It was not changed to fill the gray bands. What changed is what is allowed to move. A drag, a pinch, or the mouse wheel changes only the grid's container. The backdrop's container is placed by `fit` and then left alone, including while you zoom. A flat sky-and-ground rectangle sits behind both, painted to the edges of the canvas, so a very tall or very wide screen still has sky at the top and ground down to the bottom bar. The city screen itself is `position: fixed` and the canvas is absolutely positioned inside its box, because Safari was sizing the canvas from its bitmap and leaving a light-gray band under the menu and another above the bar.
+
+The crane, the dust, the plane, the race-day parade, and the transit lines are drawn on top. The crane and the dust live in the grid's container, so they stay on the building while you pan. The crane's idle sway is the same sine bob as before. The dust is eight reused pixel rectangles at the west side, the east side, and the front corner of the lot. They only run while a story is being added (`dust` on the animation), and the build steps take a little longer (`14` steps, at least `1500` ms) so the puff is visible. The plane stays in screen space. None of these call `paintScene` every frame.
 
 The isometric placement is `x = (u - v) * 12`, `y = (u + v) * 6`, with the origin near the middle of the canvas. A lot with a larger `u + v` is closer to the camera, so it is painted later and covers the lots behind it. Every building is three faces: the left face is darker, the right face is mid, the top is lighter. That is the whole shading model. Windows are single pixels on those faces. At dusk and night (`windowLight` from `lighting.js`) those pixels switch to a warm yellow, and the sky and mountains use that phase's colors.
 

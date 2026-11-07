@@ -3,6 +3,10 @@
 // canvas as a single texture with nearest-neighbor scaling, so the blocks
 // stay crisp and the static city is not redrawn every frame.
 //
+// The sky, mountains, and prairie are painted by paintBackdrop. The lots,
+// roads, and buildings are painted by paintScene with gridOnly. CityView
+// keeps the backdrop still and moves only the grid.
+//
 // Isometric math, same as the prototype: a lot at (u, v) lands at
 //   x = OX + (u - v) * 12
 //   y = OY + (u + v) * 6
@@ -552,16 +556,32 @@ function ridge(data, seed, base, hmin, hmax, lit, shade, snowL, snowS, snowline)
   }
 }
 
-export function paintScene(city, light) {
+function sceneCanvas() {
   const canvas = document.createElement("canvas");
   canvas.width = SCENE_W;
   canvas.height = SCENE_H;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const image = ctx.createImageData(SCENE_W, SCENE_H);
+  return { canvas, ctx, image };
+}
+
+// Sky, mountains, and the sandy ground. No buildings. CityView pins this
+// picture to the screen so a drag does not slide the mountains away.
+export function paintBackdrop(light) {
+  const { canvas, ctx, image } = sceneCanvas();
+  skyAndLand(image.data, light);
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
+
+export function paintScene(city, light, options = {}) {
+  const { canvas, ctx, image } = sceneCanvas();
   const data = image.data;
   const ambient = light.ambient.map((v) => Math.max(0.25, Math.min(1.15, v)));
   const night = light.windowLight > 0.35;
-  skyAndLand(data, light);
+  // The grid picture starts clear. The backdrop shows through every pixel
+  // that is not a lot, a road, or a building.
+  if (!options.gridOnly) skyAndLand(data, light);
 
   const tiles = city.map.tiles;
   const period = city.map.period;
