@@ -33,10 +33,27 @@ export function pick(rand, list) {
 }
 
 export function createPen(data, width, height) {
+  // The box of pixels this pen has touched since the last reset. CityView
+  // uses it to cut one building out of the shared buffer into its own
+  // small texture, instead of keeping every building in one picture that
+  // has to sit entirely in front of the cars.
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  function touch(x, y) {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }
+
   function put(x, y, c) {
     x = Math.round(x);
     y = Math.round(y);
     if (x < 0 || y < 0 || x >= width || y >= height || !c) return;
+    touch(x, y);
     const i = (y * width + x) * 4;
     data[i] = c[0];
     data[i + 1] = c[1];
@@ -53,6 +70,9 @@ export function createPen(data, width, height) {
     if (x1 < x0) [x0, x1] = [x1, x0];
     x0 = Math.max(0, Math.ceil(x0));
     x1 = Math.min(width - 1, Math.floor(x1));
+    if (x0 > x1) return;
+    touch(x0, y);
+    touch(x1, y);
     let i = (y * width + x0) * 4;
     for (let x = x0; x <= x1; x += 1) {
       data[i] = c[0];
@@ -214,6 +234,29 @@ export function createPen(data, width, height) {
     }
   }
 
+  function dirtyRect() {
+    if (maxX < 0) return null;
+    return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  }
+
+  function resetDirty() {
+    minX = width;
+    minY = height;
+    maxX = -1;
+    maxY = -1;
+  }
+
+  // Zero only the pixels this drawing touched, so the next building does
+  // not inherit a dome or a window from the one before it.
+  function clearDirty() {
+    if (maxX < 0) return;
+    for (let y = minY; y <= maxY; y += 1) {
+      const start = (y * width + minX) * 4;
+      data.fill(0, start, (y * width + maxX + 1) * 4);
+    }
+    resetDirty();
+  }
+
   return {
     data,
     width,
@@ -231,5 +274,8 @@ export function createPen(data, width, height) {
     dome,
     disc,
     tree,
+    dirtyRect,
+    resetDirty,
+    clearDirty,
   };
 }

@@ -1,10 +1,11 @@
-// Sprites that move, drawn on top of the cached city picture.
+// Sprites that move, drawn in the same picture pixels as the 1280×1000 scene.
 //
-// They are in the same picture pixels as the 1280×1000 scene, so a car
-// is about as long as a third of a lot and does not look like a speck
-// next to a 6-pixel story. Pixi redraws this graphics object every frame.
-// It is not part of sceneSignature, so a moving foot does not repaint
-// the skyline.
+// They are not one layer on top of every building. CityView keeps a
+// graphics object per depth bucket, and layerFor(depth) is the bucket for
+// that u + v. A building whose front corner is closer to the camera has
+// a higher depth and is a sprite drawn after that bucket, so it covers
+// the car. Pixi redraws only the buckets that have something in them.
+// None of this is part of the cached ground texture.
 //
 // How fast they move is rules.vehicles.speedMultiplier (0.75) and
 // rules.pedestrians.speedMultiplier (0.5). Those numbers are not in
@@ -52,13 +53,13 @@ export function transitRoad(piece, map) {
   };
 }
 
-function pointOnRoad(span, t) {
+function pointOnRoad(span, t, z = 4) {
   const along = span.start + (span.end - span.start) * t;
   const u = span.axis === "h" ? along : span.fixed;
   const v = span.axis === "h" ? span.fixed : along;
-  // Lifted 4 picture pixels, double the old 2, so the sprite sits just
-  // above the asphalt at the new scale.
-  return project(u, v, 4);
+  // Lifted a few picture pixels so the sprite sits just above the asphalt.
+  const [x, y] = project(u, v, z);
+  return { x, y, depth: u + v };
 }
 
 function pointOnEdge(span, t, side) {
@@ -66,7 +67,8 @@ function pointOnEdge(span, t, side) {
   const offset = side ? 0.38 : -0.28;
   const u = span.axis === "h" ? along : span.fixed + offset;
   const v = span.axis === "h" ? span.fixed + offset : along;
-  return project(u, v, 2);
+  const [x, y] = project(u, v, 2);
+  return { x, y, depth: u + v };
 }
 
 function wheels(g, px, py, back, front) {
@@ -123,8 +125,7 @@ export function drawWalker(g, x, y, frame, shirt) {
   }
 }
 
-export function drawPopulation(g, city, now) {
-  g.clear();
+export function drawPopulation(layerFor, city, now) {
   if (!city?.map) return;
   const vehicles = city.vehicles || [];
   const vehicleCap = rules.vehicles?.maxAnimated ?? 16;
@@ -135,8 +136,8 @@ export function drawPopulation(g, city, now) {
     const span = transitRoad(vehicle, city.map);
     const lap = VEHICLE_LAP[vehicle.type] || 8000;
     const t = ((now * vehiclePace) / lap + (vehicle.index || i) * 0.17) % 1;
-    const [x, y] = pointOnRoad(span, t);
-    drawVehicle(g, x, y, vehicle.type, blink);
+    const at = pointOnRoad(span, t);
+    drawVehicle(layerFor(at.depth), at.x, at.y, vehicle.type, blink);
   }
   const people = city.pedestrians;
   const count = people?.count || 0;
@@ -149,13 +150,16 @@ export function drawPopulation(g, city, now) {
     const phase = walkerPhase(seed, i);
     const raw = ((now * walkPace) / WALKER_LAP_MS + phase) % 1;
     const t = i % 3 === 0 ? 1 - raw : raw;
-    const [x, y] = pointOnEdge(span, t, i % 2 === 0);
+    const at = pointOnEdge(span, t, i % 2 === 0);
     const frame = Math.floor((now * walkPace) / WALKER_STEP_MS + i) % 2;
-    drawWalker(g, x, y, frame, SHIRTS[i % SHIRTS.length]);
+    drawWalker(layerFor(at.depth), at.x, at.y, frame, SHIRTS[i % SHIRTS.length]);
   }
 }
 
-export function drawTransit(g, city, now) {
+// Painted stripes and stop poles. They do not move, so CityView draws
+// them once into a layer that sits under every building. The coach and
+// the train are separate: those move, and they take a depth bucket.
+export function drawTransitMarks(g, city) {
   g.clear();
   const pieces = city?.transit;
   if (!pieces?.length || !city.map) return;
@@ -163,37 +167,53 @@ export function drawTransit(g, city, now) {
     const span = transitRoad(piece, city.map);
     if (piece.mode === "bike") {
       for (let i = 0; i < 16; i += 2) {
-        const [x, y] = pointOnRoad(span, i / 16);
-        g.rect(Math.round(x), Math.round(y), 8, 3).fill({ color: 0x2e7d32 });
-        g.rect(Math.round(x) + 2, Math.round(y), 4, 2).fill({ color: 0xfdd835 });
+        const at = pointOnRoad(span, i / 16, 2);
+        const x = Math.round(at.x);
+        const y = Math.round(at.y);
+        g.rect(x, y, 8, 3).fill({ color: 0x2e7d32 });
+        g.rect(x + 2, y, 4, 2).fill({ color: 0xfdd835 });
       }
     } else if (piece.mode === "bus") {
       for (let i = 0; i <= 4; i += 1) {
-        const [x, y] = pointOnRoad(span, i / 4);
-        const px = Math.round(x);
-        const py = Math.round(y);
+        const at = pointOnRoad(span, i / 4, 2);
+        const px = Math.round(at.x);
+        const py = Math.round(at.y);
         g.rect(px - 1, py - 8, 3, 8).fill({ color: 0xf57c00 });
         g.rect(px - 4, py, 8, 3).fill({ color: 0xfdd835 });
       }
+    } else {
+      for (let i = 0; i <= 20; i += 1) {
+        const at = pointOnRoad(span, i / 20, 2);
+        g.rect(Math.round(at.x), Math.round(at.y), 4, 2).fill({ color: 0xd0d0d0 });
+        g.rect(Math.round(at.x) + 6, Math.round(at.y) - 2, 3, 2).fill({ color: 0x9a9a9a });
+      }
+    }
+  }
+}
+
+export function drawTransitMovers(layerFor, city, now) {
+  const pieces = city?.transit;
+  if (!pieces?.length || !city.map) return;
+  for (const piece of pieces) {
+    if (piece.mode === "bike") continue;
+    const span = transitRoad(piece, city.map);
+    if (piece.mode === "bus") {
       const t = (now / 9000 + piece.index * 0.17) % 1;
-      const [x, y] = pointOnRoad(span, t);
-      const px = Math.round(x);
-      const py = Math.round(y);
+      const at = pointOnRoad(span, t);
+      const g = layerFor(at.depth);
+      const px = Math.round(at.x);
+      const py = Math.round(at.y);
       g.rect(px - 12, py - 10, 24, 8).fill({ color: 0xfdd835 });
       g.rect(px - 12, py - 10, 24, 2).fill({ color: 0xf9a825 });
       g.rect(px - 6, py - 8, 4, 4).fill({ color: 0x1e88e5 });
       g.rect(px + 2, py - 8, 4, 4).fill({ color: 0x1e88e5 });
       wheels(g, px, py - 2, -8, 4);
     } else {
-      for (let i = 0; i <= 20; i += 1) {
-        const [x, y] = pointOnRoad(span, i / 20);
-        g.rect(Math.round(x), Math.round(y), 4, 2).fill({ color: 0xd0d0d0 });
-        g.rect(Math.round(x) + 6, Math.round(y) - 2, 3, 2).fill({ color: 0x9a9a9a });
-      }
       const t = (now / 7000 + piece.index * 0.13) % 1;
-      const [x, y] = pointOnRoad(span, t);
-      const px = Math.round(x);
-      const py = Math.round(y);
+      const at = pointOnRoad(span, t);
+      const g = layerFor(at.depth);
+      const px = Math.round(at.x);
+      const py = Math.round(at.y);
       g.rect(px - 12, py - 10, 26, 8).fill({ color: 0xd62828 });
       g.rect(px - 6, py - 8, 4, 4).fill({ color: 0xffffff });
       g.rect(px + 4, py - 8, 4, 4).fill({ color: 0xffffff });
@@ -222,8 +242,7 @@ export function drawCrane(g, x, y, stories, bob) {
   g.rect(mastX - 2, topY - 14, 4, 4).fill({ color: 0xff3030 });
 }
 
-export function drawParade(g, city, now) {
-  g.clear();
+export function drawParade(layerFor, city, now) {
   if (!city?.map) return;
   const { tiles, period } = city.map;
   const v = period;
@@ -232,6 +251,7 @@ export function drawParade(g, city, now) {
   for (let i = 0; i < 6; i += 1) {
     const u = 1 + ((lap + i / 6) % 1) * span;
     const [x, y] = project(u, v, 6);
+    const g = layerFor(u + v);
     const color = CONFETTI[i % CONFETTI.length];
     const px = Math.round(x);
     const py = Math.round(y);

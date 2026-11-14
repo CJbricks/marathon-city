@@ -179,6 +179,124 @@ export function paintScenePixels(city, light, options = {}) {
   return data;
 }
 
+// Streets, lawns, and the lip under the diamond. No buildings. This picture
+// stays at the back. Buildings are separate sprites so a tower in front of
+// a car can cover the car.
+export function paintGroundPixels(city, light, options = {}) {
+  const theme = themeFor(options.theme || city.theme || "Denver");
+  const data = new Uint8ClampedArray(SCENE_W * SCENE_H * 4);
+  const pen = createPen(data, SCENE_W, SCENE_H);
+  const ambient = light.ambient.map((v) => Math.max(0.25, Math.min(1.15, v)));
+  const night = light.windowLight > 0.35;
+  const streets = theme.drawStreets || drawStreets;
+  streets(pen, city, theme, ambient, night);
+  return data;
+}
+
+// How far in front something is. Larger means closer to the camera, and
+// it is drawn later so it covers what is behind it. u + v is the same sum
+// the painter already sorts by. A building's depth is its front corner,
+// the edge nearest the camera, not the back corner: a car on the street
+// behind that edge has a smaller sum and ends up behind the walls.
+export function moverDepth(u, v) {
+  return u + v;
+}
+
+export function propDepth(x, y, span = 1) {
+  return x + y + span * 2;
+}
+
+// One graphics object per whole number of depth. A car at 20.4 is drawn
+// in bucket 20, whose zIndex sits after a building at 20 and before a
+// building at 21. 64 covers the 22-tile map with room for a 2-lot quest.
+export const DEPTH_BUCKETS = 64;
+
+export function bucketIndex(depth) {
+  if (!Number.isFinite(depth)) return 0;
+  return Math.max(0, Math.min(DEPTH_BUCKETS - 1, Math.floor(depth)));
+}
+
+// The things that can stand in front of a car: buildings, landmarks,
+// parks (the trees), and side quests. The capitol is a building, so it
+// is not also in the landmark list.
+export function listProps(city) {
+  const props = [];
+  for (const b of city.buildings || []) {
+    props.push({
+      id: `b:${b.id}`,
+      depth: propDepth(b.x, b.y, 1),
+      sig: `${b.type}:${b.status}:${b.storiesBuilt}:${b.variant ?? ""}`,
+      draw(pen, theme, ambient, night) {
+        theme.drawBuilding(pen, b, ambient, night);
+      },
+    });
+  }
+  for (const l of city.landmarks || []) {
+    if (l.key === "capitol") continue;
+    props.push({
+      id: `l:${l.key}:${l.x}:${l.y}`,
+      depth: propDepth(l.x, l.y, 1),
+      sig: l.key,
+      draw(pen, theme, ambient) {
+        theme.drawLandmark(pen, l, ambient);
+      },
+    });
+  }
+  for (const p of city.parks || []) {
+    props.push({
+      id: `p:${p.x}:${p.y}:${p.name}`,
+      depth: propDepth(p.x, p.y, 1),
+      sig: p.name,
+      draw(pen, theme) {
+        theme.drawPark(pen, p);
+      },
+    });
+  }
+  for (const q of city.sideQuests || []) {
+    props.push({
+      id: `q:${q.name}`,
+      depth: propDepth(q.x, q.y, 2),
+      sig: q.name,
+      draw(pen, theme, ambient) {
+        theme.drawQuest(pen, q, ambient);
+      },
+    });
+  }
+  return props;
+}
+
+// One reused buffer for every prop. Cleared only where the last prop
+// drew, so cutting 100 buildings out does not mean wiping a 1280×1000
+// picture 100 times.
+let scratchPen = null;
+function propPen() {
+  if (!scratchPen) {
+    scratchPen = createPen(new Uint8ClampedArray(SCENE_W * SCENE_H * 4), SCENE_W, SCENE_H);
+  }
+  return scratchPen;
+}
+
+export function paintPropPixels(prop, light, themeName = "Denver") {
+  const theme = themeFor(themeName);
+  const pen = propPen();
+  const ambient = light.ambient.map((v) => Math.max(0.25, Math.min(1.15, v)));
+  const night = light.windowLight > 0.35;
+  prop.draw(pen, theme, ambient, night);
+  const rect = pen.dirtyRect();
+  if (!rect) {
+    pen.clearDirty();
+    return null;
+  }
+  const copy = new Uint8ClampedArray(rect.w * rect.h * 4);
+  const { data, width } = pen;
+  for (let row = 0; row < rect.h; row += 1) {
+    const src = ((rect.y + row) * width + rect.x) * 4;
+    copy.set(data.subarray(src, src + rect.w * 4), row * rect.w * 4);
+  }
+  pen.clearDirty();
+  return { x: rect.x, y: rect.y, w: rect.w, h: rect.h, data: copy };
+}
+
 export function paintBackdropPixels(light, themeName = "Denver") {
   const theme = themeFor(themeName);
   const data = new Uint8ClampedArray(SCENE_W * SCENE_H * 4);

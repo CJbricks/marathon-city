@@ -9,8 +9,11 @@
 // between the fingers under the fingers, then clamps the pan so the diamond
 // cannot leave the screen. Zooming back to the opening fit recenters it.
 // The crane, the plane, the parade, the transit lines, the streak vehicles,
-// and the walkers are drawn on top of the grid, in the same picture pixels
-// as the buildings. None of those call paintScene, so the skyline stays cached.
+// and the walkers are drawn in the same picture pixels as the buildings.
+// Buildings are their own sprites, sorted by how close they are. A car is
+// drawn in the gap before any building that is in front of it, so it
+// disappears behind that building instead of sitting on the roof. None of
+// the movers call paintScene, so the skyline stays cached.
 //
 // Which drawings are in the texture comes from the save's city name
 // ("Denver"). That name is the theme. The pinch math does not know it.
@@ -21,8 +24,21 @@ import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
 import { dustPuffs } from "./dust";
 import { clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
-import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransit } from "./overlaySprites";
-import { HORIZON_Y, SCENE_H, SCENE_W, fitBackdropExtras, paintExtendedBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
+import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransitMarks, drawTransitMovers } from "./overlaySprites";
+import {
+  DEPTH_BUCKETS,
+  HORIZON_Y,
+  SCENE_H,
+  SCENE_W,
+  bucketIndex,
+  fitBackdropExtras,
+  listProps,
+  paintExtendedBackdrop,
+  paintGroundPixels,
+  paintPropPixels,
+  project,
+  propDepth,
+} from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
 const DUST_DARK = 0xc4a574;
@@ -54,6 +70,18 @@ function adoptTexture(sprite, canvas) {
   const previous = sprite.texture;
   sprite.texture = texture;
   if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+}
+
+function canvasFromPixels(pixels, w, h) {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+  const image = ctx.createImageData(w, h);
+  image.data.set(pixels);
+  ctx.putImageData(image, 0, 0);
+  return canvas;
 }
 
 // ?time=22:00 previews a clock hour without waiting for it. The live view
@@ -131,17 +159,33 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
       const skySprite = new Sprite(Texture.EMPTY);
       backdrop.addChild(skySprite);
       const world = new Container();
-      const citySprite = new Sprite(Texture.EMPTY);
-      const crane = new Graphics();
-      const dust = new Graphics();
-      // Parade lives in scene space so it follows the street when you pan,
-      // but it is not part of the cached city texture.
-      const parade = new Graphics();
-      const transit = new Graphics();
-      // Vehicles and walkers share one graphics object. It is cleared every
-      // frame. It is not a child of the cached city sprite.
-      const population = new Graphics();
-      world.addChild(citySprite, transit, population, crane, dust, parade);
+      // Lawns and streets. Everything with height lives in `depth`, sorted
+      // so a closer building is drawn after the car it should hide.
+      const groundSprite = new Sprite(Texture.EMPTY);
+      const depth = new Container();
+      depth.sortableChildren = true;
+      const marks = new Graphics();
+      marks.zIndex = 0.25;
+      depth.addChild(marks);
+      const buckets = [];
+      for (let i = 0; i < DEPTH_BUCKETS; i += 1) {
+        const g = new Graphics();
+        g.zIndex = i + 0.5;
+        depth.addChild(g);
+        buckets.push(g);
+      }
+      // The crane and the dust share one object so they stay on the lot
+      // that is going up, just in front of that building.
+      const siteFx = new Graphics();
+      depth.addChild(siteFx);
+      world.addChild(groundSprite, depth);
+      const propSprites = new Map();
+      const usedBuckets = new Set();
+      const layerFor = (key) => {
+        const i = bucketIndex(key);
+        usedBuckets.add(i);
+        return buckets[i];
+      };
       const screenFx = new Graphics();
       application.stage.addChild(fill, backdrop, world, screenFx);
       const bits = [];
@@ -199,13 +243,66 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
 
       let skyKey = "";
       let fillKey = "";
+      let groundKey = "";
+      let marksKey = "";
       const upload = (live, light, themeName) => {
-        const sig = sceneSignature(live, light.phase, themeName);
-        if (sig === painted) return;
-        painted = sig;
-        adoptTexture(citySprite, paintScene(live, light, { gridOnly: true, theme: themeName }));
-        texBytes = SCENE_W * SCENE_H * 4;
-        host.dataset.texBytes = String(texBytes);
+        const groundSig = `${themeName}|${light.phase}|${live.map?.tiles}|${live.map?.period}`;
+        if (groundSig !== groundKey) {
+          groundKey = groundSig;
+          adoptTexture(groundSprite, canvasFromPixels(paintGroundPixels(live, light, { theme: themeName }), SCENE_W, SCENE_H));
+          texBytes = SCENE_W * SCENE_H * 4;
+        }
+        // Each prop keeps its own signature. A story going up repaints
+        // that one building. A lighting change repaints all of them,
+        // because the phase is part of the signature. Cars are not.
+        const props = listProps(live);
+        const alive = new Set();
+        let propBytes = 0;
+        for (const prop of props) {
+          alive.add(prop.id);
+          const sig = `${themeName}|${light.phase}|${prop.sig}`;
+          let sprite = propSprites.get(prop.id);
+          if (sprite && sprite.propSig === sig) {
+            sprite.zIndex = prop.depth;
+            propBytes += sprite.propBytes || 0;
+            continue;
+          }
+          const crop = paintPropPixels(prop, light, themeName);
+          if (!crop) {
+            if (sprite) {
+              depth.removeChild(sprite);
+              const previous = sprite.texture;
+              sprite.destroy();
+              if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+              propSprites.delete(prop.id);
+            }
+            continue;
+          }
+          if (!sprite) {
+            sprite = new Sprite(Texture.EMPTY);
+            depth.addChild(sprite);
+            propSprites.set(prop.id, sprite);
+          }
+          adoptTexture(sprite, canvasFromPixels(crop.data, crop.w, crop.h));
+          sprite.position.set(crop.x, crop.y);
+          sprite.zIndex = prop.depth;
+          sprite.propSig = sig;
+          sprite.propBytes = crop.w * crop.h * 4;
+          propBytes += sprite.propBytes;
+        }
+        for (const [id, sprite] of propSprites) {
+          if (alive.has(id)) continue;
+          depth.removeChild(sprite);
+          const previous = sprite.texture;
+          sprite.destroy();
+          if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+          propSprites.delete(id);
+        }
+        const sig = `${groundSig}|${props.length}|${propBytes}`;
+        if (sig !== painted) {
+          painted = sig;
+          host.dataset.texBytes = String(texBytes + propBytes);
+        }
       };
 
       const paint = () => {
@@ -245,10 +342,13 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         upload(shown, light, themeName);
         const site = liveFx?.crane || shown.buildings.find((building) => building.status === "in_progress");
         if (site) {
+          // Just in front of this lot, and behind any building closer to
+          // the camera. The bucket for this depth is 0.5 above the integer,
+          // so 0.25 keeps the crane between its own building and the cars.
+          siteFx.zIndex = propDepth(site.x, site.y, 1) + 0.25;
           const bob = Math.round(Math.sin(performance.now() / 420) * 4);
           const stories = site.stories ?? site.targetStories ?? site.storiesBuilt ?? 2;
-          drawCrane(crane, site.x, site.y, stories, bob);
-          dust.clear();
+          drawCrane(siteFx, site.x, site.y, stories, bob);
           if (liveFx?.dust) {
             const puffs = dustPuffs(performance.now(), {
               west: project(site.x, site.y + 1, 0),
@@ -257,22 +357,27 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
             });
             for (const puff of puffs) {
               if (!puff.s) continue;
-              dust.rect(puff.x, puff.y, puff.s, puff.s).fill({ color: puff.tone ? DUST_DARK : DUST_LIGHT });
+              siteFx.rect(puff.x, puff.y, puff.s, puff.s).fill({ color: puff.tone ? DUST_DARK : DUST_LIGHT });
               // A second pixel makes the speck read as a puff instead of a dot
               // on the pavement. Still a rectangle, still the same eight slots.
-              if (!puff.tone) dust.rect(puff.x + 6, puff.y - 4, 4, 4).fill({ color: 0xfff6d0 });
+              if (!puff.tone) siteFx.rect(puff.x + 6, puff.y - 4, 4, 4).fill({ color: 0xfff6d0 });
             }
           }
         } else {
-          crane.clear();
-          dust.clear();
+          siteFx.clear();
         }
         const celebrating = stateRef.current.celebrate;
         const frameNow = performance.now();
-        drawTransit(transit, shown, frameNow);
-        drawPopulation(population, shown, frameNow);
-        parade.clear();
-        if (celebrating) drawParade(parade, shown, performance.now());
+        const transitKey = (shown.transit || []).map((piece) => `${piece.mode}:${piece.index}`).join(",");
+        if (transitKey !== marksKey) {
+          marksKey = transitKey;
+          drawTransitMarks(marks, shown);
+        }
+        for (const i of usedBuckets) buckets[i].clear();
+        usedBuckets.clear();
+        drawTransitMovers(layerFor, shown, frameNow);
+        drawPopulation(layerFor, shown, frameNow);
+        if (celebrating) drawParade(layerFor, shown, frameNow);
         screenFx.clear();
         if (liveFx?.plane) {
           const w = application.screen.width;

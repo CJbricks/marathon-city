@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { lightingAtMinutes } from "../../lib/lighting";
 import { HW, HH, SCENE_H, SCENE_W, project } from "./sceneLayout";
-import { paintScenePixels, sceneSignature } from "./pixelScene";
+import { bucketIndex, listProps, moverDepth, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
 import { themeFor, themeNames } from "./themes";
 
 const base = {
@@ -103,6 +103,50 @@ describe("2x scene", () => {
       }
     }
     expect(gold).toBeGreaterThan(30);
+  });
+});
+
+describe("occlusion", () => {
+  it("hides a mover that is behind a building's front corner", () => {
+    // The building occupies the lot and faces the camera at its front
+    // corner. A car on the street behind that corner sorts earlier.
+    const front = propDepth(10, 10, 1);
+    const behind = moverDepth(10.4, 9.2);
+    const ahead = moverDepth(11.4, 11.2);
+    expect(front).toBe(22);
+    expect(bucketIndex(behind) + 0.5).toBeLessThan(front);
+    expect(bucketIndex(ahead) + 0.5).toBeGreaterThan(front);
+    expect(bucketIndex(ahead) + 0.5).toBeLessThan(front + 1);
+  });
+
+  it("cuts one building out without leaving the previous building's pixels", () => {
+    const light = lightingAtMinutes(12 * 60 + 30);
+    const capitol = listProps({
+      buildings: [{ id: 1, type: "capitol", x: 4, y: 4, status: "complete", targetStories: 13, storiesBuilt: 13, variant: 1 }],
+      landmarks: [],
+      parks: [],
+      sideQuests: [],
+    })[0];
+    const house = listProps({
+      buildings: [{ id: 2, type: "rowhouse", x: 8, y: 2, status: "complete", targetStories: 2, storiesBuilt: 2, variant: 2 }],
+      landmarks: [],
+      parks: [],
+      sideQuests: [],
+    })[0];
+    const dome = paintPropPixels(capitol, light, "Denver");
+    const roof = paintPropPixels(house, light, "Denver");
+    expect(dome.w * dome.h).toBeLessThan(SCENE_W * SCENE_H);
+    let gold = 0;
+    for (let i = 0; i < dome.data.length; i += 4) {
+      if (dome.data[i] > 180 && dome.data[i + 1] > 120 && dome.data[i + 2] < 90) gold += 1;
+    }
+    expect(gold).toBeGreaterThan(30);
+    let leaked = 0;
+    for (let i = 0; i < roof.data.length; i += 4) {
+      if (roof.data[i] > 180 && roof.data[i + 1] > 120 && roof.data[i + 2] < 90) leaked += 1;
+    }
+    expect(leaked).toBe(0);
+    expect(roof.data.some((v, i) => i % 4 === 3 && v === 255)).toBe(true);
   });
 });
 
