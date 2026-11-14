@@ -280,6 +280,9 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
       let groundKey = "";
       let marksKey = "";
       let batKey = "";
+      // Screen boxes of the building sprites. A mover behind one of these
+      // is not drawn, so a narrow tower still hides the sidewalk it rises over.
+      const occluders = [];
       const upload = (live, light, themeName) => {
         const groundSig = `${themeName}|${light.phase}|${live.map?.tiles}|${live.map?.period}`;
         if (groundSig !== groundKey) {
@@ -337,6 +340,19 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         if (sig !== painted) {
           painted = sig;
           host.dataset.texBytes = String(texBytes + propBytes);
+        }
+        occluders.length = 0;
+        for (const prop of props) {
+          const sprite = propSprites.get(prop.id);
+          const frame = sprite?.texture;
+          if (!frame || frame === Texture.EMPTY || !frame.width) continue;
+          occluders.push({
+            depth: prop.depth,
+            x: sprite.position.x,
+            y: sprite.position.y,
+            w: frame.width,
+            h: frame.height,
+          });
         }
       };
 
@@ -416,9 +432,9 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         }
         for (const i of usedBuckets) buckets[i].clear();
         usedBuckets.clear();
-        drawTransitMovers(layerFor, shown, frameNow);
-        drawPopulation(layerFor, shown, frameNow);
-        if (celebrating) drawParade(layerFor, shown, frameNow);
+        drawTransitMovers(layerFor, shown, frameNow, occluders);
+        drawPopulation(layerFor, shown, frameNow, occluders);
+        if (celebrating) drawParade(layerFor, shown, frameNow, occluders);
         // Dusk and night only. A midday clear would run every frame on a
         // Denver city for no reason, so the object is wiped once, when the
         // swarm goes away, and then left alone.

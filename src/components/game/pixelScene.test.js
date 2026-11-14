@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { lightingAtMinutes } from "../../lib/lighting";
 import { HW, HH, SCENE_H, SCENE_W, project } from "./sceneLayout";
+import { moverHidden } from "./moverOcclusion";
 import { bucketIndex, listProps, moverDepth, paintBackdropPixels, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
 import { resolveTheme, themeClass, themeFor, themeNames } from "./themes";
 
@@ -256,5 +257,73 @@ describe("Austin landmarks", () => {
     expect(count(night.data, orange)).toBeGreaterThan(count(day.data, orange));
     expect(count(night.data, orange)).toBeGreaterThan(20);
     expect(count(day.data, cream)).toBeGreaterThan(80);
+  });
+});
+
+describe("mover occlusion", () => {
+  const light = lightingAtMinutes(12 * 60 + 30);
+
+  function boxFor(prop, theme) {
+    const crop = paintPropPixels(prop, light, theme);
+    return { depth: prop.depth, x: crop.x, y: crop.y, w: crop.w, h: crop.h };
+  }
+
+  function landmark(key, x, y) {
+    return listProps({
+      buildings: [],
+      landmarks: [{ key, x, y }],
+      parks: [],
+      sideQuests: [],
+    })[0];
+  }
+
+  const capitol = listProps({
+    buildings: [{ id: 1, type: "capitol", x: 13, y: 13, status: "complete", targetStories: 13, storiesBuilt: 13, variant: 1 }],
+    landmarks: [],
+    parks: [],
+    sideQuests: [],
+  })[0];
+
+  const tower = listProps({
+    buildings: [{ id: 2, type: "skyscraper", x: 8, y: 8, status: "complete", targetStories: 24, storiesBuilt: 24, variant: 1 }],
+    landmarks: [],
+    parks: [],
+    sideQuests: [],
+  })[0];
+
+  // Every tall silhouette, both cities. A walker behind the front of the
+  // lot and touching the sprite is hidden. A walker in front of it is not.
+  const cases = [
+    ["Austin", landmark("courthouse", 13, 14)],
+    ["Austin", landmark("unionStation", 14, 14)],
+    ["Austin", landmark("artMuseum", 14, 13)],
+    ["Austin", landmark("cathedral", 14, 8)],
+    ["Austin", capitol],
+    ["Austin", tower],
+    ["Denver", landmark("courthouse", 13, 14)],
+    ["Denver", landmark("unionStation", 14, 14)],
+    ["Denver", landmark("artMuseum", 14, 13)],
+    ["Denver", landmark("cathedral", 14, 8)],
+    ["Denver", capitol],
+    ["Denver", tower],
+  ];
+
+  it.each(cases)("hides a walker behind the %s sprite and keeps one in front", (theme, prop) => {
+    const box = boxFor(prop, theme);
+    const onTheTop = moverHidden([box], box.x + box.w / 2, box.y + 8, prop.depth - 2);
+    const inFront = moverHidden([box], box.x + box.w / 2, box.y + box.h + 40, prop.depth + 2);
+    expect(onTheTop).toBe(true);
+    expect(inFront).toBe(false);
+  });
+
+  it("hides the walker who stands just beside the UT Tower crown", () => {
+    const prop = landmark("courthouse", 13, 14);
+    const box = boxFor(prop, "Austin");
+    // The green shirt in the close-up sat a couple of pixels outside the
+    // narrow shaft, at the height of the roof, on a sidewalk behind the lot.
+    const beside = moverHidden([box], box.x + box.w + 2, box.y + 18, prop.depth - 5);
+    const downTheStreet = moverHidden([box], box.x + box.w + 80, box.y + 18, prop.depth - 5);
+    expect(beside).toBe(true);
+    expect(downTheStreet).toBe(false);
   });
 });
