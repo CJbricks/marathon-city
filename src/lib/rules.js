@@ -140,18 +140,24 @@ const rules = {
   // that adds one vehicle, cycling through types. A missed week starts the
   // count over and does not remove vehicles already earned. maxAnimated is
   // how many of those vehicles the overlay draws. The rest still exist.
+  // speedMultiplier is only the drawing pace of the streak traffic
+  // (car, truck, navy bus, police). 1 is the original lap. It does not
+  // change the yellow ultra bus or the light rail.
   vehicles: {
     afterWeeks: 2,
     types: ["car", "truck", "bus", "police"],
     maxAnimated: 16,
+    speedMultiplier: 0.75,
   },
 
   // Lifetime walk miles, not the year-to-date landmark totals. The city
   // stores floor(miles / milesPerPerson) people. maxAnimated is the cap
-  // on how many walkers the overlay draws.
+  // on how many walkers the overlay draws. speedMultiplier slows the
+  // sidewalk travel and the two-frame step together. 1 is the original walk.
   pedestrians: {
     milesPerPerson: 0.25,
     maxAnimated: 32,
+    speedMultiplier: 0.5,
   },
 
   // A single run strictly longer than overMiles unlocks the next transit

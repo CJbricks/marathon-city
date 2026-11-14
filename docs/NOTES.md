@@ -30,7 +30,7 @@ src/app/api/strava/callback  Trades the code for tokens.
 src/components/game/Game.js      Screen flow and the Log run animation timer.
 src/components/game/Screens.js   Title, picker, Strava, start date, loading.
 src/components/game/pixelScene.js  Draws the pixel city into one small canvas.
-src/components/game/gridFit.js    Opening scale of the city picture. The whole diamond stays on screen.
+src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
 src/app/layout.js          Font, title, viewport, Chakra provider.
@@ -134,7 +134,7 @@ Edit `src/lib/rules.js`. Heights, the 100-mile Union Station line, the park week
 
 `sideQuests.halfMarathon` and `sideQuests.fullMarathon` are ordered name lists with a single-run mile line. The replay counts how many of that kind are already on the map and awards the next name when one run clears the line. A 26.2 mile run clears both lines, so it earns one half and one full. Further runs walk the rest of the list. When the list is used up, later runs of that distance add nothing from it. The half-marathon names are Cherry Creek Trail, Denver Zoo, and Denver Botanic Gardens. Walks stay on `sideQuests.walk` as year-to-date miles. Rides are back on `sideQuests.ride` the same way: Coors Field at 10, Ball Arena at 25, Empower Field at Mile High at 50, inside one calendar year. `types.ride` lists the Strava sport types that count. Weight sessions do not read a quest list.
 
-`vehicles` and `pedestrians` are in that same file. The streak math and the people count are explained in the next section. `maxAnimated` only limits what `CityView` draws. The numbers on the city object are the full counts.
+`vehicles` and `pedestrians` are in that same file. The streak math and the people count are explained in the next section. `maxAnimated` only limits what `CityView` draws. The numbers on the city object are the full counts. `vehicles.speedMultiplier` (0.75) and `pedestrians.speedMultiplier` (0.5) only change how fast the overlay moves. 1 is the original pace. They do not change how many cars or people the city earns. The yellow ultra bus and the light rail ignore the vehicle multiplier and keep their own lap times.
 
 `transit` is the ultra rule. `overMiles` is the marathon line, and a run counts only when its miles are greater than that number, so 26.2 stays a marathon and 26.3 lays the first piece. `types` is the cycle (`bike`, `bus`, `lightRail`) and it wraps with no cap. Each entry is stored on the city as `{ mode, index, date, miles }`. `CityView` draws it in its own Pixi graphics object, in scene coordinates, along a road chosen from `index`. `sceneSignature` ignores transit, so the ticker can move the bus and the train without calling `paintScene`.
 
@@ -156,7 +156,7 @@ A drag, a pinch, or the mouse wheel changes only the grid's container. The backd
 
 The crane, the dust, the plane, the race-day parade, the transit lines, the streak vehicles, and the walkers are drawn on top. The crane and the dust live in the grid's container, so they stay on the building while you pan. The crane's idle sway is the same sine bob as before. The dust is eight reused pixel rectangles at the west side, the east side, and the front corner of the lot. They only run while a story is being added (`dust` on the animation), and the build steps take a little longer (`14` steps, at least `1500` ms) so the puff is visible. The plane stays in screen space. Cars and people are one Graphics object in that same grid container: `clear()` each frame, then at most `maxAnimated` of each. None of these call `paintScene` every frame.
 
-A pinch or the mouse wheel changes only that grid container, and only onto the ladder from `stepZoom` in `gridFit.js`. The opening fit can be a fraction. Past 1× the scale is a whole number. The backdrop is not on that ladder.
+A pinch or the mouse wheel changes only that grid container, and only onto the ladder from `stepZoom` in `gridFit.js`. The opening fit can be a fraction. Past 1× the scale is a whole number. The backdrop is not on that ladder. The scale change is anchored on the point under the fingers or the cursor, then clamped. The section below explains why a bare snap used to throw the diamond off the phone.
 
 The isometric placement is `x = (u - v) * 12`, `y = (u + v) * 6`, with the origin near the middle of the canvas. A lot with a larger `u + v` is closer to the camera, so it is painted later and covers the lots behind it. Every building is three faces: the left face is darker, the right face is mid, the top is lighter. That is the whole shading model. Windows are single pixels on those faces. At dusk and night (`windowLight` from `lighting.js`) those pixels switch to a warm yellow, and the sky and mountains use that phase's colors.
 
@@ -189,6 +189,8 @@ Add those per-streak counts. Four weeks, a gap, then three weeks is `max(0, 4 - 
 
 The streak bus is not the ultra bus. A run longer than 26.2 miles lays a transit line, and the bus on that line is a yellow coach with stop poles. A streak bus is a small navy bus with a cream window row. Both drive on roads the map already has. Only `maxAnimated` (16) streak vehicles are drawn. The city object still holds every one.
 
+How fast those four streak sprites drive is `vehicles.speedMultiplier`. The lap times in `CityView` (car 6.5s, truck 11s, navy bus 9s, police 7.5s) are the pace at multiplier 1. 0.75 multiplies the clock, so each one takes longer to cross the same road. The police light still blinks on its own timer. The yellow ultra coach (9s) and the light rail (7s) do not read this number.
+
 ### Pedestrians are lifetime miles, not the walk landmarks
 
 The walk landmarks did not move. Inside one calendar year, 10 walk miles is the Confluence Park bridge, 25 is the 16th Street Mall, and 50 is Red Rocks. A new year starts that counter over. A landmark, once earned, stays.
@@ -196,6 +198,8 @@ The walk landmarks did not move. Inside one calendar year, 10 walk miles is the 
 People on the sidewalk are a second counter. Add every walk mile ever logged, in every year. Divide by `rules.pedestrians.milesPerPerson` (0.25) and drop the fraction: `floor(lifetimeWalkMiles / 0.25)`, which is 4 people per mile. 0.24 miles is nobody. 0.25 miles is one person. 0.20 in 2024 plus 0.20 in 2025 is one person, and it is not a landmark, because neither year reached 10.
 
 The simulator sums the hundredths of a mile, the same way it sums run miles, so `0.1 + 0.1 + 0.1` stays `0.30` instead of a binary fraction. It stores the full count, even when that is hundreds of people. `CityView` draws at most `maxAnimated` (32). Each of those walkers gets a phase from a mix of the walk-row seed and their index, so the same log puts the same people on the same sidewalks. They flip between two leg positions. They are not a new random set on every visit.
+
+`pedestrians.speedMultiplier` scales both the sidewalk crossing and that leg flip. The crossing is 16 seconds and the flip is 180ms when the multiplier is 1. 0.5 makes the walk and the step each half as fast, so the feet do not slide ahead of the body. The phase offset is not scaled, so changing the number does not teleport a walker to a new spot on the block.
 
 ### The ride ladder
 
@@ -217,7 +221,23 @@ Cars, walkers, the ultra bus, the crane, the dust, and the parade are not in tha
 
 `stepZoom` is the ladder. From 0.61 the next stop is 1, then 2, then 3, up to 6. At 2×, each city pixel is a 2×2 block of screen pixels. The texture is `scaleMode: "nearest"`, so those blocks are copies, not blends. A scale of 1.5 would have to blend neighboring pixels, and the blocks would look soft. Zooming out from 1× does not stop at 0.9. It returns to the opening fit, which is the smallest scale. On a short desktop window the fit can already be above 1 (about 1.8). That fit stays on the ladder, and the next pinch in snaps to 2.
 
-`roundPixels` stays on, and the canvas `resolution` stays 1 with `autoDensity` on. That last pair is the Safari letterbox fix: if the backing store were the device-pixel size, Safari would display the bitmap too wide and leave empty bands. Integer zoom does not touch it. When the scale is a whole number, the pan position handed to Pixi is rounded too, so the 2× blocks do not shimmer between screen pixels while you drag. This is the same idea as `chooseScale` in brick-city's `Overworld.js`: pick a whole-number scale so the art stays blocks.
+`roundPixels` stays on, and the canvas `resolution` stays 1 with `autoDensity` on. That last pair is the Safari letterbox fix: if the backing store were the device-pixel size, Safari would display the bitmap too wide and leave empty bands. Integer zoom does not touch it. When the scale is a whole number, the pan position handed to Pixi is rounded too, so the 2× blocks do not shimmer between screen pixels while you drag. The pan value the next gesture uses is still the unrounded one, so the focal-point solve does not drift by a pixel each snap. This is the same idea as `chooseScale` in brick-city's `Overworld.js`: pick a whole-number scale so the art stays blocks.
+
+### Why a pinch used to throw the grid off the phone
+
+`stepZoom` only picks the next scale. It does not move the camera. The old pinch handler wrote that new scale onto the grid and left the pan where it was.
+
+The grid is drawn as `screen = pan + scene * zoom`. The picture pixel under a finger is `(finger - pan) / zoom`. If the pan stays put and the zoom jumps from the phone's contain-fit (about 0.61 on a 390px-wide screen) to 1, then to 2, that pixel is no longer under the finger. The picture grows from its top-left corner, so the pixel slides up and to the left. On a phone the opening pan is the left edge of the screen, and one snap to 2× shoves most of the diamond off the right and the bottom. A drag had the same hole in the other direction: nothing stopped the pan, so the city could leave the screen entirely. The sky did not go with it. The sky is a different layer, pinned to the opening fit. Only the grid moved, which made the jump look like the city had vanished and left the mountains behind.
+
+Two functions in `gridFit.js` close that. `CityView` calls them after every zoom and every pan.
+
+`zoomAboutPoint` keeps one picture pixel under one screen pixel. Rearranging the draw formula gives `pan = finger - scene * nextZoom`. A pinch remembers the picture pixel that was between the two fingers when the gesture started, and each snap (1×, 2×, 3×, and the rest of the ladder) solves the pan so that pixel is under the fingers again, including when the midpoint has moved. A mouse wheel does the same thing with the cursor, holding whatever pixel is under the cursor at that notch. The snap still happens on the way in, one ladder step at a time, rather than as a blurry in-between scale. Snapping only the scale, without solving the pan, is what made the grid jump.
+
+`clampCityPan` runs after that anchor, and after a one-finger drag. The box it watches is the diamond (`GRID_LEFT` through `GRID_RIGHT`, back corner to front corner), not the empty sky in the 640×500 picture. At least about 40% of the view (`MIN_VISIBLE_FRACTION`) has to keep showing that diamond. If the diamond is smaller than that slice, the whole diamond stays on screen and can still slide inside the margin. The clamp can pull the focal point a little when the fingers are over empty margin and the snap would have parked the city past the edge. It cannot pull the city all the way off.
+
+Zooming back out onto the opening fit does not keep the corner the fingers were on. That scale is the "show the whole city" scale, so `placeZoom` puts the pan back to the centered contain-fit from `gridPlacement`.
+
+iOS Safari also tries to zoom the page itself on a pinch. The canvas sets `touch-action: none` (in CSS and on the element), and the page calls `preventDefault` on `gesturestart` and `gesturechange`, so the browser zoom does not fight the grid zoom. The backdrop, nearest-neighbor scaling, `roundPixels`, and `resolution: 1` with `autoDensity` are unchanged.
 
 ## Commands
 
