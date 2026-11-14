@@ -3,6 +3,8 @@
 // typed distance becomes an ordinary run and goes through the same replay
 // as a synced one. 10:00 per mile is a stand-in pace: the form only asks
 // for distance, and a made-up sprint would unlock the Art Museum by accident.
+// There is no startLocal either. Inventing 5:59am would unlock Rockman's
+// Bakery on an Austin save. A typed run has no watch time, so it does not count.
 
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";

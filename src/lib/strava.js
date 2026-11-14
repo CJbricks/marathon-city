@@ -99,6 +99,14 @@ export function stravaActivityType(activity) {
   return sport;
 }
 
+// The bakery counts runs by the watch, not by UTC. start_date is UTC.
+// start_date_local is the clock the athlete saw. Keep that string whole.
+// The simulator reads the hour out of the text and must not convert zones.
+export function stravaStartLocal(activity) {
+  const local = activity?.start_date_local;
+  return typeof local === "string" && local ? local : "";
+}
+
 function localDay(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
@@ -135,6 +143,7 @@ export async function fetchActivitiesSince(accessToken, afterUnix) {
         seconds: a.moving_time || 0,
         title: a.name || "",
         seq: Math.floor(new Date(a.start_date || when).getTime() / 1000),
+        startLocal: stravaStartLocal(a),
       });
     }
     if (batch.length < 200) break;

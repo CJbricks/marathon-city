@@ -81,6 +81,11 @@ ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS slot SMALLINT;
 ALTER TABLE city_saves ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS save_id TEXT;
 
+-- The athlete's watch time (Strava start_date_local), kept as text so a
+-- 5:59am start is not shifted into UTC. Rockman's Bakery counts these.
+-- Old rows stay null, which means the clock is unknown, not midnight.
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS start_local TEXT;
+
 -- The city code and the "which city is this browser playing" pointer.
 -- Nullable here on purpose: rows that already exist get a code in the
 -- DO block below, and only then is the column required.

@@ -8,6 +8,10 @@
 // The browser and the server both import this file. It must stay free of
 // Node APIs (no fs, no database) so a Log run animation can replay on the
 // phone without asking the server for every frame.
+//
+// Denver and Austin share this replay. rules.cities.Austin is the extra:
+// three landmarks a Denver save never receives. replay() passes the save's
+// city in as rules.city. A missing city is Denver.
 
 import rulesDefault from "./rules.js";
 
@@ -18,6 +22,20 @@ const addDays = (s, n) => fmt(new Date(toDate(s).getTime() + n * DAY));
 const daysBetween = (a, b) => Math.round((toDate(b) - toDate(a)) / DAY);
 const hund = (x) => Math.round(x * 100);
 const mi = (h) => +(h / 100).toFixed(2);
+
+// Wall clock from a Strava start_date_local string. The digits after T are
+// already the athlete's local time. new Date() would read that string in
+// the server's zone, and a 5:59am Austin run can fall on the previous
+// evening when the server is UTC. 5:59 is before 6:00. 6:00 is not. A blank
+// clock (a typed distance, the demo log) is not an early run.
+export function startedBeforeHour(startLocal, hour) {
+  const match = /T(\d{2}):(\d{2})/.exec(String(startLocal || ""));
+  if (!match) return false;
+  const hh = Number(match[1]);
+  const mm = Number(match[2]);
+  if (hh > 23 || mm > 59) return false;
+  return hh * 60 + mm < hour * 60;
+}
 
 function parseTime(t) {
   const p = String(t || "0:00").split(":").map(Number);
@@ -89,6 +107,8 @@ function orderActivities(input, typeOf) {
     title: a.title || "",
     stravaId: a.stravaId || `row-${i}`,
     seq: a.seq ?? i,
+    // Kept as text. The bakery compares these digits to beforeHour.
+    startLocal: a.startLocal || a.start_date_local || "",
   }));
   acts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.seq - b.seq));
   acts.forEach((a, i) => {
@@ -149,11 +169,14 @@ export function simulate(input, rules = rulesDefault) {
   // camera (large x+y) instead of one hidden behind a tower.
   function takeLot(isBuilding = true, frontBias = 0) {
     const skip = isBuilding ? [] : M.reserveRingsForBuildings || [];
+    // held is a lot set aside for an Austin landmark that has not unlocked
+    // yet. Denver never sets it, so a Denver lot is chosen exactly as before.
+    const open = (l) => !l.used && !l.held && !skip.includes(l.ring);
     let lot;
     if (frontBias > 1) {
-      const cand = lots.filter((l) => !l.used && !skip.includes(l.ring)).slice(0, frontBias);
+      const cand = lots.filter(open).slice(0, frontBias);
       lot = cand.sort((a, b) => b.x + b.y - (a.x + a.y) || a.d - b.d)[0];
-    } else lot = lots.find((l) => !l.used && !skip.includes(l.ring));
+    } else lot = lots.find(open);
     if (!lot) throw new Error("Out of lots: enlarge map.blocks in src/lib/rules.js");
     lot.used = true;
     nextLot++;
@@ -172,8 +195,13 @@ export function simulate(input, rules = rulesDefault) {
   let runCount = 0;
   const runDates = [];
   let bestPace = Infinity;
+  // Separate from bestPace. The gallery's line can move without changing
+  // when the art museum (the Blanton, in Austin) decides a run is a PR.
+  let austinBestPace = Infinity;
+  let earlyRuns = 0;
   const L = R.landmarks;
   const earned = new Set();
+  const cityLandmarks = R.city === "Austin" ? R.cities?.Austin?.landmarks || null : null;
 
   function civicLot(key) {
     if (!civic || !civic.slots[key]) return null;
@@ -274,6 +302,53 @@ export function simulate(input, rules = rulesDefault) {
       ring: lot.ring,
     });
     log.push(`${date}  Landmark: ${L[key].name} (${note})`);
+  }
+
+  // [blockX, blockY, lotX, lotY] → the same tile the map builder uses.
+  // A coordinate that lands on a road is refused so a bad edit does not
+  // paint a building on the asphalt.
+  function slotPosition(at) {
+    if (!Array.isArray(at) || at.length < 4) return null;
+    const [bx, by, ox, oy] = at;
+    const x = bx * period + 1 + ox;
+    const y = by * period + 1 + oy;
+    if (x % period === 0 || y % period === 0) return null;
+    return { x, y };
+  }
+
+  if (cityLandmarks) {
+    for (const spec of Object.values(cityLandmarks)) {
+      const pos = slotPosition(spec.at);
+      const lot = pos && lots.find((l) => l.x === pos.x && l.y === pos.y);
+      if (lot) lot.held = true;
+    }
+  }
+
+  function placeCityLandmark(key, spec, date, note) {
+    if (!spec) return;
+    const max = spec.max ?? 1;
+    if (landmarks.filter((l) => l.key === key).length >= max) return;
+    const pos = slotPosition(spec.at);
+    const lot = pos && lots.find((l) => l.x === pos.x && l.y === pos.y && !l.used);
+    let placed;
+    if (lot) {
+      lot.used = true;
+      lot.held = false;
+      nextLot++;
+      placed = { x: lot.x, y: lot.y, ring: lot.ring };
+    } else {
+      placed = takeLot(false, M.landmarkFrontBias || 0);
+    }
+    landmarks.push({
+      key,
+      name: spec.name,
+      date,
+      note,
+      x: placed.x,
+      y: placed.y,
+      ring: placed.ring,
+    });
+    log.push(`${date}  Landmark: ${spec.name} (${note})`);
   }
 
   const runs = acts.filter((a) => a.kind === "run");
@@ -481,6 +556,44 @@ export function simulate(input, rules = rulesDefault) {
         );
       }
       bestPace = Math.min(bestPace, pace);
+    }
+    // Austin-only. The checks above are the shared milestones and are left
+    // alone, including the Capitol at 250. These three read cities.Austin.
+    if (cityLandmarks?.lbjLibrary && cumRun >= hund(cityLandmarks.lbjLibrary.cumulativeRunMiles)) {
+      placeCityLandmark(
+        "lbjLibrary",
+        cityLandmarks.lbjLibrary,
+        act.date,
+        `cumulative ${mi(cumRun)} run mi`,
+      );
+    }
+    if (cityLandmarks?.marthasGallery) {
+      const spec = cityLandmarks.marthasGallery;
+      const minDistance = spec.minDistance ?? 0;
+      if (act.miles >= minDistance && act.miles > 0) {
+        const pace = act.seconds / act.miles;
+        const after = spec.afterRuns ?? 0;
+        if (runCount > after && austinBestPace < Infinity && pace < austinBestPace) {
+          placeCityLandmark("marthasGallery", spec, act.date, `pace PR on ${act.miles} mi`);
+        }
+        austinBestPace = Math.min(austinBestPace, pace);
+      }
+    }
+    if (
+      cityLandmarks?.rockmansBakery &&
+      startedBeforeHour(act.startLocal, cityLandmarks.rockmansBakery.beforeHour ?? 6)
+    ) {
+      earlyRuns += 1;
+      const need = cityLandmarks.rockmansBakery.earlyRuns ?? 10;
+      if (earlyRuns >= need) {
+        const hour = cityLandmarks.rockmansBakery.beforeHour ?? 6;
+        placeCityLandmark(
+          "rockmansBakery",
+          cityLandmarks.rockmansBakery,
+          act.date,
+          `${earlyRuns} runs starting before ${hour}:00`,
+        );
+      }
     }
     // Cathedrals follow banked run miles, not a single long run. floor(miles /
     // milesPer) is how many exist. max null means that number has no ceiling.

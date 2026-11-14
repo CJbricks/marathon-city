@@ -18,7 +18,13 @@ export function visibleActivities(activities, save) {
 }
 
 export function replay(activities, save, asOf = utcToday()) {
-  return simulate(visibleActivities(activities, save), { ...rules, asOfDate: asOf });
+  // city is how Austin-only landmarks turn on. An old save with no city
+  // is Denver, and simulate then ignores rules.cities.Austin.
+  return simulate(visibleActivities(activities, save), {
+    ...rules,
+    asOfDate: asOf,
+    city: save?.city || "Denver",
+  });
 }
 
 // Trail runs sit in rules.types.run, so the flyover and the build animation
