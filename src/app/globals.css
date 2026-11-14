@@ -4,10 +4,65 @@
    The city screen is fixed to the viewport so a phone does not scroll
    the sky into a band between the menu and the bottom bar. */
 
+/* Denver's Nuggets colors are the defaults. .theme-austin overrides them
+   for an Austin city only: burnt orange frame, cream type, cedar ground.
+   A screen with no theme class still looks exactly like Denver. */
+:root {
+  --mc-page: #05143a;
+  --mc-stage: #0d2a6b;
+  --mc-border: #fdd835;
+  --mc-accent: #fdd835;
+  --mc-ink: #05143a;
+  --mc-btn: #6f86c9;
+  --mc-muted: #c9d6f2;
+  --mc-card: #1b3f8f;
+  --mc-card-text: #6f86c9;
+  --mc-stripe: linear-gradient(#d62828, #e8501e, #f57c00, #fba41a, #fdd835);
+  --mc-hud: #05143a;
+  --mc-hud-text: #fdd835;
+  --mc-title: #fdd835;
+  --mc-name: #fff;
+  --mc-ready: #43a047;
+  --mc-warn: #ff8a65;
+  --mc-pop: #fdd835;
+  --mc-pop-ink: #05143a;
+  --mc-banner: #fff3a0;
+  --mc-banner-ink: #3a3010;
+  --mc-banner-border: #e0c060;
+  --mc-note: #d62828;
+  --mc-skyfill: #5b8fd6;
+}
+
+.theme-austin {
+  --mc-page: #2c1810;
+  --mc-stage: #4a2c18;
+  --mc-border: #bf5700;
+  --mc-accent: #bf5700;
+  --mc-ink: #2c1810;
+  --mc-btn: #c4a574;
+  --mc-muted: #f3e6d0;
+  --mc-card: #6b3e22;
+  --mc-card-text: #e7c9a0;
+  --mc-stripe: linear-gradient(#f4e6c8, #e7c9a0, #bf5700, #8c3a12, #3f6b3a);
+  --mc-hud: #2c1810;
+  --mc-hud-text: #bf5700;
+  --mc-title: #f4e6c8;
+  --mc-name: #f4e6c8;
+  --mc-ready: #3f6b3a;
+  --mc-warn: #e07a4a;
+  --mc-pop: #bf5700;
+  --mc-pop-ink: #fff8ee;
+  --mc-banner: #f4e6c8;
+  --mc-banner-ink: #3a2414;
+  --mc-banner-border: #bf5700;
+  --mc-note: #8c3a12;
+  --mc-skyfill: #f0d7a8;
+}
+
 html,
 body {
   min-height: 100%;
-  background: #05143a;
+  background: var(--mc-page);
   color: #fff;
 }
 
@@ -37,7 +92,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #05143a;
+  background: var(--mc-page);
   padding: 8px;
 }
 .stage-sizer {
@@ -47,8 +102,8 @@ canvas {
   width: 320px;
   height: 200px;
   transform-origin: top left;
-  background: #0d2a6b;
-  border: 4px solid #fdd835;
+  background: var(--mc-stage);
+  border: 4px solid var(--mc-border);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -61,7 +116,7 @@ canvas {
 .sky-stripes {
   width: 100%;
   height: 8px;
-  background: linear-gradient(#d62828, #e8501e, #f57c00, #fba41a, #fdd835);
+  background: var(--mc-stripe);
   flex: none;
 }
 .pixel-kicker,
@@ -83,7 +138,7 @@ canvas {
 }
 .pixel-title {
   margin: 0;
-  color: #fdd835;
+  color: var(--mc-title);
   font-size: 15px;
   line-height: 1.5;
   font-weight: 400;
@@ -100,7 +155,7 @@ canvas {
 .pixel-note,
 .pixel-chip {
   margin: 0;
-  color: #c9d6f2;
+  color: var(--mc-muted);
   font-size: 7px;
   line-height: 1.6;
   max-width: 100%;
@@ -110,12 +165,12 @@ canvas {
   display: inline-block;
   max-width: 100%;
   box-sizing: border-box;
-  color: #fdd835;
-  border: 2px solid #fdd835;
+  color: var(--mc-accent);
+  border: 2px solid var(--mc-border);
   padding: 2px 6px;
 }
 .pixel-note.warn {
-  color: #ff8a65;
+  color: var(--mc-warn);
 }
 .btn-row {
   display: flex;
@@ -131,16 +186,16 @@ a.pixel-btn {
 .choice {
   font-size: 7px;
   line-height: 1.4;
-  border: 3px solid #6f86c9;
-  background: #0d2a6b;
+  border: 3px solid var(--mc-btn);
+  background: var(--mc-stage);
   color: #fff;
   padding: 6px 8px;
   cursor: pointer;
 }
 .pixel-btn.gold,
 .choice.on {
-  border-color: #fdd835;
-  color: #fdd835;
+  border-color: var(--mc-border);
+  color: var(--mc-accent);
 }
 .pixel-btn.strava {
   border-color: #fc4c02;
@@ -153,8 +208,8 @@ a.pixel-btn {
 }
 .save-card {
   width: 100%;
-  border: 3px solid #b88a00;
-  color: #fdd835;
+  border: 3px solid var(--mc-border);
+  color: var(--mc-accent);
   font-size: 6px;
   padding: 4px;
   line-height: 1.6;
@@ -166,8 +221,8 @@ a.pixel-btn {
 .city-card {
   width: 52px;
   min-height: 58px;
-  border: 2px solid #1b3f8f;
-  color: #6f86c9;
+  border: 2px solid var(--mc-card);
+  color: var(--mc-card-text);
   font-size: 6px;
   display: flex;
   flex-direction: column;
@@ -175,16 +230,27 @@ a.pixel-btn {
   padding: 4px 2px;
 }
 .city-card.on {
-  border-color: #fdd835;
+  border-color: var(--mc-border);
   color: #fff;
+}
+button.city-card {
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+button.city-card:disabled {
+  cursor: default;
+  opacity: 1;
+  color: var(--mc-card-text);
 }
 .city-card em {
   font-style: normal;
-  background: #1b3f8f;
-  color: #c9d6f2;
+  background: var(--mc-card);
+  color: var(--mc-muted);
 }
+.city-card.open em,
 .city-card.on em {
-  background: #43a047;
+  background: var(--mc-ready);
   color: #fff;
 }
 .choice {
@@ -196,24 +262,24 @@ a.pixel-btn {
 }
 .choice small {
   font-size: 6px;
-  color: #6f86c9;
+  color: var(--mc-btn);
 }
 .choice input {
   font-family: inherit;
   font-size: 8px;
-  background: #05143a;
+  background: var(--mc-page);
   color: #fff;
-  border: 2px solid #fdd835;
+  border: 2px solid var(--mc-border);
 }
 .load-track {
   width: 200px;
   height: 10px;
-  border: 2px solid #fdd835;
+  border: 2px solid var(--mc-border);
 }
 .load-bar {
   height: 100%;
   width: 40%;
-  background: #fdd835;
+  background: var(--mc-accent);
   animation: load 1.4s steps(6, end) infinite;
 }
 @keyframes load {
@@ -227,7 +293,7 @@ a.pixel-btn {
   width: 100%;
   display: flex;
   flex-direction: column;
-  background: #5b8fd6;
+  background: var(--mc-skyfill);
   overflow: hidden;
 }
 .city-canvas {
@@ -259,11 +325,11 @@ a.pixel-btn {
   gap: 6px;
   min-height: 28px;
   padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
-  background: #05143a;
-  color: #fdd835;
+  background: var(--mc-hud);
+  color: var(--mc-hud-text);
   font-size: 6px;
   line-height: 1.4;
-  border-top: 4px solid #fdd835;
+  border-top: 4px solid var(--mc-border);
   flex: none;
 }
 .hud-left,
@@ -291,7 +357,7 @@ a.pixel-btn {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #fff;
+  color: var(--mc-name);
 }
 .save-list {
   width: 100%;
@@ -312,11 +378,11 @@ a.pixel-btn {
 }
 .save-pick small {
   font-size: 6px;
-  color: #c9d6f2;
+  color: var(--mc-muted);
 }
 .pixel-btn.save-pick.on {
-  border-color: #fdd835;
-  color: #fdd835;
+  border-color: var(--mc-border);
+  color: var(--mc-accent);
 }
 .name-form {
   width: 100%;
@@ -346,9 +412,9 @@ a.pixel-btn {
   z-index: 3;
   margin: 0;
   max-width: 90vw;
-  background: #0d2a6b;
-  color: #fdd835;
-  border: 3px solid #fdd835;
+  background: var(--mc-stage);
+  color: var(--mc-accent);
+  border: 3px solid var(--mc-border);
   font-family: var(--font-pixel), monospace;
   font-size: 8px;
   line-height: 1.5;
@@ -356,16 +422,16 @@ a.pixel-btn {
   text-align: center;
 }
 .race-name { top: 44px; }
-.mile-pop { top: 78px; background: #fdd835; color: #05143a; }
+.mile-pop { top: 78px; background: var(--mc-pop); color: var(--mc-pop-ink); }
 .stage-px input[type="text"],
 .stage-px input[type="date"] {
   font-family: var(--font-pixel), monospace;
   font-size: 7px;
   width: 220px;
   max-width: 100%;
-  background: #05143a;
+  background: var(--mc-page);
   color: #fff;
-  border: 2px solid #fdd835;
+  border: 2px solid var(--mc-border);
   padding: 4px;
 }
 .story-pop,
@@ -375,8 +441,8 @@ a.pixel-btn {
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
-  background: #fdd835;
-  color: #05143a;
+  background: var(--mc-pop);
+  color: var(--mc-pop-ink);
   font-size: 10px;
   padding: 6px 8px;
   text-align: center;
@@ -387,19 +453,19 @@ a.pixel-btn {
   top: 14%;
   transform: none;
   z-index: 3;
-  background: #fff3a0;
-  color: #3a3010;
-  border: 3px solid #e0c060;
+  background: var(--mc-banner);
+  color: var(--mc-banner-ink);
+  border: 3px solid var(--mc-banner-border);
   white-space: nowrap;
 }
 .hud-note {
   bottom: 64px;
-  background: #d62828;
+  background: var(--mc-note);
   color: #fff;
 }
 .hud-note.ok {
-  background: #fdd835;
-  color: #05143a;
+  background: var(--mc-pop);
+  color: var(--mc-pop-ink);
 }
 .modal {
   position: absolute;
@@ -407,8 +473,8 @@ a.pixel-btn {
   top: 50%;
   transform: translate(-50%, -50%);
   width: min(280px, 92vw);
-  background: #0d2a6b;
-  border: 4px solid #fdd835;
+  background: var(--mc-stage);
+  border: 4px solid var(--mc-border);
   padding: 12px;
   text-align: center;
   font-size: 8px;
@@ -430,10 +496,10 @@ a.pixel-btn {
   font-size: 16px;
   line-height: 36px;
   text-align: center;
-  background: #05143a;
-  color: #fdd835;
-  border: 2px solid #fdd835;
-  caret-color: #fdd835;
+  background: var(--mc-page);
+  color: var(--mc-accent);
+  border: 2px solid var(--mc-border);
+  caret-color: var(--mc-accent);
 }
 .pixel-quote {
   margin: 0;

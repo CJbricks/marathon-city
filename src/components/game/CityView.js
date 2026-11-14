@@ -16,13 +16,18 @@
 // the movers call paintScene, so the skyline stays cached.
 //
 // Which drawings are in the texture comes from the save's city name
-// ("Denver"). That name is the theme. The pinch math does not know it.
+// ("Denver" or "Austin"). That name is the theme. The pinch math does
+// not know it. Austin at dusk adds a few bat rectangles over the bridge.
+// They are an overlay, like the cars: the city texture is not repainted
+// just to flap a wing. Denver never enters that branch.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
 import { dustPuffs } from "./dust";
+import { hex } from "./pixelPen";
+import { themeFor } from "./themes";
 import { clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
 import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransitMarks, drawTransitMovers } from "./overlaySprites";
 import {
@@ -38,6 +43,7 @@ import {
   paintPropPixels,
   project,
   propDepth,
+  tintSkyColor,
 } from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
@@ -51,16 +57,40 @@ function packRgb([r, g, b]) {
 // scene does not reach, with sky at the top and sandy ground at the bottom.
 // horizonY is where that picture's own ground starts, so the flat sand
 // meets the painted prairie instead of cutting across the mountains.
-function drawFill(g, w, h, light, horizonY) {
+function drawFill(g, w, h, light, horizonY, groundHex = "#c4b56a") {
   g.clear();
   const horizon = Math.round(Math.max(0, Math.min(h, horizonY)));
   g.rect(0, 0, w, h).fill({ color: packRgb(light.sky[0]) });
   if (horizon < h) {
-    // Same tan as the painted prairie, including the time-of-day tint,
-    // so a gap does not show up as a lighter stripe.
+    // Same prairie color as the painted ground, including the time-of-day
+    // tint, so a gap does not show up as a lighter stripe. Denver's near
+    // ground is the tan this used to hard-code.
     const tint = light.ambient || [1, 1, 1];
-    const sand = [0xc4, 0xb5, 0x6a].map((v, i) => Math.round(v * (tint[i] ?? 1)));
+    const sand = hex(groundHex).map((v, i) => Math.round(Math.max(0, Math.min(255, v * (tint[i] ?? 1)))));
     g.rect(0, horizon, w, h - horizon).fill({ color: packRgb(sand) });
+  }
+}
+
+// Bats are a handful of rectangles. The bridge texture cannot flap them:
+// that picture is cached until the lighting phase changes. Nine bats, three
+// rects each, only while Austin is at dusk or night.
+function drawBatSwarm(g, x, y, now, nightSky) {
+  g.clear();
+  const [cx, cy] = project(x + 0.5, y + 0.5, 50);
+  // Light enough to show on a night sky, dark enough to show on dusk.
+  // Wings are two pixels tall. A one-pixel wing turned into a dash once
+  // the picture was zoomed, and it stopped reading as a bat.
+  const color = nightSky ? 0xe4d4c0 : 0x1a120c;
+  for (let i = 0; i < 9; i += 1) {
+    const up = Math.sin(now / 160 + i * 1.3) > 0;
+    const ang = now / 1100 + (i / 9) * Math.PI * 2;
+    const rad = 16 + (i % 4) * 9;
+    const bx = Math.round(cx + Math.cos(ang) * rad * 1.6);
+    const by = Math.round(cy + Math.sin(ang) * rad * 0.4);
+    const lift = up ? -2 : 1;
+    g.rect(bx - 1, by, 3, 2).fill({ color });
+    g.rect(bx - 6, by + lift, 5, 2).fill({ color });
+    g.rect(bx + 2, by + lift, 5, 2).fill({ color });
   }
 }
 
@@ -178,6 +208,10 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
       // that is going up, just in front of that building.
       const siteFx = new Graphics();
       depth.addChild(siteFx);
+      // Above the bridge, under any building closer to the camera. zIndex
+      // is set when the bridge is known. Denver leaves this object empty.
+      const bats = new Graphics();
+      depth.addChild(bats);
       world.addChild(groundSprite, depth);
       const propSprites = new Map();
       const usedBuckets = new Set();
@@ -245,6 +279,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
       let fillKey = "";
       let groundKey = "";
       let marksKey = "";
+      let batKey = "";
       const upload = (live, light, themeName) => {
         const groundSig = `${themeName}|${light.phase}|${live.map?.tiles}|${live.map?.period}`;
         if (groundSig !== groundKey) {
@@ -310,17 +345,26 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         const shown = liveFx?.city || live;
         if (!shown) return;
         const light = viewClock();
-        const [r, g, b] = light.sky[0];
+        const themeObj = themeFor(themeName);
+        const skyTop = tintSkyColor(light.sky[0], light, themeObj);
+        const [r, g, b] = skyTop;
         application.renderer.background.color = (r << 16) + (g << 8) + b;
-        const key = `${light.phase}|${Math.round(application.screen.width)}|${Math.round(application.screen.height)}|${Math.round(placed.y)}|${placed.scale.toFixed(4)}`;
+        const key = `${themeName}|${light.phase}|${Math.round(application.screen.width)}|${Math.round(application.screen.height)}|${Math.round(placed.y)}|${placed.scale.toFixed(4)}`;
         if (key !== fillKey) {
           fillKey = key;
+          const shownLight = themeObj.sky
+            ? {
+                ...light,
+                sky: [0, 1, 2].map((i) => tintSkyColor(light.sky[i], light, themeObj)),
+              }
+            : light;
           drawFill(
             fill,
             application.screen.width,
             application.screen.height,
-            light,
+            shownLight,
             placed.y + HORIZON_Y * placed.scale,
+            themeObj.ground.near,
           );
         }
         // Grow the pinned picture until it covers the screen, but keep the
@@ -378,6 +422,27 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         drawTransitMovers(layerFor, shown, frameNow);
         drawPopulation(layerFor, shown, frameNow);
         if (celebrating) drawParade(layerFor, shown, frameNow);
+        // Dusk and night only. A midday clear would run every frame on a
+        // Denver city for no reason, so the object is wiped once, when the
+        // swarm goes away, and then left alone.
+        const nightBats = themeName === "Austin" && (light.windowLight >= 0.5 || light.stars >= 0.3);
+        if (nightBats) {
+          const bridge = (shown.landmarks || []).find((mark) => mark.key === "unionStation");
+          if (bridge) {
+            const nextBat = `${bridge.x}:${bridge.y}`;
+            if (nextBat !== batKey) {
+              batKey = nextBat;
+              bats.zIndex = propDepth(bridge.x, bridge.y, 1) + 0.15;
+            }
+            drawBatSwarm(bats, bridge.x, bridge.y, frameNow, light.stars > 0.7);
+          } else if (batKey) {
+            bats.clear();
+            batKey = "";
+          }
+        } else if (batKey) {
+          bats.clear();
+          batKey = "";
+        }
         screenFx.clear();
         if (liveFx?.plane) {
           const w = application.screen.width;

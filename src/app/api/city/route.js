@@ -1,13 +1,15 @@
 // POST /api/city
 // Creates one named save after the opening flow: a display name, a theme
-// (only Denver in the beta), all-history or a start date, or demo mode,
-// plus an optional race date. The name is not the theme. Demo copies
+// (Denver or Austin), all-history or a start date, or demo mode, plus an
+// optional race date. The name is not the theme. A missing theme is Denver,
+// so an older client still creates the Mile High city. Demo copies
 // prototype/activities.txt into this save only, so the other cities keep
 // their own runs. Replacing a save deletes that slot first. Strava tokens
 // stay on the user, so the next city does not ask for permission again.
 // A fourth city is refused unless replaceId names one of the three.
 
 import { NextResponse } from "next/server";
+import { resolveTheme } from "@/components/game/themes/names";
 import { getStore } from "@/lib/db";
 import { loadDemoActivities } from "@/lib/demo";
 import { cityPayload } from "@/lib/payload";
@@ -18,8 +20,9 @@ import { getUserId } from "@/lib/session";
 export async function POST(request) {
   const userId = await getUserId();
   const body = await request.json().catch(() => ({}));
-  if (body.city && body.city !== "Denver") {
-    return NextResponse.json({ error: "Only Denver is open in the beta." }, { status: 400 });
+  const city = resolveTheme(body.city);
+  if (!city) {
+    return NextResponse.json({ error: "That city is not open yet." }, { status: 400 });
   }
   const demo = Boolean(body.demo);
   const startMode = demo ? "demo" : body.startMode === "all" ? "all" : "date";
@@ -32,7 +35,7 @@ export async function POST(request) {
   try {
     const save = await store.createSave(userId, {
       name: body.name,
-      city: "Denver",
+      city,
       startMode,
       startDate,
       lastSyncedAt: demo ? new Date().toISOString() : null,

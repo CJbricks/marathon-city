@@ -2,7 +2,7 @@
 
 Marathon City turns the owner's Strava runs into a growing pixel-art city. The look is isometric, in the spirit of SimCity 2000, and the theme is Denver. The app is planned as a plain-JavaScript Next.js site, hosted on Vercel, and laid out for a phone.
 
-The app at the repo root replays runs into a city: opening screens, Strava sync (or a demo log), and an isometric Pixi view. The original scripts and stills stay in [`prototype/`](prototype/) as the spec the app was ported from. New to the code? Read [docs/NOTES.md](docs/NOTES.md).
+The app at the repo root replays runs into a city: opening screens, Strava sync (or a demo log), and an isometric Pixi view. Denver and Austin share the mile rules. Only the drawings, the names, the palette, and the backdrop change. The original scripts and stills stay in [`prototype/`](prototype/) as the spec the app was ported from. New to the code? Read [docs/NOTES.md](docs/NOTES.md).
 
 ![Isometric Denver city built from run miles](prototype/preview.png)
 
@@ -97,7 +97,7 @@ The database is the source of truth: Vercel Postgres or Supabase. It stores the 
 
 1. **Resume City** or **New City**. Resume lists up to three named saves. The name on the save is not the theme.
 2. If all three slots are full, New City asks which save to replace and confirms. The same Strava dates rebuild that city.
-3. A name for the save, then the city picker. Only Denver is enabled for the beta.
+3. A name for the save, then the city picker. Denver and Austin are enabled. The other cards stay marked soon.
 4. Strava OAuth, if it is not already connected.
 5. A choice of all history, or a start date that defaults to today.
 6. An optional race day. On that local date the city shows confetti and a parade.

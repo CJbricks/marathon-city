@@ -7,8 +7,8 @@
 import { describe, expect, it } from "vitest";
 import { lightingAtMinutes } from "../../lib/lighting";
 import { HW, HH, SCENE_H, SCENE_W, project } from "./sceneLayout";
-import { bucketIndex, listProps, moverDepth, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
-import { themeFor, themeNames } from "./themes";
+import { bucketIndex, listProps, moverDepth, paintBackdropPixels, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
+import { resolveTheme, themeClass, themeFor, themeNames } from "./themes";
 
 const base = {
   buildings: [{ id: 1, status: "complete", storiesBuilt: 2 }],
@@ -151,11 +151,99 @@ describe("occlusion", () => {
 });
 
 describe("theme seam", () => {
-  it("paints Denver and falls back for a city that has no drawings yet", () => {
-    expect(themeNames()).toEqual(["Denver"]);
+  it("paints Denver and Austin, and falls back for a city that is not open", () => {
+    expect(themeNames()).toEqual(["Denver", "Austin"]);
     expect(themeFor("Denver").id).toBe("Denver");
-    expect(themeFor("Austin")).toBe(themeFor("Denver"));
-    expect(typeof themeFor("Denver").drawBuilding).toBe("function");
+    expect(themeFor("Austin").id).toBe("Austin");
+    expect(themeFor("Austin")).not.toBe(themeFor("Denver"));
+    expect(themeFor("Boulder")).toBe(themeFor("Denver"));
+    expect(themeFor("")).toBe(themeFor("Denver"));
+    expect(typeof themeFor("Austin").drawBuilding).toBe("function");
     expect(themeFor("Denver").sidewalk.day).not.toBe(themeFor("Denver").road.day);
+    expect(themeFor("Austin").sidewalk.day).not.toBe(themeFor("Denver").sidewalk.day);
+    expect(themeFor("Austin").labels.unionStation).toBe("Congress Avenue Bridge");
+    expect(themeFor("Austin").labels.courthouse).toBe("UT Tower");
+    expect(themeFor("Austin").labels.cathedral).toBe("St. Mary Cathedral");
+    expect(themeFor("Austin").labels["Big Blue Bear"]).toBe("Giga Texas");
+  });
+
+  it("treats a missing theme as Denver and refuses a city that is still soon", () => {
+    expect(resolveTheme(undefined)).toBe("Denver");
+    expect(resolveTheme("")).toBe("Denver");
+    expect(resolveTheme("austin")).toBe("Austin");
+    expect(resolveTheme("Denver")).toBe("Denver");
+    expect(resolveTheme("Boulder")).toBeNull();
+    expect(themeClass("Denver")).toBe("");
+    expect(themeClass(undefined)).toBe("");
+    expect(themeClass("Austin")).toBe("theme-austin");
+  });
+
+  it("keeps Denver's midday sky and paints Austin warmer, with water in front", () => {
+    const light = lightingAtMinutes(12 * 60 + 30);
+    const denver = paintScenePixels(
+      { map: { tiles: 8, period: 3 }, buildings: [], landmarks: [], parks: [], sideQuests: [] },
+      light,
+      { theme: "Denver" },
+    );
+    const austin = paintBackdropPixels(light, "Austin");
+    const denverSky = paintBackdropPixels(light, "Denver");
+    const at = (data, x, y) => {
+      const i = (y * SCENE_W + x) * 4;
+      return [data[i], data[i + 1], data[i + 2]];
+    };
+    // The top row is the keyframe color, before the gradient starts.
+    // A tint applied to Denver would move this pixel.
+    expect(at(denverSky, 10, 0)).toEqual([0x5b, 0x8f, 0xd6]);
+    expect(at(austin, 10, 0)).not.toEqual(at(denverSky, 10, 0));
+    // The front prairie is lake water on Austin and tan on Denver.
+    const water = at(austin, 640, 980);
+    const sand = at(denverSky, 640, 980);
+    expect(water[2]).toBeGreaterThan(water[0]);
+    expect(sand[0]).toBeGreaterThan(sand[2]);
+    expect(denver[3]).toBe(255);
+  });
+});
+
+describe("Austin landmarks", () => {
+  const light = lightingAtMinutes(12 * 60 + 30);
+  const capitol = listProps({
+    buildings: [{ id: 1, type: "capitol", x: 4, y: 4, status: "complete", targetStories: 13, storiesBuilt: 13, variant: 1 }],
+    landmarks: [],
+    parks: [],
+    sideQuests: [],
+  })[0];
+
+  function count(data, pred) {
+    let n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue;
+      if (pred(data[i], data[i + 1], data[i + 2])) n += 1;
+    }
+    return n;
+  }
+
+  const gold = (r, g, b) => r > 180 && g > 120 && b < 90;
+  const pink = (r, g, b) => r > 160 && r > g + 20 && g > b && b > 90;
+
+  it("draws the capitol in pink granite instead of Denver gold", () => {
+    const austin = paintPropPixels(capitol, light, "Austin");
+    const denver = paintPropPixels(capitol, light, "Denver");
+    expect(count(denver.data, gold)).toBeGreaterThan(30);
+    expect(count(austin.data, gold)).toBeLessThan(10);
+    expect(count(austin.data, pink)).toBeGreaterThan(40);
+  });
+
+  it("lights the UT Tower crown more at night than at noon", () => {
+    const tower = listProps({
+      buildings: [],
+      landmarks: [{ key: "courthouse", x: 4, y: 4 }],
+      parks: [],
+      sideQuests: [],
+    })[0];
+    const day = paintPropPixels(tower, light, "Austin");
+    const night = paintPropPixels(tower, lightingAtMinutes(22 * 60), "Austin");
+    const orange = (r, g, b) => r > 180 && g > 50 && g < 160 && b < 80;
+    expect(count(night.data, orange)).toBeGreaterThan(count(day.data, orange));
+    expect(count(night.data, orange)).toBeGreaterThan(20);
   });
 });

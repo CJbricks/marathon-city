@@ -10,9 +10,10 @@
 // is still what the next response replays from.
 //
 // Naming a city happens before Strava. Strava sends the browser away and
-// back, which wipes React state, so the half-finished city (name, and
-// which slot it will replace) is also written to sessionStorage. When
+// back, which wipes React state, so the half-finished city (name, theme,
+// and which slot it will replace) is also written to sessionStorage. When
 // Strava returns, that draft is what the date and race screens finish.
+// The theme is "Denver" or "Austin". The typed name is not the theme.
 // A city code opens someone else's save on this phone. Logging a run
 // still needs this phone's own Strava login.
 
@@ -22,6 +23,7 @@ import { isRaceDay, uniqueLandmarkCount } from "@/lib/raceDay";
 import { randomQuote } from "@/lib/quotes";
 import { isRunActivity, replay, shouldFlyPlane } from "@/lib/replay";
 import { MAX_SAVES, cleanName } from "@/lib/saves";
+import { themeClass } from "./themes/names";
 import {
   CodeScreen,
   ConfirmReplaceScreen,
@@ -239,7 +241,7 @@ export default function Game() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: body.name,
-        city: "Denver",
+        city: body.city || "Denver",
         startMode: body.startMode,
         startDate: body.startDate,
         raceDate: body.raceDate || null,
@@ -505,7 +507,11 @@ export default function Game() {
 
   const saves = savesOf(payload);
 
-  if (screen === "boot" || !payload) return <LoadingScreen quote={quote} />;
+  // The frame follows the city being built, or the city already on screen.
+  // A draft wins while a new city is in progress, so creating Austin does
+  // not flash the previous city's colors. An old save with no city is Denver.
+  const chrome = (draft?.pending && draft.city) || payload?.save?.city || "Denver";
+  if (screen === "boot" || !payload) return <LoadingScreen quote={quote} theme={chrome} />;
   if (screen === "title") {
     return (
       <TitleScreen
@@ -579,7 +585,7 @@ export default function Game() {
           }
         }}
         onNext={(name) => {
-          remember({ ...(draft || {}), pending: true, city: "Denver", demo: false, name });
+          remember({ ...(draft || {}), pending: true, city: draft?.city || "Denver", demo: false, name });
           setNotice("");
           setScreen("picker");
         }}
@@ -589,8 +595,13 @@ export default function Game() {
   if (screen === "picker") {
     return (
       <PickerScreen
+        city={draft?.city || "Denver"}
         onBack={() => setScreen("name")}
-        onNext={() => setScreen(payload.connected ? "start" : "strava")}
+        onNext={(city) => {
+          remember({ ...(draft || {}), pending: true, city, demo: false });
+          setNotice("");
+          setScreen(payload.connected ? "start" : "strava");
+        }}
       />
     );
   }
@@ -601,6 +612,7 @@ export default function Game() {
         notice={notice}
         force={forceReconnect}
         saveName={payload.save?.name || ""}
+        theme={payload.save?.city || "Denver"}
         playing
         onBack={() => {
           setNotice("");
@@ -616,13 +628,14 @@ export default function Game() {
         notice={notice}
         force={forceReconnect}
         saveName={draft?.name || ""}
+        theme={draft?.city || "Denver"}
         onBack={() => setScreen("picker")}
         onSkip={() => setScreen("start")}
         onDemo={() =>
           createCity({
             ...(draft || {}),
             demo: true,
-            city: "Denver",
+            city: draft?.city || "Denver",
             name: cleanName(draft?.name) || "Demo city",
           })
         }
@@ -633,11 +646,12 @@ export default function Game() {
     return (
       <StartScreen
         saveName={draft?.name || ""}
+        theme={draft?.city || "Denver"}
         initialMode={draft?.startMode}
         initialDate={draft?.startDate}
         onBack={() => setScreen(payload.connected ? "picker" : "strava")}
         onBuild={(mode, date) => {
-          remember({ ...(draft || {}), pending: true, city: "Denver", startMode: mode, startDate: date });
+          remember({ ...(draft || {}), pending: true, city: draft?.city || "Denver", startMode: mode, startDate: date });
           setScreen("race");
         }}
       />
@@ -646,6 +660,7 @@ export default function Game() {
   if (screen === "race") {
     return (
       <RaceScreen
+        theme={draft?.pending ? draft.city || "Denver" : payload.save?.city || "Denver"}
         initialDate={draft?.pending ? null : payload.save?.raceDate}
         initialName={draft?.pending ? "" : payload.save?.raceName}
         onBack={() => setScreen(draft?.pending ? "start" : "city")}
@@ -681,8 +696,8 @@ export default function Game() {
   const landmarks = uniqueLandmarkCount(payload.city);
   const others = saves.length > 1;
   return (
-    <div className="city-screen">
-      {/* The save's city ("Denver") picks the drawings. The typed name does not. */}
+    <div className={["city-screen", themeClass(payload.save?.city)].filter(Boolean).join(" ")}>
+      {/* The save's city ("Denver" or "Austin") picks the drawings. The typed name does not. */}
       <CityView city={payload.city} fx={fx} celebrate={celebrate} theme={payload.save?.city || "Denver"} />
       <button type="button" className="pixel-btn menu-btn" onClick={() => setMenu(true)}>
         MENU
@@ -708,6 +723,9 @@ export default function Game() {
         <div className="modal">
           <p>MENU</p>
           {payload.save?.code ? <p className="pixel-chip">CODE {payload.save.code}</p> : null}
+          {payload.save?.city && payload.save.city !== "Denver" ? (
+            <p className="pixel-note">{payload.save.city.toUpperCase()}</p>
+          ) : null}
           <button type="button" className="pixel-btn gold" disabled={playing} onClick={() => { setMenu(false); logRun(); }}>
             LOG RUN
           </button>

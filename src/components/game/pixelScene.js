@@ -3,9 +3,10 @@
 // The picture is 1280×1000, twice the old 640×500 canvas. Pixi shows it
 // as a single texture with nearest-neighbor scaling, so the blocks stay
 // crisp and the static city is not redrawn every frame. What gets drawn
-// (Denver's buildings, or later Austin's) comes from themes/. This file
-// only owns the sky, the camera-sized backdrop, and the order the lots
-// are painted in.
+// (Denver's buildings, or Austin's) comes from themes/. This file only
+// owns the sky, the camera-sized backdrop, and the order the lots are
+// painted in. A theme may warm the sky or add a lake. Denver does neither,
+// and those branches are skipped, so its picture stays the same.
 //
 // paintBackdrop is the sky, the mountains, and the ground. paintScene
 // with gridOnly is the lots, roads, and buildings, and every other pixel
@@ -42,11 +43,24 @@ function canvasFrom(data, width, height) {
   return canvas;
 }
 
+// A theme can pull the clock sky toward one color. Denver has no sky
+// field, and this returns the keyframe color unchanged, same array, so
+// the Nuggets sky stays pixel-identical. Night uses a smaller mix so the
+// stars do not turn peach.
+export function tintSkyColor(color, light, theme) {
+  const spec = theme?.sky;
+  if (!spec || !color) return color;
+  const amount = light.stars > 0.6 ? spec.night || 0 : spec.day || 0;
+  if (!amount) return color;
+  const toward = hex(spec.toward);
+  return color.map((v, i) => Math.min(255, Math.max(0, Math.round(v + (toward[i] - v) * amount))));
+}
+
 function skyAndLand(pen, light, theme) {
   const { width, height } = pen;
-  const top = light.sky[0];
-  const mid = light.sky[1];
-  const horizon = light.sky[2];
+  const top = tintSkyColor(light.sky[0], light, theme);
+  const mid = tintSkyColor(light.sky[1], light, theme);
+  const horizon = tintSkyColor(light.sky[2], light, theme);
   const horizonY = Math.min(HORIZON_Y, height - 1);
   for (let y = 0; y < height; y += 1) {
     const t = Math.min(1, y / Math.max(1, horizonY));
@@ -89,7 +103,7 @@ function skyAndLand(pen, light, theme) {
       }
     }
   }
-  const cloud = light.cloud || [244, 248, 252];
+  const cloud = tintSkyColor(light.cloud || [244, 248, 252], light, theme);
   const cr = rng(7);
   if (light.stars < 0.85) {
     for (let i = 0; i < 6; i += 1) {
@@ -123,6 +137,21 @@ function skyAndLand(pen, light, theme) {
     const c = mul(raw, light.ambient);
     for (let x = 0; x < width; x += 1) {
       pen.put(x, y, (x * 3 + y * 5) % 17 === 0 ? mix(c, 0.86) : c);
+    }
+  }
+  // Water sits on the prairie, outside the lots. The grid is a second
+  // picture drawn on top, so a lake here shows beside the city and does
+  // not cover a street. Denver has no lake, and this loop does not run.
+  if (theme.lake) {
+    const water = mul(hex(theme.lake.color), light.ambient);
+    const shine = hex(theme.lake.shine);
+    const y0 = Math.min(height - 1, 868);
+    for (let y = y0; y < height; y += 1) {
+      pen.span(0, width - 1, y, y % 5 === 0 ? shine : water);
+    }
+    for (let y = Math.min(y0, 520); y < y0; y += 1) {
+      const x0 = Math.min(width - 1, 1100 + Math.floor((y - 520) * 0.15));
+      pen.span(x0, width - 1, y, (x0 + y) % 7 === 0 ? shine : water);
     }
   }
 }
@@ -163,7 +192,7 @@ function paintLots(pen, city, light, theme) {
   for (const p of city.parks) items.push({ k: p.x + p.y + 0.01, draw: () => theme.drawPark(pen, p) });
   for (const l of city.landmarks) {
     if (l.key === "capitol") continue;
-    items.push({ k: l.x + l.y + 0.02, draw: () => theme.drawLandmark(pen, l, ambient) });
+    items.push({ k: l.x + l.y + 0.02, draw: () => theme.drawLandmark(pen, l, ambient, night) });
   }
   for (const q of city.sideQuests) items.push({ k: q.x + q.y + 0.5, draw: () => theme.drawQuest(pen, q, ambient) });
   items.sort((a, b) => a.k - b.k);
@@ -237,8 +266,8 @@ export function listProps(city) {
       id: `l:${l.key}:${l.x}:${l.y}`,
       depth: propDepth(l.x, l.y, 1),
       sig: l.key,
-      draw(pen, theme, ambient) {
-        theme.drawLandmark(pen, l, ambient);
+      draw(pen, theme, ambient, night) {
+        theme.drawLandmark(pen, l, ambient, night);
       },
     });
   }
@@ -331,7 +360,7 @@ export function paintExtendedBackdropPixels(light, extraTop, extraBottom, extraL
   const height = SCENE_H + top + bottom;
   const data = new Uint8ClampedArray(width * height * 4);
   const pen = createPen(data, width, height);
-  const skyTop = light.sky[0];
+  const skyTop = tintSkyColor(light.sky[0], light, theme);
   for (let y = 0; y < top; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const dither = y % 4 === 3 && (x + y) % 2 === 0;
@@ -365,11 +394,16 @@ export function paintExtendedBackdropPixels(light, extraTop, extraBottom, extraL
     }
   }
 
-  const ground = mul(hex(theme.ground.near), ambient);
+  // Austin's lake already fills the bottom of the 1280×1000 picture. Keep
+  // that water going so a tall phone does not put dry prairie under it.
+  // Denver has no lake, so this stays the near prairie color.
+  const ground = theme.lake ? mul(hex(theme.lake.color), ambient) : mul(hex(theme.ground.near), ambient);
+  const shine = theme.lake ? hex(theme.lake.shine) : null;
   for (let y = 0; y < bottom; y += 1) {
     const sceneY = SCENE_H + y;
+    const row = shine && sceneY % 5 === 0 ? shine : ground;
     for (let x = 0; x < width; x += 1) {
-      pen.put(x, top + SCENE_H + y, (x * 3 + sceneY * 5) % 17 === 0 ? mix(ground, 0.86) : ground);
+      pen.put(x, top + SCENE_H + y, shine ? row : (x * 3 + sceneY * 5) % 17 === 0 ? mix(ground, 0.86) : ground);
     }
   }
   return { data, width, height, top, bottom, left, right };
