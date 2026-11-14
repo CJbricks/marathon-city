@@ -682,7 +682,8 @@ export default function Game() {
   const others = saves.length > 1;
   return (
     <div className="city-screen">
-      <CityView city={payload.city} fx={fx} celebrate={celebrate} />
+      {/* The save's city ("Denver") picks the drawings. The typed name does not. */}
+      <CityView city={payload.city} fx={fx} celebrate={celebrate} theme={payload.save?.city || "Denver"} />
       <button type="button" className="pixel-btn menu-btn" onClick={() => setMenu(true)}>
         MENU
       </button>

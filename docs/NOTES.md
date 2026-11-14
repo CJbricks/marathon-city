@@ -29,7 +29,12 @@ src/app/api/strava/start   Redirects to Strava.
 src/app/api/strava/callback  Trades the code for tokens.
 src/components/game/Game.js      Screen flow and the Log run animation timer.
 src/components/game/Screens.js   Title, picker, Strava, start date, loading.
-src/components/game/pixelScene.js  Draws the pixel city into one small canvas.
+src/components/game/sceneLayout.js  Picture size and the isometric lot math (1280×1000).
+src/components/game/pixelPen.js    The shared pixel pen every theme draws with.
+src/components/game/streets.js     Sidewalks, curbs, and asphalt. Colors come from the theme.
+src/components/game/themes/        One folder per city. Denver is the only one so far.
+src/components/game/overlaySprites.js  Cars, people, crane, transit. Same pixel scale as the city.
+src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks the theme to draw.
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
@@ -148,9 +153,9 @@ The live city is not stored as pixels. It is rebuilt from the activity rows on e
 
 ## Art system
 
-The city is not a set of flat 3D boxes redrawn every frame. `pixelScene.js` paints two 640×500 pictures. `paintBackdrop` is the sky, the mountains, and the sandy ground. `paintScene` with `gridOnly` is the lots, roads, and buildings, and every other pixel in that picture is clear. `CityView.js` uploads each as a Pixi texture and scales both with nearest-neighbor. The grid texture is thrown away and painted again only when a building's story count changes or the clock moves to a new lighting phase (morning, midday, dusk, night). The backdrop is painted again only when the phase changes.
+The city is not a set of flat 3D boxes redrawn every frame. `pixelScene.js` paints two 1280×1000 pictures. `paintBackdrop` is the sky, the mountains, and the sandy ground. `paintScene` with `gridOnly` is the lots, roads, and buildings, and every other pixel in that picture is clear. `CityView.js` uploads each as a Pixi texture and scales both with nearest-neighbor. The grid texture is thrown away and painted again only when a building's story count changes, the clock moves to a new lighting phase (morning, midday, dusk, night), or the theme changes. The backdrop is painted again only when the phase changes.
 
-The two pictures start in the same place. `gridPlacement` in `gridFit.js` fits the 640×500 picture *inside* the view (the smaller of width and height), then centers it. That is not "cover". Covering a tall phone uses the height, and that zoomed the diamond until its corners ran off both sides of a 390px screen. Before the canvas filled the phone, the picture was only about as tall as it was wide, so the width set the scale and the whole diamond sat inside the screen with a margin. Fitting inside the view brings that size back. On a short desktop window the height is the smaller side, so the front of the diamond is not cropped there either.
+The two pictures start in the same place. `gridPlacement` in `gridFit.js` fits the 1280×1000 picture *inside* the view (the smaller of width and height), then centers it. That is not "cover". Covering a tall phone uses the height, and that zoomed the diamond until its corners ran off both sides of a 390px screen. Before the canvas filled the phone, the picture was only about as tall as it was wide, so the width set the scale and the whole diamond sat inside the screen with a margin. Fitting inside the view brings that size back. On a short desktop window the height is the smaller side, so the front of the diamond is not cropped there either.
 
 A drag, a pinch, or the mouse wheel changes only the grid's container. The backdrop stays at the opening placement. That backdrop picture is extended with more sky above and more speckled ground below (and to the sides on a wide window) so the texture itself reaches the edges of the screen. A flat rectangle of the same colors sits behind it, in case a pixel is still uncovered. The sky still reaches the top and the ground still reaches the bottom bar. The city screen itself is `position: fixed` and the canvas is absolutely positioned inside its box, because Safari was sizing the canvas from its bitmap and leaving a light-gray band under the menu and another above the bar.
 
@@ -158,14 +163,38 @@ The crane, the dust, the plane, the race-day parade, the transit lines, the stre
 
 A pinch or the mouse wheel changes only that grid container, and only onto the ladder from `stepZoom` in `gridFit.js`. The opening fit can be a fraction. Past 1× the scale is a whole number. The backdrop is not on that ladder. The scale change is anchored on the point under the fingers or the cursor, then clamped. The section below explains why a bare snap used to throw the diamond off the phone.
 
-The isometric placement is `x = (u - v) * 12`, `y = (u + v) * 6`, with the origin near the middle of the canvas. A lot with a larger `u + v` is closer to the camera, so it is painted later and covers the lots behind it. Every building is three faces: the left face is darker, the right face is mid, the top is lighter. That is the whole shading model. Windows are single pixels on those faces. At dusk and night (`windowLight` from `lighting.js`) those pixels switch to a warm yellow, and the sky and mountains use that phase's colors.
+The isometric placement is `x = (u - v) * 24`, `y = (u + v) * 12`, with the origin near the middle of the canvas. A lot with a larger `u + v` is closer to the camera, so it is painted later and covers the lots behind it. Every building is three faces: the left face is darker, the right face is mid, the top is lighter. That is the whole shading model. Windows are a few pixels on those faces, with a sill between stories. At dusk and night (`windowLight` from `lighting.js`) the glass switches to a warm yellow, and the sky and mountains use that phase's colors.
 
-To add or change a sprite, edit `pixelScene.js`:
+To add or change a Denver sprite, edit `src/components/game/themes/denver.js`. Do not put the new shape in `rules.js`.
 
-- A new ordinary type goes in `drawBuilding`. Give it a base color, call `box` for the three faces, then `windows` for the dots. `stories` is already the height. Use `b.variant` as the seed if two buildings of the same type should not match.
+- A new ordinary type goes in `drawBuilding`. Give it a base color, call `pen.box` for the three faces, then `pen.windows` for the dots. `stories` is already the height. Use `b.variant` as the seed if two buildings of the same type should not match. An odd variant of a rowhouse is a Victorian (bay and turret). An even one is the flat-front house.
 - A civic landmark goes in `drawLandmark`, keyed by `unionStation`, `courthouse`, `artMuseum`, or `cathedral`. Every cathedral uses the `cathedral` key, so the second and third get the same twin-spire sprite rather than a copy of some other building. The Capitol is a building (`type === "capitol"`), not a separate landmark sprite, because it has a story count. Museum buildings are the `museum` type: a gallery and one shard, not the cathedral spires.
 - A side-quest block goes in `drawQuest`, matched on the quest name from `rules.js`.
 - Parks go in `drawPark`. Washington Park and City Park get the lake; every park gets trees and a path.
+
+## How the 2× art and the theme seam work
+
+The first city picture was 640×500. A lot was 24 pixels wide and 12 tall, and one story was 3 pixels tall. That was enough for a colored box and a few window dots. It was not enough for a door, an awning, or a sidewalk that you could still see after the picture was fit onto a phone.
+
+The picture is now 1280×1000. The lot step is 24 by 12 (`HW` and `HH` in `sceneLayout.js`), and one story is 6 pixels (`STORY`). Those numbers are exactly double. The map is still 22 tiles on a side, so the diamond grows by the same amount as the picture. On a 390px-wide phone the opening scale is about 0.30 instead of 0.61, and the diamond still fills the same fraction of the screen. The fit got smaller as a number because there are twice as many pixels to fit, not because the city is cropped.
+
+Nearest-neighbor is what keeps it pixel art. Pixi is created with `antialias: false`, `roundPixels: true`, `resolution: 1`, and `autoDensity: false`. The texture `scaleMode` is `"nearest"`. The canvas CSS says `image-rendering: pixelated`. `resolution: 1` means the backing store is CSS pixels, not device pixels. A retina buffer would be three times wider and the browser would scale it back down, which softens the blocks. `autoDensity` is off for the same reason. The canvas is pinned to its box with `width: 100%` and `height: 100%` in `globals.css`, which is what stops Safari from sizing the bitmap and leaving gray bands. Zoom past the opening fit still stops on 1, 2, 3, up to 6. At 2× each city pixel is a 2×2 block of screen pixels. A scale of 1.5 would blend neighbors.
+
+The extra pixels are used, not just stretched:
+
+- A street lot is painted three times: sidewalk, then a darker curb, then asphalt. The sidewalk is about 6 picture pixels wide, which is about two screen pixels when the whole city is on a phone. That is the smallest band that still reads.
+- Houses have a door, a sill between stories, a pitched roof, and a chimney. Half of them (odd `variant`) add a bay window and a turret. Those are the Victorians.
+- A mixed-use lot has glass on the ground floor and a colored awning slab in front of the wall. The slab is what you can see at phone size. A stripe painted on the brick disappears.
+- Offices are a glass grid with a roof box. Towers are a tighter glass grid, a setback when they are tall enough, and an antenna with a red light. State buildings are pale stone with a flag.
+- Landmarks are silhouettes first. The capitol is the gold dome. Union Station is the clock and the red shed roof. The art museum is one metal shard (two shards used to look like cathedral spires). A cathedral is two spires with gold tips. Stadiums are bowls. The bear stands in front of a glass wall.
+
+Cars, trucks, the navy bus, the police car, pedestrians, the dust puff, and the crane are drawn at that same pixel size, in `overlaySprites.js` and `dust.js`. Their speed is still `vehicles.speedMultiplier` (0.75) and `pedestrians.speedMultiplier` (0.5) in `rules.js`. The lap times did not change. The airplane stays in screen pixels, because it flies next to the quote banner, which is also laid out on the page.
+
+One 1280×1000 texture is about 5 MB. Phones allow at least 4096×4096. The city does not need to be split into chunks. The sky picture grows to cover a tall screen, and `fitBackdropExtras` trims that growth so the upload stays inside 4096. A flat rectangle of sky and prairie sits behind it and covers any gap.
+
+The theme seam is `src/components/game/themes/`. `themeFor("Denver")` returns the Denver object. `paintScene` asks that object to draw buildings, landmarks, parks, and side quests, and it reads the object's colors for the prairie, the mountains, and the streets. The save's `city` field is the name that gets passed in (`"Denver"`). The name the person typed for the save is a label on the bottom bar. It is not the theme. An unknown name paints Denver, so a typo does not draw an empty picture.
+
+Austin is not built. To add it, create `themes/austin.js` with the same shape (the list is at the top of `themes/index.js`) and register it in `THEMES`. Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile rules stay shared. Only the drawings and the backdrop colors change. `sceneSignature` includes the theme name, so the cached texture is thrown away when the theme changes and kept when a car moves.
 
 `?flyover=1` on the city page, or the F key, plays the 8-second plane and quote banner without logging a run. `?time=22:00` (or any `HH:MM`) previews that hour's sky instead of the device clock. Neither one writes a run.
 
@@ -207,21 +236,21 @@ Coors Field, Ball Arena, and Empower Field are year-to-date ride miles again, in
 
 `types.ride` is `Ride`, `GravelRide`, `MountainBikeRide`, `EBikeRide`, and `VirtualRide`. Those are the `sport_type` strings Strava sends. `stravaActivityType` keeps them as they arrived, and the simulator looks them up in that list. A weight session still earns no block.
 
-A half marathon is still one run or trail run of at least 13.1 miles, lifetime, one unlock per qualifying run. The names are Cherry Creek Trail, then Denver Zoo, then Denver Botanic Gardens. Their blocks are on the front edge of the map, in `map.sideQuestBlocks`, and `drawQuest` in `pixelScene.js` paints each one: a creek and a bridge, a green lot with a gate and an elephant shape, a glass dome over flower beds. A 26.2 mile run still also unlocks the next full-marathon landmark (the bear, then the athletic club).
+A half marathon is still one run or trail run of at least 13.1 miles, lifetime, one unlock per qualifying run. The names are Cherry Creek Trail, then Denver Zoo, then Denver Botanic Gardens. Their blocks are on the front edge of the map, in `map.sideQuestBlocks`, and `drawQuest` in `themes/denver.js` paints each one: a creek and a bridge, a green lot with a gate and an elephant shape, a glass dome over flower beds. A 26.2 mile run still also unlocks the next full-marathon landmark (the bear, then the athletic club).
 
 ### The overlay is not the cached texture
 
-`pixelScene.js` paints the lots, the roads, and the buildings into one picture. Pixi uploads that picture and keeps it. `sceneSignature` is the name of the picture: the lighting phase, each building's stories, the landmarks, the park count, and the side-quest names. When the name is unchanged, the GPU just moves the picture.
+`pixelScene.js` paints the lots, the roads, and the buildings into one picture, asking the theme for the shapes. Pixi uploads that picture and keeps it. `sceneSignature` is the name of the picture: the theme, the lighting phase, each building's stories, the landmarks, the park count, and the side-quest names. When the name is unchanged, the GPU just moves the picture.
 
 Cars, walkers, the ultra bus, the crane, the dust, and the parade are not in that name. They are Graphics objects drawn every frame, in the same isometric coordinates as the picture, as children of the grid container. `drawPopulation` clears one Graphics object and redraws at most 16 vehicles and 32 walkers. That is the pool: one object, reused, not a sprite per person and not a pixel baked into the city picture. A moving foot does not call `paintScene`. Earning the zoo does, because the zoo is a side quest and the signature includes its name.
 
 ### Why integer zoom keeps the pixels sharp
 
-`gridPlacement` fits the 640×500 picture inside the view. On a 390px-wide phone that scale is about 0.61. The whole diamond is visible, and the sky and the ground stay pinned behind it. That opening scale is allowed to be a fraction. Shrinking the picture does not smear it the way a fractional enlarge does.
+`gridPlacement` fits the 1280×1000 picture inside the view. On a 390px-wide phone that scale is about 0.30. The whole diamond is visible, and the sky and the ground stay pinned behind it. That opening scale is allowed to be a fraction. Shrinking the picture does not smear it the way a fractional enlarge does. The diamond fills the same fraction of the phone as it did when the picture was 640 wide, because the lots doubled with the picture.
 
 `stepZoom` is the ladder. From 0.61 the next stop is 1, then 2, then 3, up to 6. At 2×, each city pixel is a 2×2 block of screen pixels. The texture is `scaleMode: "nearest"`, so those blocks are copies, not blends. A scale of 1.5 would have to blend neighboring pixels, and the blocks would look soft. Zooming out from 1× does not stop at 0.9. It returns to the opening fit, which is the smallest scale. On a short desktop window the fit can already be above 1 (about 1.8). That fit stays on the ladder, and the next pinch in snaps to 2.
 
-`roundPixels` stays on, and the canvas `resolution` stays 1 with `autoDensity` on. That last pair is the Safari letterbox fix: if the backing store were the device-pixel size, Safari would display the bitmap too wide and leave empty bands. Integer zoom does not touch it. When the scale is a whole number, the pan position handed to Pixi is rounded too, so the 2× blocks do not shimmer between screen pixels while you drag. The pan value the next gesture uses is still the unrounded one, so the focal-point solve does not drift by a pixel each snap. This is the same idea as `chooseScale` in brick-city's `Overworld.js`: pick a whole-number scale so the art stays blocks.
+`roundPixels` stays on, and the canvas `resolution` stays 1 with `autoDensity` off. The backing store is CSS pixels. A device-pixel buffer would be wider than the screen and Safari would letterbox it. The canvas CSS (`width` and `height` 100% on `.city-canvas canvas`) is what makes the bitmap fill its box. Integer zoom does not touch that. When the scale is a whole number, the pan position handed to Pixi is rounded too, so the 2× blocks do not shimmer between screen pixels while you drag. The pan value the next gesture uses is still the unrounded one, so the focal-point solve does not drift by a pixel each snap. This is the same idea as `chooseScale` in brick-city's `Overworld.js`: pick a whole-number scale so the art stays blocks.
 
 ### Why a pinch used to throw the grid off the phone
 
@@ -233,11 +262,11 @@ Two functions in `gridFit.js` close that. `CityView` calls them after every zoom
 
 `zoomAboutPoint` keeps one picture pixel under one screen pixel. Rearranging the draw formula gives `pan = finger - scene * nextZoom`. A pinch remembers the picture pixel that was between the two fingers when the gesture started, and each snap (1×, 2×, 3×, and the rest of the ladder) solves the pan so that pixel is under the fingers again, including when the midpoint has moved. A mouse wheel does the same thing with the cursor, holding whatever pixel is under the cursor at that notch. The snap still happens on the way in, one ladder step at a time, rather than as a blurry in-between scale. Snapping only the scale, without solving the pan, is what made the grid jump.
 
-`clampCityPan` runs after that anchor, and after a one-finger drag. The box it watches is the diamond (`GRID_LEFT` through `GRID_RIGHT`, back corner to front corner), not the empty sky in the 640×500 picture. At least about 40% of the view (`MIN_VISIBLE_FRACTION`) has to keep showing that diamond. If the diamond is smaller than that slice, the whole diamond stays on screen and can still slide inside the margin. The clamp can pull the focal point a little when the fingers are over empty margin and the snap would have parked the city past the edge. It cannot pull the city all the way off.
+`clampCityPan` runs after that anchor, and after a one-finger drag. The box it watches is the diamond (`GRID_LEFT` through `GRID_RIGHT`, back corner to front corner), not the empty sky in the 1280×1000 picture. At least about 40% of the view (`MIN_VISIBLE_FRACTION`) has to keep showing that diamond. If the diamond is smaller than that slice, the whole diamond stays on screen and can still slide inside the margin. The clamp can pull the focal point a little when the fingers are over empty margin and the snap would have parked the city past the edge. It cannot pull the city all the way off.
 
 Zooming back out onto the opening fit does not keep the corner the fingers were on. That scale is the "show the whole city" scale, so `placeZoom` puts the pan back to the centered contain-fit from `gridPlacement`.
 
-iOS Safari also tries to zoom the page itself on a pinch. The canvas sets `touch-action: none` (in CSS and on the element), and the page calls `preventDefault` on `gesturestart` and `gesturechange`, so the browser zoom does not fight the grid zoom. The backdrop, nearest-neighbor scaling, `roundPixels`, and `resolution: 1` with `autoDensity` are unchanged.
+iOS Safari also tries to zoom the page itself on a pinch. The canvas sets `touch-action: none` (in CSS and on the element), and the page calls `preventDefault` on `gesturestart` and `gesturechange`, so the browser zoom does not fight the grid zoom. The backdrop, nearest-neighbor scaling, `roundPixels`, and `resolution: 1` with `autoDensity: false` stay as described above.
 
 ## Commands
 
