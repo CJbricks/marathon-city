@@ -13,9 +13,11 @@ const rules = {
   // Trail runs share the run kind, so their miles build stories, parks,
   // and the same milestones as a road run. Strava sends sport_type
   // "TrailRun"; a hand-written log may say "Trail Run".
+  // Ride names are Strava sport_type values. A gravel ride and a virtual
+  // ride count toward the same year-to-date stadium ladder as a road ride.
   types: {
     run: ["Run", "TrailRun", "Trail Run"],
-    ride: ["Ride"],
+    ride: ["Ride", "GravelRide", "MountainBikeRide", "EBikeRide", "VirtualRide"],
     walk: ["Walk"],
     weights: ["WeightTraining", "Weight Training", "Workout"],
   },
@@ -45,6 +47,10 @@ const rules = {
       "Big Blue Bear": [5, 6],
       "Denver Athletic Club": [6, 6],
       "Red Rocks Amphitheatre": [0, 0],
+      // Half marathons. The front edge (large block y) faces the camera.
+      "Cherry Creek Trail": [2, 6],
+      "Denver Zoo": [0, 6],
+      "Denver Botanic Gardens": [4, 6],
     },
   },
 
@@ -105,22 +111,47 @@ const rules = {
 
   // halfMarathon and fullMarathon are lifetime ordered lists. One qualifying
   // run unlocks the next unused name and then stops, so a single long run
-  // cannot skip ahead. Walks stay year-to-date miles inside one calendar year.
-  // Rides and weight sessions do not consult these lists.
+  // cannot skip ahead. Walks and rides are year-to-date miles inside one
+  // calendar year: the list is checked in order, and a name stays earned.
+  // Weight sessions do not consult these lists.
   sideQuests: {
     halfMarathon: {
       miles: 13.1,
-      names: ["Coors Field", "Ball Arena", "Empower Field at Mile High"],
+      names: ["Cherry Creek Trail", "Denver Zoo", "Denver Botanic Gardens"],
     },
     fullMarathon: {
       miles: 26.2,
       names: ["Big Blue Bear", "Denver Athletic Club"],
     },
+    ride: [
+      { name: "Coors Field", miles: 10 },
+      { name: "Ball Arena", miles: 25 },
+      { name: "Empower Field at Mile High", miles: 50 },
+    ],
     walk: [
       { name: "Confluence Park bridge", miles: 10 },
       { name: "16th Street Mall", miles: 25 },
       { name: "Red Rocks Amphitheatre", miles: 50 },
     ],
+  },
+
+  // A Monday-start week with at least one run is a streak week. The first
+  // afterWeeks weeks of a streak earn nothing. Each finished week after
+  // that adds one vehicle, cycling through types. A missed week starts the
+  // count over and does not remove vehicles already earned. maxAnimated is
+  // how many of those vehicles the overlay draws. The rest still exist.
+  vehicles: {
+    afterWeeks: 2,
+    types: ["car", "truck", "bus", "police"],
+    maxAnimated: 16,
+  },
+
+  // Lifetime walk miles, not the year-to-date landmark totals. The city
+  // stores floor(miles / milesPerPerson) people. maxAnimated is the cap
+  // on how many walkers the overlay draws.
+  pedestrians: {
+    milesPerPerson: 0.25,
+    maxAnimated: 32,
   },
 
   // A single run strictly longer than overMiles unlocks the next transit

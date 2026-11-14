@@ -8,6 +8,10 @@ describe("stravaActivityType", () => {
     expect(stravaActivityType({ sport_type: "Trail Run", type: "Run" })).toBe("TrailRun");
     expect(stravaActivityType({ type: "TrailRun" })).toBe("TrailRun");
     expect(stravaActivityType({ sport_type: "Ride", type: "Run" })).toBe("Ride");
+    expect(stravaActivityType({ sport_type: "GravelRide", type: "Ride" })).toBe("GravelRide");
+    expect(stravaActivityType({ sport_type: "MountainBikeRide" })).toBe("MountainBikeRide");
+    expect(stravaActivityType({ sport_type: "EBikeRide" })).toBe("EBikeRide");
+    expect(stravaActivityType({ sport_type: "VirtualRide" })).toBe("VirtualRide");
     expect(stravaActivityType({ type: "Run" })).toBe("Run");
     expect(stravaActivityType({})).toBe("Workout");
   });

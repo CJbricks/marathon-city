@@ -45,7 +45,7 @@ Someone opens `/`.
 1. `page.js` renders `Game`. The HTML shell (font, title, viewport) still comes from `layout.js` on the server.
 2. `Game` fetches `GET /api/session`. That Route Handler reads the `mc_user` cookie, creates one if it is missing, and asks the store for the save.
 3. The store is Postgres when `DATABASE_URL` is set, and `.data/store.json` otherwise. The route does not branch on that; `getStore()` does. `GET /api/health` reports which one is in use.
-4. `replay()` drops activities before a chosen start date and calls `simulate()` with today's UTC date as `asOf`. Parks only count for weeks that have ended by that date.
+4. `replay()` drops activities before a chosen start date and calls `simulate()` with today's UTC date as `asOf`. Parks and streak vehicles only count for weeks that have ended by that date.
 5. The JSON comes back. `Game` keeps a copy in `sessionStorage` so the next refresh can draw before the network returns. The store is still the source of truth: the fresh response replaces the cache.
 6. If there is no active save, the opening screens run. **Resume** lists the named cities (up to 3). **New City** asks for a name, then the city picker, Strava (only if it is not connected yet), all-history or a date, then the race-day question. **Demo city** skips Strava and loads the sample log under the name "Demo city".
 7. The city screen mounts `CityView`, which builds a Pixi canvas in the browser. Lighting calls `lightingAt(new Date())`, so it follows the phone clock. The bottom bar's middle label is the save's name, not the theme.
@@ -132,7 +132,9 @@ Edit `src/lib/rules.js`. Heights, the 100-mile Union Station line, the park week
 
 `types.run` includes `TrailRun` and `Trail Run` next to `Run`. The simulator looks the activity name up in that list and then runs the same mile loop, so a trail run builds stories and can unlock Union Station, the Capitol, a cathedral, the courthouse, an art-museum PR, and a park. `stravaActivityType` in `src/lib/strava.js` prefers Strava's `sport_type` over `type`, because a trail run often arrives with `type: "Run"` and `sport_type: "TrailRun"`.
 
-`sideQuests.halfMarathon` and `sideQuests.fullMarathon` are ordered name lists with a single-run mile line. The replay counts how many of that kind are already on the map and awards the next name when one run clears the line. A 26.2 mile run clears both lines, so it earns one half and one full. Further runs walk the rest of the list. When the list is used up, later runs of that distance add nothing from it. Walks stay on `sideQuests.walk` as year-to-date miles. Rides and weight sessions do not read a quest list.
+`sideQuests.halfMarathon` and `sideQuests.fullMarathon` are ordered name lists with a single-run mile line. The replay counts how many of that kind are already on the map and awards the next name when one run clears the line. A 26.2 mile run clears both lines, so it earns one half and one full. Further runs walk the rest of the list. When the list is used up, later runs of that distance add nothing from it. The half-marathon names are Cherry Creek Trail, Denver Zoo, and Denver Botanic Gardens. Walks stay on `sideQuests.walk` as year-to-date miles. Rides are back on `sideQuests.ride` the same way: Coors Field at 10, Ball Arena at 25, Empower Field at Mile High at 50, inside one calendar year. `types.ride` lists the Strava sport types that count. Weight sessions do not read a quest list.
+
+`vehicles` and `pedestrians` are in that same file. The streak math and the people count are explained in the next section. `maxAnimated` only limits what `CityView` draws. The numbers on the city object are the full counts.
 
 `transit` is the ultra rule. `overMiles` is the marathon line, and a run counts only when its miles are greater than that number, so 26.2 stays a marathon and 26.3 lays the first piece. `types` is the cycle (`bike`, `bus`, `lightRail`) and it wraps with no cap. Each entry is stored on the city as `{ mode, index, date, miles }`. `CityView` draws it in its own Pixi graphics object, in scene coordinates, along a road chosen from `index`. `sceneSignature` ignores transit, so the ticker can move the bus and the train without calling `paintScene`.
 
@@ -140,7 +142,7 @@ Limits live in the same file. `buildingTypes.museum.perCity` is how many museums
 
 `raceDay` in that same file only tunes the celebration: how many confetti bits, and how long one parade loop takes. The date itself is not a rule. It is `raceDate` and `raceName` on the city save, written by the opening question and by the menu. `isRaceDay` in `src/lib/raceDay.js` compares that date to the device's local calendar day, not UTC, so the parade lasts from local midnight to the next local midnight. The parade and confetti are a Pixi layer on top of the cached city texture. They do not call `paintScene`, so the skyline is not redrawn every frame. `?raceday=1` forces the overlay for a screenshot.
 
-Then run `npm test`. The demo-log test checks 704.95 miles, exactly 3 cathedrals, 1 capitol, and at most 10 museums. The same replay keeps the three walk quests and leaves transit empty, because the sample log's longest run is under a half marathon. Another test checks 1000 miles gives 5 cathedrals, and that `max: 2` holds them there. Trail, half, full, and ultra tests check Coors Field at 13.1 miles, the bear at 26.2, a bike route at 26.3, and an empty city for rides and weight sessions. Two replays of the same log must still match, and a partial mile still carries onto the next run. Cathedrals take lots when they unlock, so building coordinates are not identical to `prototype/city.json`.
+Then run `npm test`. The demo-log test checks 704.95 miles, exactly 3 cathedrals, 1 capitol, and at most 10 museums. The same replay keeps the three walk quests, adds Coors Field and Ball Arena from the sample rides, leaves Empower Field and the half-marathon landmarks off (no 50-mile ride year, no 13.1 mile run), and leaves transit empty. It also expects 36 streak vehicles and 207 pedestrians. Another test checks 1000 miles gives 5 cathedrals, and that `max: 2` holds them there. Trail, half, full, and ultra tests check Cherry Creek Trail at 13.1 miles, the bear at 26.2, a bike route at 26.3, and an empty skyline for weight sessions. Ride tests check the 10 / 25 / 50 ladder, including gravel, mountain, e-bike, and virtual rides. Two replays of the same log must still match, and a partial mile still carries onto the next run. Cathedrals take lots when they unlock, so building coordinates are not identical to `prototype/city.json`.
 
 The live city is not stored as pixels. It is rebuilt from the activity rows on each visit. Change the rules, and the next page load rebuilds every save from those rows.
 
@@ -152,7 +154,9 @@ The two pictures start in the same place. `gridPlacement` in `gridFit.js` fits t
 
 A drag, a pinch, or the mouse wheel changes only the grid's container. The backdrop stays at the opening placement. That backdrop picture is extended with more sky above and more speckled ground below (and to the sides on a wide window) so the texture itself reaches the edges of the screen. A flat rectangle of the same colors sits behind it, in case a pixel is still uncovered. The sky still reaches the top and the ground still reaches the bottom bar. The city screen itself is `position: fixed` and the canvas is absolutely positioned inside its box, because Safari was sizing the canvas from its bitmap and leaving a light-gray band under the menu and another above the bar.
 
-The crane, the dust, the plane, the race-day parade, and the transit lines are drawn on top. The crane and the dust live in the grid's container, so they stay on the building while you pan. The crane's idle sway is the same sine bob as before. The dust is eight reused pixel rectangles at the west side, the east side, and the front corner of the lot. They only run while a story is being added (`dust` on the animation), and the build steps take a little longer (`14` steps, at least `1500` ms) so the puff is visible. The plane stays in screen space. None of these call `paintScene` every frame.
+The crane, the dust, the plane, the race-day parade, the transit lines, the streak vehicles, and the walkers are drawn on top. The crane and the dust live in the grid's container, so they stay on the building while you pan. The crane's idle sway is the same sine bob as before. The dust is eight reused pixel rectangles at the west side, the east side, and the front corner of the lot. They only run while a story is being added (`dust` on the animation), and the build steps take a little longer (`14` steps, at least `1500` ms) so the puff is visible. The plane stays in screen space. Cars and people are one Graphics object in that same grid container: `clear()` each frame, then at most `maxAnimated` of each. None of these call `paintScene` every frame.
+
+A pinch or the mouse wheel changes only that grid container, and only onto the ladder from `stepZoom` in `gridFit.js`. The opening fit can be a fraction. Past 1× the scale is a whole number. The backdrop is not on that ladder.
 
 The isometric placement is `x = (u - v) * 12`, `y = (u + v) * 6`, with the origin near the middle of the canvas. A lot with a larger `u + v` is closer to the camera, so it is painted later and covers the lots behind it. Every building is three faces: the left face is darker, the right face is mid, the top is lighter. That is the whole shading model. Windows are single pixels on those faces. At dusk and night (`windowLight` from `lighting.js`) those pixels switch to a warm yellow, and the sky and mountains use that phase's colors.
 
@@ -164,6 +168,56 @@ To add or change a sprite, edit `pixelScene.js`:
 - Parks go in `drawPark`. Washington Park and City Park get the lake; every park gets trees and a path.
 
 `?flyover=1` on the city page, or the F key, plays the 8-second plane and quote banner without logging a run. `?time=22:00` (or any `HH:MM`) previews that hour's sky instead of the device clock. Neither one writes a run.
+
+## Streak weeks, pedestrians, and crisp zoom
+
+This section is the "why" for the cars, the people, and the zoom stops. The numbers themselves stay in `src/lib/rules.js`. Change a number there and the next page load rebuilds the city from the same activities.
+
+### A streak week is a Monday, and it has to be over
+
+A vehicle is not three runs on three days. It is one run, or one trail run, in each of several Monday-to-Sunday weeks in a row.
+
+`rules.parks.weekStartsOn` is `1`. In the JavaScript clock, `0` is Sunday and `1` is Monday. `simulate.js` uses that same helper for parks and for vehicles. It walks backward from the run's date to the Monday that opened the week. Saturday and Sunday belong to the Monday that already happened. Monday morning is the next week. Two runs on Tuesday and Thursday are still one streak week. The week is stored once.
+
+The week only counts after it is finished. The last day is Sunday, which is the Monday plus 6 days. Parks already use `weekEnd < asOfDate`. Vehicles use that test too. If today is still that Sunday, the week is in progress and it cannot add a car. The next morning, when `asOfDate` has moved on, it can. That is why the browser and the server have to share the same `asOf` date. Otherwise one of them would draw a car the other one does not have yet.
+
+The first `rules.vehicles.afterWeeks` finished weeks of a streak add nothing. That number is 2. Week 3 adds the first vehicle, week 4 the next, and so on. For one streak the count is `max(0, length - 2)`. Two weeks is 0. Five weeks is 3.
+
+A week with no run or trail run ends the streak. A ride-only week ends it too. The count for the next streak starts over at zero. Cars already on the map stay. The city is permanent. The type cycle does not start over. If the last vehicle earned was a truck, the next streak's first vehicle is a bus.
+
+Add those per-streak counts. Four weeks, a gap, then three weeks is `max(0, 4 - 2) + max(0, 3 - 2) = 3` vehicles. The types go car, truck, bus, police, then car again, in the order they were earned across the whole log. `rules.vehicles.types` is that list.
+
+The streak bus is not the ultra bus. A run longer than 26.2 miles lays a transit line, and the bus on that line is a yellow coach with stop poles. A streak bus is a small navy bus with a cream window row. Both drive on roads the map already has. Only `maxAnimated` (16) streak vehicles are drawn. The city object still holds every one.
+
+### Pedestrians are lifetime miles, not the walk landmarks
+
+The walk landmarks did not move. Inside one calendar year, 10 walk miles is the Confluence Park bridge, 25 is the 16th Street Mall, and 50 is Red Rocks. A new year starts that counter over. A landmark, once earned, stays.
+
+People on the sidewalk are a second counter. Add every walk mile ever logged, in every year. Divide by `rules.pedestrians.milesPerPerson` (0.25) and drop the fraction: `floor(lifetimeWalkMiles / 0.25)`, which is 4 people per mile. 0.24 miles is nobody. 0.25 miles is one person. 0.20 in 2024 plus 0.20 in 2025 is one person, and it is not a landmark, because neither year reached 10.
+
+The simulator sums the hundredths of a mile, the same way it sums run miles, so `0.1 + 0.1 + 0.1` stays `0.30` instead of a binary fraction. It stores the full count, even when that is hundreds of people. `CityView` draws at most `maxAnimated` (32). Each of those walkers gets a phase from a mix of the walk-row seed and their index, so the same log puts the same people on the same sidewalks. They flip between two leg positions. They are not a new random set on every visit.
+
+### The ride ladder
+
+Coors Field, Ball Arena, and Empower Field are year-to-date ride miles again, in that order: 10, 25, and 50. The check is the same loop as the walk landmarks. One calendar year. A 9 mile year earns nothing. A 25 mile year earns Coors and Ball Arena, because both lines have been crossed, and it earns them in list order. A 10 mile year in 2015 keeps Coors forever. A 25 mile year in 2026 can then earn Ball Arena without earning Coors a second time. Nine miles in 2024 plus nine miles in 2025 do not add up to Coors.
+
+`types.ride` is `Ride`, `GravelRide`, `MountainBikeRide`, `EBikeRide`, and `VirtualRide`. Those are the `sport_type` strings Strava sends. `stravaActivityType` keeps them as they arrived, and the simulator looks them up in that list. A weight session still earns no block.
+
+A half marathon is still one run or trail run of at least 13.1 miles, lifetime, one unlock per qualifying run. The names are Cherry Creek Trail, then Denver Zoo, then Denver Botanic Gardens. Their blocks are on the front edge of the map, in `map.sideQuestBlocks`, and `drawQuest` in `pixelScene.js` paints each one: a creek and a bridge, a green lot with a gate and an elephant shape, a glass dome over flower beds. A 26.2 mile run still also unlocks the next full-marathon landmark (the bear, then the athletic club).
+
+### The overlay is not the cached texture
+
+`pixelScene.js` paints the lots, the roads, and the buildings into one picture. Pixi uploads that picture and keeps it. `sceneSignature` is the name of the picture: the lighting phase, each building's stories, the landmarks, the park count, and the side-quest names. When the name is unchanged, the GPU just moves the picture.
+
+Cars, walkers, the ultra bus, the crane, the dust, and the parade are not in that name. They are Graphics objects drawn every frame, in the same isometric coordinates as the picture, as children of the grid container. `drawPopulation` clears one Graphics object and redraws at most 16 vehicles and 32 walkers. That is the pool: one object, reused, not a sprite per person and not a pixel baked into the city picture. A moving foot does not call `paintScene`. Earning the zoo does, because the zoo is a side quest and the signature includes its name.
+
+### Why integer zoom keeps the pixels sharp
+
+`gridPlacement` fits the 640×500 picture inside the view. On a 390px-wide phone that scale is about 0.61. The whole diamond is visible, and the sky and the ground stay pinned behind it. That opening scale is allowed to be a fraction. Shrinking the picture does not smear it the way a fractional enlarge does.
+
+`stepZoom` is the ladder. From 0.61 the next stop is 1, then 2, then 3, up to 6. At 2×, each city pixel is a 2×2 block of screen pixels. The texture is `scaleMode: "nearest"`, so those blocks are copies, not blends. A scale of 1.5 would have to blend neighboring pixels, and the blocks would look soft. Zooming out from 1× does not stop at 0.9. It returns to the opening fit, which is the smallest scale. On a short desktop window the fit can already be above 1 (about 1.8). That fit stays on the ladder, and the next pinch in snaps to 2.
+
+`roundPixels` stays on, and the canvas `resolution` stays 1 with `autoDensity` on. That last pair is the Safari letterbox fix: if the backing store were the device-pixel size, Safari would display the bitmap too wide and leave empty bands. Integer zoom does not touch it. When the scale is a whole number, the pan position handed to Pixi is rounded too, so the 2× blocks do not shimmer between screen pixels while you drag. This is the same idea as `chooseScale` in brick-city's `Overworld.js`: pick a whole-number scale so the art stays blocks.
 
 ## Commands
 

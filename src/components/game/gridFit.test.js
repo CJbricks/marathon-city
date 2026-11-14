@@ -3,7 +3,7 @@
 // either. These numbers are what CityView applies before any drag.
 import { describe, expect, it } from "vitest";
 import { SCENE_H, SCENE_W } from "./pixelScene";
-import { GRID_LEFT, GRID_RIGHT, gridPlacement } from "./gridFit";
+import { GRID_LEFT, GRID_RIGHT, gridPlacement, stepZoom } from "./gridFit";
 
 function diamond(screenW, screenH) {
   const place = gridPlacement(screenW, screenH);
@@ -44,5 +44,29 @@ describe("gridPlacement", () => {
     const cover = Math.max(390 / SCENE_W, 815 / SCENE_H);
     expect(phone.scale).toBeLessThan(cover);
     expect(phone.scale * GRID_RIGHT).toBeLessThan(390);
+  });
+});
+
+describe("stepZoom", () => {
+  it("snaps past 1x to whole numbers and returns to the phone's contain-fit", () => {
+    const fit = gridPlacement(390, 844).scale;
+    expect(fit).toBeLessThan(1);
+    expect(fit).toBeCloseTo(390 / SCENE_W, 5);
+    expect(stepZoom(fit, fit, 1)).toBe(1);
+    expect(stepZoom(1, fit, 1)).toBe(2);
+    expect(stepZoom(2, fit, 1)).toBe(3);
+    expect(stepZoom(2, fit, -1)).toBe(1);
+    expect(stepZoom(1, fit, -1)).toBeCloseTo(fit, 5);
+    expect(stepZoom(fit, fit, -1)).toBeCloseTo(fit, 5);
+    expect(stepZoom(6, fit, 1)).toBe(6);
+  });
+
+  it("treats a contain-fit above 1 as the smallest scale", () => {
+    const fit = gridPlacement(1440, 900).scale;
+    expect(fit).toBeGreaterThan(1);
+    expect(Number.isInteger(fit)).toBe(false);
+    expect(stepZoom(fit, fit, 1)).toBe(2);
+    expect(stepZoom(2, fit, -1)).toBeCloseTo(fit, 5);
+    expect(stepZoom(fit, fit, -1)).toBeCloseTo(fit, 5);
   });
 });
