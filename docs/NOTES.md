@@ -39,8 +39,14 @@ src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan 
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
 src/app/layout.js          Font, title, viewport, Chakra provider.
+src/app/favicon.ico        Tab icon. 16, 32, 48, and 64, from the 32×32 drawing.
+src/app/icon.png           512×512 icon. Same drawing, each pixel copied 16 times.
+src/app/apple-icon.png     180×180 home-screen icon. Solid, no transparent pixels.
 src/app/page.js            Mounts Game. Stays a Server Component.
 prototype/                 The original scripts and stills. The app does not execute them.
+prototype/icon32_drawn.png The 32×32 drawing every icon size is scaled from.
+scripts/make-icons.mjs     Rebuilds favicon.ico, icon.png, and apple-icon.png.
+docs/austin-theme-screenshot.png  The Austin scene that drawing came from. Not served.
 ```
 
 ## How a request flows
@@ -315,6 +321,27 @@ Zooming back out onto the opening fit does not keep the corner the fingers were 
 
 iOS Safari also tries to zoom the page itself on a pinch. The canvas sets `touch-action: none` (in CSS and on the element), and the page calls `preventDefault` on `gesturestart` and `gesturechange`, so the browser zoom does not fight the grid zoom. The backdrop, nearest-neighbor scaling, `roundPixels`, and `resolution: 1` with `autoDensity: false` stay as described above.
 
+## Favicon and the home-screen icon
+
+The picture in the browser tab is not drawn by React. Next.js looks for a few file names in the same folder as `layout.js` and writes the `<link>` tags itself. There is no `<head>` in `layout.js`, and the metadata object does not list an icon. Adding a hand-written `<link rel="icon">` would put a second tag next to the one Next already emits.
+
+Three files, one drawing:
+
+- `src/app/favicon.ico` is the classic tab icon. It holds four pictures: 16, 32, 48, and 64. A browser picks the entry closest to the slot it is filling. A tab is usually 16 or 32. Windows also asks for 48.
+- `src/app/icon.png` is 512×512. Next adds it as a larger icon, so a shortcut or a high-resolution tab does not have to stretch the tiny ico.
+- `src/app/apple-icon.png` is 180×180. That is the size Apple uses for Share → Add to Home Screen. The file is RGB with no alpha channel. iOS paints a transparent pixel black, which would put a black edge around the tower.
+
+The master is `prototype/icon32_drawn.png`. It is 32 by 32 pixels: the cream UT Tower with the red roof and burnt-orange crown, the pink Capitol dome, a warm sky, and the burnt-orange frame. `npm run icons` runs `scripts/make-icons.mjs`, which reads that file and writes the three files above. The app does not run the script. The committed PNGs and the ico are what Next serves. Run the script again only after the drawing changes.
+
+The scale is nearest-neighbor. A source pixel is copied into a block. It is not averaged with its neighbors, so the twelve flat colors stay the twelve flat colors and the edges stay hard.
+
+- 64 copies each pixel into a 2×2 block. 512 copies each pixel into a 16×16 block. Both divide evenly.
+- 48 is 1.5×, which does not divide evenly. A direct nearest resize clumps fat columns next to fat columns. The script first copies each pixel into a 3×3 block (a 96×96 picture) and then keeps every other pixel of that. The columns then alternate thin, fat, thin, fat, and no new color is introduced. 64 is in the ico as well, for a slot that can take an even scale.
+- 16 keeps the one source pixel under the middle of each 2×2 block. Averaging the four pixels was tried. It invented colors that are not in the drawing, and the clock went gray. The script does not do that.
+- 180, the home-screen size, is not a whole multiple of 32 either (some pixels are copied 5 times, some 6). Apple asks for 180, so that is the size on disk. Any pixel that is not fully opaque is mixed onto the burnt-orange frame before the file is written. The drawing has no such pixels today.
+
+`docs/austin-theme-screenshot.png` is the Austin scene the drawing was made from. It is a reference for the next person who opens the master. The site does not serve it. The full scene is the wrong favicon: at 16 pixels the tower and the dome disappear into the skyline.
+
 ## Commands
 
 ```bash
@@ -324,6 +351,7 @@ npm run dev       # http://localhost:3000
 npm test
 npm run lint
 npm run build
+npm run icons     # rebuilds the favicon from prototype/icon32_drawn.png
 npm run migrate   # skips with a log line when DATABASE_URL is unset
                   # Vercel runs this automatically via vercel-build
 ```
