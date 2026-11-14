@@ -2,16 +2,23 @@
 
 // Opening-flow screens, including the save name, the resume list, the city
 // code, and the replace confirm. They use the loading screen's stage:
-// 320 wide, scaled to the phone, pixel font, Nuggets stripes, and a gold
-// frame. Labels match the prototype: Resume City, New City, the five-city
-// picker (only Denver is READY), Connect with Strava, all history or a
-// start date, then the race-day question.
+// 320 wide, scaled to the phone, pixel font, and a frame. Denver keeps the
+// Nuggets stripes and the gold frame. Austin passes theme="Austin", which
+// adds the theme-austin class and swaps those colors for burnt orange.
+// The picker enables every name in OPEN_THEMES. The others stay SOON.
 
 import { useEffect, useState } from "react";
 import { normalizeCityCode } from "@/lib/cityCode";
 import { MAX_SAVES, NAME_MAX, cleanName, saveLabel } from "@/lib/saves";
+import { OPEN_THEMES, themeClass } from "./themes/names";
 
 export const CITIES = ["AUSTIN", "DENVER", "BOULDER", "NEW YORK", "TOKYO"];
+
+const OPEN = new Set(OPEN_THEMES.map((name) => name.toUpperCase()));
+
+function themeFromCard(card) {
+  return OPEN_THEMES.find((name) => name.toUpperCase() === card) || "Denver";
+}
 
 function localToday() {
   const d = new Date();
@@ -19,7 +26,7 @@ function localToday() {
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
 
-function Stage({ children, height = 200 }) {
+function Stage({ children, height = 200, theme = "Denver" }) {
   const [scale, setScale] = useState(1);
   useEffect(() => {
     const fit = () => {
@@ -30,8 +37,9 @@ function Stage({ children, height = 200 }) {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
   }, [height]);
+  const frame = ["stage-wrap", themeClass(theme)].filter(Boolean).join(" ");
   return (
-    <div className="stage-wrap">
+    <div className={frame}>
       <div className="stage-sizer" style={{ width: 320 * scale, height: height * scale }}>
         <div className="stage-px" style={{ transform: `scale(${scale})`, height }}>
           <div className="sky-stripes" />
@@ -43,9 +51,9 @@ function Stage({ children, height = 200 }) {
   );
 }
 
-export function LoadingScreen({ quote }) {
+export function LoadingScreen({ quote, theme = "Denver" }) {
   return (
-    <Stage>
+    <Stage theme={theme}>
       <p className="pixel-title">MARATHON CITY</p>
       <p className="pixel-quote">{quote}</p>
       <div className="load-track">
@@ -204,18 +212,31 @@ export function NameScreen({ initial, notice, onNext, onBack }) {
   );
 }
 
-export function PickerScreen({ onNext, onBack }) {
+export function PickerScreen({ city = "Denver", onNext, onBack }) {
+  // The card the person last chose. Denver is the start, so a fresh city
+  // still lands on the gold frame until they tap Austin.
+  const [selected, setSelected] = useState(city === "Austin" ? "AUSTIN" : "DENVER");
+  const theme = themeFromCard(selected);
   return (
-    <Stage>
+    <Stage theme={theme}>
       <h2 className="pixel-heading">PICK YOUR CITY</h2>
       <div className="city-row">
         {CITIES.map((name) => {
-          const on = name === "DENVER";
+          const open = OPEN.has(name);
+          const on = selected === name;
+          const cls = ["city-card", on ? "on" : "", open && !on ? "open" : ""].filter(Boolean).join(" ");
           return (
-            <div key={name} className={on ? "city-card on" : "city-card"}>
+            <button
+              key={name}
+              type="button"
+              className={cls}
+              disabled={!open}
+              aria-pressed={on}
+              onClick={() => setSelected(name)}
+            >
               <span>{name}</span>
-              <em>{on ? "READY" : "SOON"}</em>
-            </div>
+              <em>{!open ? "SOON" : on ? "READY" : "OPEN"}</em>
+            </button>
           );
         })}
       </div>
@@ -224,7 +245,7 @@ export function PickerScreen({ onNext, onBack }) {
         <button type="button" className="pixel-btn" onClick={onBack}>
           BACK
         </button>
-        <button type="button" className="pixel-btn gold" onClick={onNext}>
+        <button type="button" className="pixel-btn gold" onClick={() => onNext(theme)}>
           NEXT
         </button>
       </div>
@@ -270,11 +291,11 @@ export function CodeScreen({ notice, busy, onSubmit, onBack }) {
   );
 }
 
-export function StravaScreen({ configured, notice, force, saveName, playing, onSkip, onBack, onDemo }) {
+export function StravaScreen({ configured, notice, force, saveName, playing, theme = "Denver", onSkip, onBack, onDemo }) {
   return (
-    <Stage height={playing ? 220 : 240}>
+    <Stage height={playing ? 220 : 240} theme={theme}>
       <h2 className="pixel-heading">CONNECT STRAVA</h2>
-      <p className="pixel-chip">DENVER</p>
+      <p className="pixel-chip">{theme.toUpperCase()}</p>
       {saveName ? <p className="pixel-note">{saveName}</p> : null}
       <p className="pixel-note">{playing ? "THIS PHONE SIGNS IN ON ITS OWN" : "YOUR RUNS BUILD THE CITY"}</p>
       {configured ? (
@@ -305,12 +326,12 @@ export function StravaScreen({ configured, notice, force, saveName, playing, onS
   );
 }
 
-export function StartScreen({ saveName, initialMode, initialDate, onBuild, onBack }) {
+export function StartScreen({ saveName, initialMode, initialDate, theme = "Denver", onBuild, onBack }) {
   // Back from the race question should not forget all-history vs a date.
   const [mode, setMode] = useState(initialMode === "all" ? "all" : "date");
   const [date, setDate] = useState(initialDate || localToday);
   return (
-    <Stage height={240}>
+    <Stage height={240} theme={theme}>
       <h2 className="pixel-heading">BUILD YOUR CITY</h2>
       {saveName ? <p className="pixel-note">{saveName}</p> : null}
       <div className={mode === "all" ? "choice on" : "choice"} onClick={() => setMode("all")} role="button" tabIndex={0}>
@@ -343,12 +364,12 @@ export function StartScreen({ saveName, initialMode, initialDate, onBuild, onBac
   );
 }
 
-export function RaceScreen({ initialDate, initialName, onDone, onBack }) {
+export function RaceScreen({ initialDate, initialName, theme = "Denver", onDone, onBack }) {
   const [yes, setYes] = useState(Boolean(initialDate));
   const [date, setDate] = useState(initialDate || "2027-02-14");
   const [name, setName] = useState(initialName || "");
   return (
-    <Stage height={248}>
+    <Stage height={248} theme={theme}>
       <h2 className="pixel-heading">RACE DAY</h2>
       <p className="pixel-note">ARE YOU TRAINING FOR A SPECIFIC DATE?</p>
       <div className="btn-row">

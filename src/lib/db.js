@@ -50,7 +50,9 @@ function readSaves(data, userId) {
         name: cleanName(raw.name) || cleanName(raw.city) || "Denver",
         slot: raw.slot || 1,
         active: raw.active !== false,
-        city: raw.city,
+        // A save written before themes existed, or a row with a blank city,
+        // is Denver. Austin is stored only when the person picked it.
+        city: raw.city || "Denver",
         startMode: raw.startMode,
         startDate: raw.startDate || null,
         lastSyncedAt: raw.lastSyncedAt || null,
@@ -404,7 +406,7 @@ function rowToSave(row, viewerId = null, guestSynced = undefined) {
     name: row.name,
     slot: Number(row.slot),
     active: Boolean(row.active),
-    city: row.city,
+    city: row.city || "Denver",
     startMode: row.start_mode,
     startDate: row.start_date,
     lastSyncedAt: asGuest

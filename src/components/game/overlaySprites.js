@@ -17,6 +17,7 @@
 // quote banner, so it is not doubled with the city.
 
 import rules from "@/lib/rules";
+import { moverHidden } from "./moverOcclusion";
 import { project, STORY } from "./sceneLayout";
 
 const SHIRTS = [0xd62828, 0x1565c0, 0xfdd835, 0x2e7d32, 0xf57c00, 0x6a1b9a];
@@ -125,7 +126,7 @@ export function drawWalker(g, x, y, frame, shirt) {
   }
 }
 
-export function drawPopulation(layerFor, city, now) {
+export function drawPopulation(layerFor, city, now, occluders) {
   if (!city?.map) return;
   const vehicles = city.vehicles || [];
   const vehicleCap = rules.vehicles?.maxAnimated ?? 16;
@@ -137,6 +138,7 @@ export function drawPopulation(layerFor, city, now) {
     const lap = VEHICLE_LAP[vehicle.type] || 8000;
     const t = ((now * vehiclePace) / lap + (vehicle.index || i) * 0.17) % 1;
     const at = pointOnRoad(span, t);
+    if (moverHidden(occluders, at.x, at.y, at.depth, 16, 14)) continue;
     drawVehicle(layerFor(at.depth), at.x, at.y, vehicle.type, blink);
   }
   const people = city.pedestrians;
@@ -151,6 +153,7 @@ export function drawPopulation(layerFor, city, now) {
     const raw = ((now * walkPace) / WALKER_LAP_MS + phase) % 1;
     const t = i % 3 === 0 ? 1 - raw : raw;
     const at = pointOnEdge(span, t, i % 2 === 0);
+    if (moverHidden(occluders, at.x, at.y, at.depth)) continue;
     const frame = Math.floor((now * walkPace) / WALKER_STEP_MS + i) % 2;
     drawWalker(layerFor(at.depth), at.x, at.y, frame, SHIRTS[i % SHIRTS.length]);
   }
@@ -191,7 +194,7 @@ export function drawTransitMarks(g, city) {
   }
 }
 
-export function drawTransitMovers(layerFor, city, now) {
+export function drawTransitMovers(layerFor, city, now, occluders) {
   const pieces = city?.transit;
   if (!pieces?.length || !city.map) return;
   for (const piece of pieces) {
@@ -200,6 +203,7 @@ export function drawTransitMovers(layerFor, city, now) {
     if (piece.mode === "bus") {
       const t = (now / 9000 + piece.index * 0.17) % 1;
       const at = pointOnRoad(span, t);
+      if (moverHidden(occluders, at.x, at.y, at.depth, 16, 14)) continue;
       const g = layerFor(at.depth);
       const px = Math.round(at.x);
       const py = Math.round(at.y);
@@ -211,6 +215,7 @@ export function drawTransitMovers(layerFor, city, now) {
     } else {
       const t = (now / 7000 + piece.index * 0.13) % 1;
       const at = pointOnRoad(span, t);
+      if (moverHidden(occluders, at.x, at.y, at.depth, 16, 14)) continue;
       const g = layerFor(at.depth);
       const px = Math.round(at.x);
       const py = Math.round(at.y);
@@ -242,7 +247,7 @@ export function drawCrane(g, x, y, stories, bob) {
   g.rect(mastX - 2, topY - 14, 4, 4).fill({ color: 0xff3030 });
 }
 
-export function drawParade(layerFor, city, now) {
+export function drawParade(layerFor, city, now, occluders) {
   if (!city?.map) return;
   const { tiles, period } = city.map;
   const v = period;
@@ -251,6 +256,7 @@ export function drawParade(layerFor, city, now) {
   for (let i = 0; i < 6; i += 1) {
     const u = 1 + ((lap + i / 6) % 1) * span;
     const [x, y] = project(u, v, 6);
+    if (moverHidden(occluders, x, y, u + v)) continue;
     const g = layerFor(u + v);
     const color = CONFETTI[i % CONFETTI.length];
     const px = Math.round(x);

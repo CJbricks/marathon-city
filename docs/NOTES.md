@@ -32,7 +32,7 @@ src/components/game/Screens.js   Title, picker, Strava, start date, loading.
 src/components/game/sceneLayout.js  Picture size and the isometric lot math (1280×1000).
 src/components/game/pixelPen.js    The shared pixel pen every theme draws with.
 src/components/game/streets.js     Sidewalks, curbs, and asphalt. Colors come from the theme.
-src/components/game/themes/        One folder per city. Denver is the only one so far.
+src/components/game/themes/        One folder per city. Denver and Austin. names.js is the allow-list.
 src/components/game/overlaySprites.js  Cars, people, crane, transit. Same pixel scale as the city.
 src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks the theme to draw.
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
@@ -190,13 +190,58 @@ The extra pixels are used, not just stretched:
 
 Cars, trucks, the navy bus, the police car, pedestrians, the dust puff, and the crane are drawn at that same pixel size, in `overlaySprites.js` and `dust.js`. Their speed is still `vehicles.speedMultiplier` (0.75) and `pedestrians.speedMultiplier` (0.5) in `rules.js`. The lap times did not change. The airplane stays in screen pixels, because it flies next to the quote banner, which is also laid out on the page.
 
-A car is not drawn on top of every building. The ground (streets and lawns) is one picture at the back. Each building, landmark, park, and side quest is its own small sprite. Its depth is the front corner of its lot, `x + y + span * 2`, which is the edge closest to the camera. Movers go in a bucket for `floor(u + v)`. That bucket is drawn after a building with the same whole number and before the next building, so a tower in front of a pedestrian covers the pedestrian and a tower behind them does not. Only the buckets that have a sprite in them are cleared each frame. A story changing repaints that one building, not the whole city. The static bus stops and rail marks sit under every building, because they do not move.
+A car is not drawn on top of every building. The ground (streets and lawns) is one picture at the back. Each building, landmark, park, and side quest is its own small sprite. Its depth is the front corner of its lot, `x + y + span * 2`, which is the edge closest to the camera. Movers go in a bucket for `floor(u + v)`. That bucket is drawn after a building with the same whole number and before the next building, so a tower in front of a pedestrian covers the pedestrian and a tower behind them does not. A tall sprite is only opaque where it painted pixels. The UT Tower is a narrow shaft, so a walker on the sidewalk just beside it used to show through at the height of the roof and look like they were standing on the crown. `moverHidden` in `moverOcclusion.js` drops a mover whose body touches a nearer sprite's box, for every building and landmark in either city. Someone in front of that sprite has a greater depth and is still drawn. Only the buckets that have a sprite in them are cleared each frame. A story changing repaints that one building, not the whole city. The static bus stops and rail marks sit under every building, because they do not move.
 
 One 1280×1000 texture is about 5 MB. Phones allow at least 4096×4096. The city does not need to be split into chunks. The sky picture grows to cover a tall screen, and `fitBackdropExtras` trims that growth so the upload stays inside 4096. A flat rectangle of sky and prairie sits behind it and covers any gap.
 
-The theme seam is `src/components/game/themes/`. `themeFor("Denver")` returns the Denver object. `paintScene` asks that object to draw buildings, landmarks, parks, and side quests, and it reads the object's colors for the prairie, the mountains, and the streets. The save's `city` field is the name that gets passed in (`"Denver"`). The name the person typed for the save is a label on the bottom bar. It is not the theme. An unknown name paints Denver, so a typo does not draw an empty picture.
+The theme seam is `src/components/game/themes/`. `themeFor("Denver")` returns the Denver object. `themeFor("Austin")` returns the Austin object. `paintScene` asks that object to draw buildings, landmarks, parks, and side quests, and it reads the object's colors for the prairie, the hills, and the streets. The save's `city` field is the name that gets passed in (`"Denver"` or `"Austin"`). The name the person typed for the save is a label on the bottom bar. It is not the theme. An unknown name paints Denver, so a typo does not draw an empty picture. `sceneSignature` includes the theme name, so the cached texture is thrown away when the theme changes and kept when a car moves.
 
-Austin is not built. To add it, create `themes/austin.js` with the same shape (the list is at the top of `themes/index.js`) and register it in `THEMES`. Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile rules stay shared. Only the drawings and the backdrop colors change. `sceneSignature` includes the theme name, so the cached texture is thrown away when the theme changes and kept when a car moves.
+## How a theme is chosen, stored, and drawn
+
+The picker is the only place a person chooses a theme. Denver and Austin are both enabled. Boulder, New York, and Tokyo still say SOON. Tapping a card does not build the city yet. NEXT writes the choice onto the draft (`"Austin"` or `"Denver"`), and that draft is what Strava, the start date, and the race question keep. The title-screen **Demo city** button still builds Denver. The DEMO button on the Strava step uses whatever the picker just chose, so an Austin demo is the sample log drawn with Austin's art.
+
+`POST /api/city` checks the name with `resolveTheme` in `themes/names.js`. A missing name is Denver, which is why an old client and an old save still get the Mile High city. A name that is not in `OPEN_THEMES` is refused. The row stores the canonical name (`"Austin"`, not `"austin"`). City codes do not include the theme. Opening a code opens that save, and the save already knows its city.
+
+The city is still rebuilt from the activity rows. The theme is not baked into those rows. `Game` passes `payload.save.city` into `CityView` as `theme`. `themeFor` turns the string into drawings. A save from before Austin existed has `city: "Denver"`. A blank city column is read back as Denver too.
+
+Drawing does not look at the mile rules. The simulator still unlocks `unionStation` at 100 miles and still names that quest `"Coors Field"` in the city object, because both cities share `rules.js`. Austin's `labels` map is the name a person would say for that slot. The painter matches the slot key (or the Denver quest name) and draws the Austin shape. That is why the thresholds did not move: 250 miles is still the capitol slot, and in Austin that slot is the pink-granite Texas State Capitol.
+
+What Austin changes, besides the buildings:
+
+- The backdrop. Denver's mountains are the Rockies, and its sky is the clock's cool blue. Austin's ridges are low green-gold hills. Its sky is three colors of its own: a warm light blue up high, peach in the middle, gold at the horizon. Mixing every stop toward one peach was tried first, and the sky went flat gray, which is why the stops are separate. At night those stops blend toward a dark warm sky so the stars stay visible. The dither in `pixelScene.js` is the same one Denver uses. `theme.lake` paints Lady Bird Lake as a ribbon along the south edge of the diamond, two lots wide (`band: 48`). The prairie under that ribbon stays grass and caliche. A fill of the whole foreground is what put water across the bottom half of the phone. The Congress Avenue Bridge draws water on its own lot, because the civic block sits inland of the ribbon.
+- The frame. Denver keeps the Nuggets gold because it has no extra CSS class. Austin adds `theme-austin`, and `globals.css` swaps the loading-screen border, the stripes, the buttons, and the bottom bar to burnt orange, cream, and cedar. The Strava button stays Strava orange.
+- Dusk and night, if the bridge has been earned, a few bat rectangles fly over it. They are drawn like the cars, every frame, and only then. The city texture is not repainted just to move a wing.
+
+Slots Austin paints, using Denver's unlocks:
+
+| Slot | Austin |
+| --- | --- |
+| State Capitol (250 mi) | Texas State Capitol, pink granite dome |
+| Union Station (100 mi) | Congress Avenue Bridge, with bats at dusk and night |
+| Courthouse (streak) | UT Tower, cream shaft, red tile roof, orange crown |
+| Art Museum (pace PR) | Blanton Museum of Art, a canopy of colored petals |
+| Cathedral (every 200 mi) | St. Mary Cathedral, one steeple and a rose window |
+| Half marathon, in order | Barton Springs Pool, Mount Bonnell, Pennybacker Bridge |
+| Full marathon, in order | Giga Texas, then Frost Bank Tower |
+| Parks, in order | Zilker Park, Lady Bird Lake trail, Auditorium Shores |
+| Rides, 10 / 25 / 50 | Q2 Stadium, Moody Center, DKR Texas Memorial Stadium |
+| Walks, 10 / 25 / 50 | Sixth Street, South Congress, Circuit of the Americas |
+
+Ordinary buildings follow the same rings. A rowhouse is a Hyde Park or Bouldin bungalow (cream or wood, red hip roof, a porch) instead of a Victorian. Mixed-use is a South Congress shop under a red roof. Offices are limestone. A skyscraper is one of three shapes, chosen from its variant: stacked slabs (the Independent), a glass sail, or a bronze shaft (Sixth and Guadalupe). State buildings are limestone with a small Texas flag. The sprinkled museum type is a limestone gallery, not a second Blanton. Giga Texas uses the Big Blue Bear's block, which is already on the southeast edge, so the factory sits on the east side without moving a lot. Nothing in the Austin file draws a seal, a wordmark, or a mascot.
+
+## How to add a third city
+
+Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile numbers stay shared. Copy `themes/austin.js` to `themes/chicago.js` (or whatever the city is) and export an object with the same shape. The field list is at the top of `themes/index.js`. Omit `sky` and `lake` if this city should keep Denver's sky and dry prairie.
+
+Then:
+
+1. Register it in `THEMES` inside `themes/index.js`.
+2. Add the canonical name to `OPEN_THEMES` in `themes/names.js`. That is what the API will accept. `themeFor` still falls back to Denver if the painter is missing, so do both.
+3. Add the uppercase label to `CITIES` in `Screens.js`. A name in that list but not in `OPEN_THEMES` stays a SOON card. A name in both becomes a button.
+4. If the frame should change, add a `.theme-<id>` block in `globals.css` next to `.theme-austin`. The class is `theme-` plus the name in lowercase. Denver has no class, on purpose, so its gold frame is the default.
+5. Give the theme a `labels` map if the landmarks should have their own names. Draw functions still switch on the slot key the simulator writes (`unionStation`, `"Coors Field"`, `"Cheesman Park"`). The map is the display name. It does not move the unlock.
+
+Run `npm test`. The Denver capitol test still expects a gold dome, and the Austin capitol test expects pink granite and almost no gold. A new city should get the same kind of check: one pixel that Denver has, and one it must not have. Then `npm run lint` and `npm run build`.
 
 `?flyover=1` on the city page, or the F key, plays the 8-second plane and quote banner without logging a run. `?time=22:00` (or any `HH:MM`) previews that hour's sky instead of the device clock. Neither one writes a run.
 

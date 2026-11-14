@@ -3,9 +3,10 @@
 // The picture is 1280×1000, twice the old 640×500 canvas. Pixi shows it
 // as a single texture with nearest-neighbor scaling, so the blocks stay
 // crisp and the static city is not redrawn every frame. What gets drawn
-// (Denver's buildings, or later Austin's) comes from themes/. This file
-// only owns the sky, the camera-sized backdrop, and the order the lots
-// are painted in.
+// (Denver's buildings, or Austin's) comes from themes/. This file only
+// owns the sky, the camera-sized backdrop, and the order the lots are
+// painted in. A theme may warm the sky or add a lake. Denver does neither,
+// and those branches are skipped, so its picture stays the same.
 //
 // paintBackdrop is the sky, the mountains, and the ground. paintScene
 // with gridOnly is the lots, roads, and buildings, and every other pixel
@@ -17,7 +18,7 @@
 // of sceneSignature.
 
 import { createPen, hex, mix, mul, rng } from "./pixelPen";
-import { HORIZON_Y, SCENE_H, SCENE_W } from "./sceneLayout";
+import { HORIZON_Y, MAP_TILES, SCENE_H, SCENE_W, project } from "./sceneLayout";
 import { drawStreets } from "./streets";
 import { themeFor } from "./themes";
 
@@ -42,11 +43,27 @@ function canvasFrom(data, width, height) {
   return canvas;
 }
 
+// A theme can replace the clock sky with its own three stops: top, middle,
+// horizon. Denver has no sky field, so this returns the keyframe color,
+// same array, and the Nuggets blue stays pixel-identical. A single mix
+// toward one peach was tried for Austin and the three stops collapsed
+// into one gray. Separate stops keep a real gradient. Night blends toward
+// the theme's night stops so the stars are not painted on a noon sky.
+export function themeSkyStop(light, theme, band) {
+  const fallback = light.sky[band];
+  const spec = theme?.sky;
+  if (!spec?.day || !Array.isArray(spec.day)) return fallback;
+  const day = hex(spec.day[band]);
+  const night = hex((spec.night || spec.day)[band]);
+  const t = Math.min(1, Math.max(light.stars || 0, (light.windowLight || 0) * 0.45));
+  return day.map((v, i) => Math.round(v + (night[i] - v) * t));
+}
+
 function skyAndLand(pen, light, theme) {
   const { width, height } = pen;
-  const top = light.sky[0];
-  const mid = light.sky[1];
-  const horizon = light.sky[2];
+  const top = themeSkyStop(light, theme, 0);
+  const mid = themeSkyStop(light, theme, 1);
+  const horizon = themeSkyStop(light, theme, 2);
   const horizonY = Math.min(HORIZON_Y, height - 1);
   for (let y = 0; y < height; y += 1) {
     const t = Math.min(1, y / Math.max(1, horizonY));
@@ -89,7 +106,8 @@ function skyAndLand(pen, light, theme) {
       }
     }
   }
-  const cloud = light.cloud || [244, 248, 252];
+  const cloud =
+    theme.sky?.cloud && (light.stars || 0) < 0.55 ? hex(theme.sky.cloud) : light.cloud || [244, 248, 252];
   const cr = rng(7);
   if (light.stars < 0.85) {
     for (let i = 0; i < 6; i += 1) {
@@ -123,6 +141,64 @@ function skyAndLand(pen, light, theme) {
     const c = mul(raw, light.ambient);
     for (let x = 0; x < width; x += 1) {
       pen.put(x, y, (x * 3 + y * 5) % 17 === 0 ? mix(c, 0.86) : c);
+    }
+  }
+  // A lake is a ribbon along the front edges of the diamond, not a fill
+  // of the prairie. The grid is a second picture, so water inside the
+  // lots would be covered anyway. Denver has no lake, and this does not run.
+  // Everything past the ribbon stays the theme's ground color.
+  if (theme.lake) paintLakeRibbon(pen, theme, light);
+}
+
+// One lot toward the camera is 24 picture pixels (two half-heights).
+// The ribbon is that thick, twice, and then it stops. A wider band is
+// what made the lake eat the bottom of the phone.
+function paintLakeRibbon(pen, theme, light) {
+  const water = mul(hex(theme.lake.color), light.ambient);
+  const shine = hex(theme.lake.shine);
+  const band = theme.lake.band || 48;
+  const tiles = MAP_TILES;
+  const left = project(0, tiles);
+  const front = project(tiles, tiles);
+  const right = project(tiles, 0);
+  strokeRibbon(pen, left, front, band, water, shine);
+  strokeRibbon(pen, right, front, band, water, shine);
+  // The two edges meet at a point. A short cap keeps the ribbon from
+  // splitting into two ditches under that corner. It is still only
+  // `band` pixels deep, so the field below stays grass.
+  for (let dy = 1; dy <= band; dy += 1) {
+    const half = Math.max(2, Math.round(dy * 0.35));
+    for (let dx = -half; dx <= half; dx += 1) {
+      const x = Math.round(front[0] + dx);
+      const y = Math.round(front[1] + dy);
+      pen.put(x, y, (x + y) % 6 === 0 ? shine : water);
+    }
+  }
+}
+
+function strokeRibbon(pen, a, b, band, water, shine) {
+  const steps = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])));
+  const dx = (b[0] - a[0]) / steps;
+  const dy = (b[1] - a[1]) / steps;
+  let px = -dy;
+  let py = dx;
+  const len = Math.hypot(px, py) || 1;
+  px /= len;
+  py /= len;
+  // Outward is down the picture, away from the city, not back into it.
+  if (py < 0) {
+    px = -px;
+    py = -py;
+  }
+  for (let i = 0; i <= steps; i += 1) {
+    const x = a[0] + dx * i;
+    const y = a[1] + dy * i;
+    for (let d = 1; d <= band; d += 1) {
+      const xx = Math.round(x + px * d);
+      const yy = Math.round(y + py * d);
+      const c = (xx + yy) % 6 === 0 ? shine : water;
+      pen.put(xx, yy, c);
+      pen.put(xx + 1, yy, c);
     }
   }
 }
@@ -163,7 +239,7 @@ function paintLots(pen, city, light, theme) {
   for (const p of city.parks) items.push({ k: p.x + p.y + 0.01, draw: () => theme.drawPark(pen, p) });
   for (const l of city.landmarks) {
     if (l.key === "capitol") continue;
-    items.push({ k: l.x + l.y + 0.02, draw: () => theme.drawLandmark(pen, l, ambient) });
+    items.push({ k: l.x + l.y + 0.02, draw: () => theme.drawLandmark(pen, l, ambient, night) });
   }
   for (const q of city.sideQuests) items.push({ k: q.x + q.y + 0.5, draw: () => theme.drawQuest(pen, q, ambient) });
   items.sort((a, b) => a.k - b.k);
@@ -237,8 +313,8 @@ export function listProps(city) {
       id: `l:${l.key}:${l.x}:${l.y}`,
       depth: propDepth(l.x, l.y, 1),
       sig: l.key,
-      draw(pen, theme, ambient) {
-        theme.drawLandmark(pen, l, ambient);
+      draw(pen, theme, ambient, night) {
+        theme.drawLandmark(pen, l, ambient, night);
       },
     });
   }
@@ -331,7 +407,7 @@ export function paintExtendedBackdropPixels(light, extraTop, extraBottom, extraL
   const height = SCENE_H + top + bottom;
   const data = new Uint8ClampedArray(width * height * 4);
   const pen = createPen(data, width, height);
-  const skyTop = light.sky[0];
+  const skyTop = themeSkyStop(light, theme, 0);
   for (let y = 0; y < top; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const dither = y % 4 === 3 && (x + y) % 2 === 0;
@@ -365,6 +441,9 @@ export function paintExtendedBackdropPixels(light, extraTop, extraBottom, extraL
     }
   }
 
+  // The rows under the picture are prairie, including for a city that has
+  // a lake. The ribbon is only a couple of lots wide. Extending it here
+  // is what filled the bottom of a tall phone with water.
   const ground = mul(hex(theme.ground.near), ambient);
   for (let y = 0; y < bottom; y += 1) {
     const sceneY = SCENE_H + y;
