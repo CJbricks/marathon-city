@@ -4,8 +4,8 @@
 //
 // This file is a Server Component. It has no "use client", so it runs on the
 // server and does not ship its own JavaScript to the browser. That is the
-// right place to load a font and set the document title. The Chakra wrapper
-// it renders is a Client Component; see providers.js.
+// right place to load a font and set the document title and the share-card
+// tags. The Chakra wrapper it renders is a Client Component; see providers.js.
 
 import { Press_Start_2P } from "next/font/google";
 import Providers from "./providers";
@@ -26,12 +26,40 @@ const pixel = Press_Start_2P({
 // <head> element ourselves. `viewport` is what makes the layout scale on a phone
 // (width=device-width, initial-scale=1) instead of rendering as a desktop page.
 //
-// The icons are files beside this one, not fields in this object:
-// favicon.ico (the tab), icon.png (512), and apple-icon.png (the iPhone
-// home screen). Next adds the <link> tags from those names. See docs/NOTES.md.
+// The icons and the share pictures are files beside this one, not fields
+// in this object: favicon.ico, icon.png, apple-icon.png, opengraph-image.png,
+// and twitter-image.png. Next adds the <link> and <meta> tags from those
+// names. See docs/NOTES.md.
+//
+// One name, used everywhere a tab or a link preview asks for it. Typing it
+// four times is how the tab and og:title drift apart. The description is
+// the sentence under that name. The lowercase "strava" and the period are
+// part of the sentence.
+const siteName = "Miles and Miles";
+const description = "A dynamic city built on your strava stats.";
+
 export const metadata = {
-  title: "Marathon City",
-  description: "A Denver city that grows one story for every mile you run.",
+  // The deployed origin. Next turns /opengraph-image.png into an absolute
+  // URL with this. A relative og:image is dropped by iMessage, Slack, and
+  // Facebook, so the card would show words and no picture.
+  metadataBase: new URL("https://marathon-city.vercel.app"),
+  title: siteName,
+  description,
+  openGraph: {
+    title: siteName,
+    description,
+    siteName,
+    // A link to the site, not an article. og:url is the home page. "/" is
+    // resolved against metadataBase, so the tag is the absolute origin.
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    // The wide card. "summary" would shrink the city to a small square.
+    card: "summary_large_image",
+    title: siteName,
+    description,
+  },
 };
 
 export const viewport = {
