@@ -247,6 +247,9 @@ a.pixel-btn {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  /* The pinch belongs to CityView. Without this, iOS Safari zooms the
+     whole page and the grid gesture fights the browser. */
+  touch-action: none;
 }
 .hud {
   position: relative;

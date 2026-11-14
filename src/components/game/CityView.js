@@ -5,16 +5,19 @@
 // that one follows a drag or a pinch. Both start at the size from
 // gridFit.js: the whole 640×500 picture fits inside the view, so a tall
 // phone does not zoom the diamond off the sides. Pinching in past 1× snaps
-// to 1, 2, 3… so the pixels stay square. The crane, the plane, the parade,
-// the transit lines, the streak vehicles, and the walkers are drawn on top
-// of the grid. None of those call paintScene, so the skyline stays cached.
+// to 1, 2, 3… so the pixels stay square. Each snap keeps the picture pixel
+// between the fingers under the fingers, then clamps the pan so the diamond
+// cannot leave the screen. Zooming back to the opening fit recenters it.
+// The crane, the plane, the parade, the transit lines, the streak vehicles,
+// and the walkers are drawn on top of the grid. None of those call
+// paintScene, so the skyline stays cached.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
 import { dustPuffs } from "./dust";
-import { gridPlacement, stepZoom } from "./gridFit";
+import { clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
 import { HORIZON_Y, SCENE_H, SCENE_W, paintExtendedBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
@@ -127,7 +130,25 @@ function pointOnEdge(span, t, side) {
 }
 
 const SHIRTS = [0xd62828, 0x1565c0, 0xfdd835, 0x2e7d32, 0xf57c00, 0x6a1b9a];
+// One trip along a road, in milliseconds, at speedMultiplier 1.
+// A larger lap is a slower vehicle. rules.vehicles.speedMultiplier scales
+// all four (car, truck, streak bus, police). The ultra lines do not use it.
 const VEHICLE_LAP = { car: 6500, truck: 11000, bus: 9000, police: 7500 };
+// One sidewalk crossing, and one frame of the two-frame walk, at
+// speedMultiplier 1. The pedestrian multiplier scales both, so the feet
+// and the travel slow down together.
+const WALKER_LAP_MS = 16000;
+const WALKER_STEP_MS = 180;
+// About 18% of finger spread is one click on the zoom ladder. A smaller
+// wobble is ignored so a shaky pinch does not skip a step.
+const PINCH_STEP_RATIO = 1.18;
+
+// 1 is the pace the lap times were drawn for. Smaller is slower. A missing
+// or nonsense value keeps the original pace instead of parking everyone at NaN.
+function overlayPace(multiplier) {
+  const value = Number(multiplier);
+  return Number.isFinite(value) && value >= 0 ? value : 1;
+}
 
 // One number from the walk rows, mixed with the walker's index. The same
 // activities always put the same person on the same sidewalk.
@@ -188,12 +209,17 @@ function drawPopulation(g, city, now) {
   if (!city?.map) return;
   const vehicles = city.vehicles || [];
   const vehicleCap = rules.vehicles?.maxAnimated ?? 16;
+  // Streak traffic only. drawTransit keeps its own laps for the ultra bus
+  // and the light rail, so this knob does not slow those.
+  const vehiclePace = overlayPace(rules.vehicles?.speedMultiplier);
   const blink = Math.floor(now / 240) % 2;
   for (let i = 0; i < vehicles.length && i < vehicleCap; i++) {
     const vehicle = vehicles[i];
     const span = transitRoad(vehicle, city.map);
     const lap = VEHICLE_LAP[vehicle.type] || 8000;
-    const t = (now / lap + (vehicle.index || i) * 0.17) % 1;
+    // The phase offset stays a fraction of the lap. Only the clock is
+    // scaled, so editing speedMultiplier changes pace and not the spawn slot.
+    const t = ((now * vehiclePace) / lap + (vehicle.index || i) * 0.17) % 1;
     const [x, y] = pointOnRoad(span, t);
     drawVehicle(g, x, y, vehicle.type, blink);
   }
@@ -202,13 +228,15 @@ function drawPopulation(g, city, now) {
   if (!count) return;
   const cap = Math.min(count, rules.pedestrians?.maxAnimated ?? 32);
   const seed = people.seed >>> 0;
+  const walkPace = overlayPace(rules.pedestrians?.speedMultiplier);
   for (let i = 0; i < cap; i++) {
     const span = transitRoad({ index: i + 3 }, city.map);
     const phase = walkerPhase(seed, i);
-    const raw = (now / 16000 + phase) % 1;
+    const raw = ((now * walkPace) / WALKER_LAP_MS + phase) % 1;
     const t = i % 3 === 0 ? 1 - raw : raw;
     const [x, y] = pointOnEdge(span, t, i % 2 === 0);
-    drawWalker(g, x, y, Math.floor(now / 180 + i) % 2, SHIRTS[i % SHIRTS.length]);
+    const frame = Math.floor((now * walkPace) / WALKER_STEP_MS + i) % 2;
+    drawWalker(g, x, y, frame, SHIRTS[i % SHIRTS.length]);
   }
 }
 
@@ -230,6 +258,7 @@ function drawTransit(g, city, now) {
         g.rect(Math.round(x) - 1, Math.round(y) - 4, 2, 4).fill({ color: 0xf57c00 });
         g.rect(Math.round(x) - 2, Math.round(y), 4, 2).fill({ color: 0xfdd835 });
       }
+      // This lap is the yellow ultra coach. It is not rules.vehicles.speedMultiplier.
       const t = (now / 9000 + piece.index * 0.17) % 1;
       const [x, y] = pointOnRoad(span, t);
       g.rect(Math.round(x) - 4, Math.round(y) - 5, 8, 4).fill({ color: 0xfdd835 });
@@ -240,6 +269,7 @@ function drawTransit(g, city, now) {
         g.rect(Math.round(x), Math.round(y), 2, 1).fill({ color: 0xd0d0d0 });
         g.rect(Math.round(x) + 3, Math.round(y) - 1, 2, 1).fill({ color: 0x9a9a9a });
       }
+      // Light rail keeps its own lap too. The streak speed knob does not apply.
       const t = (now / 7000 + piece.index * 0.13) % 1;
       const [x, y] = pointOnRoad(span, t);
       g.rect(Math.round(x) - 5, Math.round(y) - 6, 12, 4).fill({ color: 0xd62828 });
@@ -278,7 +308,9 @@ export default function CityView({ city, fx, celebrate }) {
     let dead = false;
     let application;
     const pointers = new Map();
-    let pinchDist = 0;
+    // The picture pixel between the fingers, remembered for the whole pinch.
+    // Scale steps re-anchor that pixel. It is cleared when one finger lifts.
+    let pinch = null;
     let painted = "";
     let texBytes = 0;
     let frames = 0;
@@ -306,6 +338,11 @@ export default function CityView({ city, fx, celebrate }) {
         }
         return;
       }
+      // touch-action: none is also in globals.css. Both are set because
+      // iOS Safari will scale the page on a pinch if the canvas itself
+      // does not opt out. gesturestart / gesturechange below are the
+      // other half of that: preventDefault stops the browser zoom that
+      // touch-action does not catch on every iPhone OS.
       application.canvas.style.touchAction = "none";
       application.canvas.style.imageRendering = "pixelated";
       host.appendChild(application.canvas);
@@ -335,7 +372,10 @@ export default function CityView({ city, fx, celebrate }) {
       // picture inside the view instead. The backdrop is placed once per
       // resize and then stays. Only `world` is dragged and pinched.
       // `placed` stays the contain-fit. `zoom` is the grid scale, which
-      // steps through whole numbers once the user goes past 1×.
+      // steps through whole numbers once the user goes past 1×. The pan
+      // is not left behind when that scale jumps: placeZoom keeps the
+      // focal pixel under the fingers, and clampCityPan runs after every
+      // zoom and every drag.
       let placed = gridPlacement(application.screen.width, application.screen.height);
       let zoom = placed.scale;
       let panX = placed.x;
@@ -348,9 +388,15 @@ export default function CityView({ city, fx, celebrate }) {
         world.scale.set(zoom);
         // At 2× and up, a fractional camera makes nearest-neighbor pixels
         // shimmer. The pan itself keeps the fraction so a slow drag still
-        // adds up. Only the position we hand to Pixi is rounded.
+        // adds up, and so the next focal-point solve stays exact. Only
+        // the position we hand to Pixi is rounded, by less than one pixel.
         if (Number.isInteger(zoom)) world.position.set(Math.round(panX), Math.round(panY));
         else world.position.set(panX, panY);
+        // Same idea as dataset.fps below: a readout of the camera, so a
+        // pinch test can see the scale without reaching into Pixi.
+        host.dataset.gridScale = String(zoom);
+        host.dataset.gridX = String(panX);
+        host.dataset.gridY = String(panY);
       };
       const fit = () => {
         placed = gridPlacement(application.screen.width, application.screen.height);
@@ -490,39 +536,105 @@ export default function CityView({ city, fx, celebrate }) {
       application.ticker.add(paint);
 
       const canvas = application.canvas;
+      // Pointer events are in page coordinates. The grid's pan is in
+      // canvas pixels, and the canvas is not always at the top of the page
+      // (the bottom bar sits under it). Subtract the canvas origin so the
+      // focal point is the pixel the fingers are actually on.
+      const canvasPoint = (clientX, clientY) => {
+        const rect = canvas.getBoundingClientRect();
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      };
+      const viewSize = () => ({
+        screenW: application.screen.width,
+        screenH: application.screen.height,
+      });
+      // scene, when passed, is the picture pixel a pinch is holding. Omit
+      // it and the pixel currently under the focal point is the one held
+      // (a mouse-wheel notch). Landing on the opening fit recenters.
+      const applyZoom = (nextZoom, focal, scene) => {
+        const next = placeZoom({
+          panX,
+          panY,
+          zoom,
+          nextZoom,
+          focalX: focal.x,
+          focalY: focal.y,
+          sceneX: scene?.x,
+          sceneY: scene?.y,
+          fitScale: placed.scale,
+          fitX: placed.x,
+          fitY: placed.y,
+          ...viewSize(),
+        });
+        zoom = next.zoom;
+        panX = next.panX;
+        panY = next.panY;
+        placeWorld();
+      };
+      const applyPan = () => {
+        const next = clampCityPan({ panX, panY, zoom, ...viewSize() });
+        panX = next.panX;
+        panY = next.panY;
+        placeWorld();
+      };
       const down = (event) => {
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       };
       const move = (event) => {
         const prev = pointers.get(event.pointerId);
         if (!prev) return;
+        if (event.cancelable) event.preventDefault();
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         const pts = [...pointers.values()];
         if (pts.length >= 2) {
-          const now = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-          if (pinchDist) {
-            const ratio = now / pinchDist;
-            // A small finger wobble is not a zoom step. About 18% is one
-            // click on the ladder (fit → 1 → 2 …). Resetting the baseline
-            // lets one long pinch climb more than one step.
-            if (ratio >= 1.18) {
-              zoom = stepZoom(zoom, placed.scale, 1);
-              placeWorld();
-              pinchDist = now;
-            } else if (ratio <= 1 / 1.18) {
-              zoom = stepZoom(zoom, placed.scale, -1);
-              placeWorld();
-              pinchDist = now;
+          const a = canvasPoint(pts[0].x, pts[0].y);
+          const b = canvasPoint(pts[1].x, pts[1].y);
+          const dist = Math.hypot(a.x - b.x, a.y - b.y);
+          const focal = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          if (!pinch) {
+            // First sample of this pinch. Remember the picture pixel
+            // between the fingers. Later snaps put that pixel back here,
+            // even when the scale jumps from the phone fit to 2×.
+            pinch = {
+              dist: Math.max(dist, 1),
+              sceneX: (focal.x - panX) / zoom,
+              sceneY: (focal.y - panY) / zoom,
+            };
+            return;
+          }
+          const ratio = dist / pinch.dist;
+          let nextZoom = zoom;
+          if (ratio >= PINCH_STEP_RATIO) {
+            nextZoom = stepZoom(zoom, placed.scale, 1);
+            pinch.dist = dist;
+          } else if (ratio <= 1 / PINCH_STEP_RATIO) {
+            nextZoom = stepZoom(zoom, placed.scale, -1);
+            pinch.dist = dist;
+          }
+          const atFit = Math.abs(zoom - placed.scale) <= 1e-4;
+          if (nextZoom !== zoom) {
+            applyZoom(nextZoom, focal, { x: pinch.sceneX, y: pinch.sceneY });
+          } else if (!atFit) {
+            // Fingers slid without spreading enough to change scale.
+            // Keep the same sidewalk under the midpoint. The fit scale
+            // stays centered; a one-finger drag is what pans it.
+            const aimedX = panX + pinch.sceneX * zoom;
+            const aimedY = panY + pinch.sceneY * zoom;
+            if (Math.hypot(focal.x - aimedX, focal.y - aimedY) > 0.5) {
+              applyZoom(zoom, focal, { x: pinch.sceneX, y: pinch.sceneY });
             }
-          } else pinchDist = now;
+          }
         } else {
-          pinchDist = 0;
+          pinch = null;
           panX += event.clientX - prev.x;
           panY += event.clientY - prev.y;
-          placeWorld();
+          applyPan();
         }
       };
-      const up = (event) => pointers.delete(event.pointerId);
+      const up = (event) => {
+        pointers.delete(event.pointerId);
+        if (pointers.size < 2) pinch = null;
+      };
       let wheelAt = 0;
       const wheel = (event) => {
         event.preventDefault();
@@ -531,14 +643,27 @@ export default function CityView({ city, fx, celebrate }) {
         // every event would jump from the fit scale to the cap.
         if (now - wheelAt < 180) return;
         wheelAt = now;
-        zoom = stepZoom(zoom, placed.scale, event.deltaY > 0 ? -1 : 1);
-        placeWorld();
+        const nextZoom = stepZoom(zoom, placed.scale, event.deltaY > 0 ? -1 : 1);
+        if (nextZoom === zoom) return;
+        applyZoom(nextZoom, canvasPoint(event.clientX, event.clientY));
       };
+      // iOS Safari fires these for a pinch and will zoom the page unless
+      // preventDefault runs. They are not pointer events, so the listener
+      // has to be its own. passive: false is what allows preventDefault.
+      const stopBrowserPinch = (event) => {
+        event.preventDefault();
+      };
+      const gestureTargets = [canvas, host, document];
+      const gestureOpts = { passive: false, capture: true };
       canvas.addEventListener("pointerdown", down);
       canvas.addEventListener("pointermove", move);
       canvas.addEventListener("pointerup", up);
       canvas.addEventListener("pointercancel", up);
       canvas.addEventListener("wheel", wheel, { passive: false });
+      for (const target of gestureTargets) {
+        target.addEventListener("gesturestart", stopBrowserPinch, gestureOpts);
+        target.addEventListener("gesturechange", stopBrowserPinch, gestureOpts);
+      }
       host.cleanup = () => {
         observer.disconnect();
         canvas.removeEventListener("pointerdown", down);
@@ -546,6 +671,10 @@ export default function CityView({ city, fx, celebrate }) {
         canvas.removeEventListener("pointerup", up);
         canvas.removeEventListener("pointercancel", up);
         canvas.removeEventListener("wheel", wheel);
+        for (const target of gestureTargets) {
+          target.removeEventListener("gesturestart", stopBrowserPinch, gestureOpts);
+          target.removeEventListener("gesturechange", stopBrowserPinch, gestureOpts);
+        }
       };
     };
 
