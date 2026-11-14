@@ -25,6 +25,10 @@ const pixel = Press_Start_2P({
 // These exports become tags in <head>. Next writes them; we do not add a
 // <head> element ourselves. `viewport` is what makes the layout scale on a phone
 // (width=device-width, initial-scale=1) instead of rendering as a desktop page.
+//
+// The icons are files beside this one, not fields in this object:
+// favicon.ico (the tab), icon.png (512), and apple-icon.png (the iPhone
+// home screen). Next adds the <link> tags from those names. See docs/NOTES.md.
 export const metadata = {
   title: "Marathon City",
   description: "A Denver city that grows one story for every mile you run.",
