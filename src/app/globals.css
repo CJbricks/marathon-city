@@ -462,6 +462,9 @@ button.city-card:disabled {
   bottom: 64px;
   background: var(--mc-note);
   color: #fff;
+  /* Above the menu, so a share toast is visible while the menu is open.
+     The shutter sits higher and covers it for the blink. */
+  z-index: 5;
 }
 .hud-note.ok {
   background: var(--mc-pop);
@@ -485,6 +488,33 @@ button.city-card:disabled {
   display: block;
   width: 100%;
   margin: 6px 0;
+}
+/* Camera shutter for Share my city. It is HTML on top of the canvas, so
+   the PNG does not include the white frame. steps() keeps the blink in
+   chunks instead of a smooth fade. pointer-events stays off so a pinch
+   that starts as the flash ends still reaches the city. */
+.share-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background: #fff;
+  animation: share-flash 520ms steps(5, end) forwards;
+}
+.share-flash::before,
+.share-flash::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: var(--mc-accent);
+}
+.share-flash::before { top: 0; }
+.share-flash::after { bottom: 0; }
+@keyframes share-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
 }
 .modal input {
   display: block;

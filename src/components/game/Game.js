@@ -16,6 +16,11 @@
 // The theme is "Denver" or "Austin". The typed name is not the theme.
 // A city code opens someone else's save on this phone. Logging a run
 // still needs this phone's own Strava login.
+//
+// Share my city asks CityView for a PNG of the canvas (sky, ground, and
+// the grid at the current pinch). The menu and the bottom bar are not in
+// that picture. A phone that can share files opens the sheet. Any other
+// browser downloads the PNG. Closing the sheet is not an error.
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
@@ -99,9 +104,15 @@ export default function Game() {
   const [bannerLeft, setBannerLeft] = useState("18%");
   const [forceReconnect, setForceReconnect] = useState(false);
   const [noticeOk, setNoticeOk] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [flash, setFlash] = useState(0);
   const flew = useRef(false);
   const playingRef = useRef(false);
   const importRef = useRef(null);
+  const viewRef = useRef(null);
+  const sharingRef = useRef(false);
+  const flashToken = useRef(0);
+  const noticeToken = useRef(0);
 
   function remember(next) {
     setDraft(next);
@@ -505,6 +516,69 @@ export default function Game() {
     setScreen("title");
   }
 
+  function showShareSuccess(text) {
+    flashToken.current += 1;
+    const token = flashToken.current;
+    setFlash(token);
+    window.setTimeout(() => {
+      if (flashToken.current === token) setFlash(0);
+    }, 520);
+    noticeToken.current += 1;
+    const note = noticeToken.current;
+    setNoticeOk(true);
+    setNotice(text);
+    // The note is a toast, not a status that should sit on the bar.
+    window.setTimeout(() => {
+      if (noticeToken.current !== note) return;
+      setNotice((current) => (current === text ? "" : current));
+    }, 2600);
+  }
+
+  async function shareMyCity() {
+    // sharingRef blocks a second tap during the synchronous copy, before
+    // React has painted the disabled button.
+    if (sharingRef.current) return;
+    const view = viewRef.current;
+    if (!view?.share) {
+      setNoticeOk(false);
+      setNotice("CITY IS NOT READY.");
+      return;
+    }
+    sharingRef.current = true;
+    setSharing(true);
+    setNotice("");
+    // The menu is HTML, so it is not in the Pixi picture, but it sits on
+    // top of the city the person is looking at. Close it before the copy
+    // so the shutter and the toast land on the city, and so a dim box is
+    // not what they compare the PNG to. hidden applies now. React removes
+    // the node on the next paint, which is after this copy.
+    setMenu(false);
+    document.querySelectorAll(".city-screen .modal").forEach((node) => {
+      node.hidden = true;
+    });
+    try {
+      const city = payload?.city;
+      // No await before view.share(). The copy and navigator.share run
+      // inside that call, while this tap still counts on iOS.
+      const result = view.share({
+        name: payload?.save?.name,
+        miles: city?.summary?.totalRunMiles ?? 0,
+        buildings: city?.buildings?.length ?? 0,
+        landmarks: uniqueLandmarkCount(city),
+        theme: payload?.save?.city || "Denver",
+      });
+      const status = await result.promise;
+      if (status === "cancelled") return;
+      showShareSuccess(status === "shared" ? "CITY SHARED" : "IMAGE SAVED");
+    } catch {
+      setNoticeOk(false);
+      setNotice("COULD NOT SHARE.");
+    } finally {
+      sharingRef.current = false;
+      setSharing(false);
+    }
+  }
+
   const saves = savesOf(payload);
 
   // The frame follows the city being built, or the city already on screen.
@@ -698,7 +772,13 @@ export default function Game() {
   return (
     <div className={["city-screen", themeClass(payload.save?.city)].filter(Boolean).join(" ")}>
       {/* The save's city ("Denver" or "Austin") picks the drawings. The typed name does not. */}
-      <CityView city={payload.city} fx={fx} celebrate={celebrate} theme={payload.save?.city || "Denver"} />
+      <CityView
+        city={payload.city}
+        fx={fx}
+        celebrate={celebrate}
+        theme={payload.save?.city || "Denver"}
+        viewRef={viewRef}
+      />
       <button type="button" className="pixel-btn menu-btn" onClick={() => setMenu(true)}>
         MENU
       </button>
@@ -710,7 +790,11 @@ export default function Game() {
           {banner}
         </p>
       ) : null}
-      {notice ? <p className={noticeOk ? "hud-note ok" : "hud-note"}>{notice}</p> : null}
+      {notice ? (
+        <p className={noticeOk ? "hud-note ok" : "hud-note"} role="status" aria-live="polite">
+          {notice}
+        </p>
+      ) : null}
       <footer className="hud">
         <span className="hud-left">{summary ? `${summary.totalRunMiles} MI` : "0 MI"}</span>
         <span className="hud-name">{payload.save?.name || "DENVER"}</span>
@@ -729,6 +813,9 @@ export default function Game() {
           <button type="button" className="pixel-btn gold" disabled={playing} onClick={() => { setMenu(false); logRun(); }}>
             LOG RUN
           </button>
+          <button type="button" className="pixel-btn" disabled={sharing} onClick={shareMyCity}>
+            SHARE MY CITY
+          </button>
           <button type="button" className="pixel-btn" onClick={() => { setMenu(false); setNotice(""); setScreen("title"); }}>
             CITIES
           </button>
@@ -744,6 +831,7 @@ export default function Game() {
         </div>
       ) : null}
       {manual ? <ManualDialog busy={playing} onCancel={() => setManual(false)} onSubmit={submitManual} /> : null}
+      {flash ? <div key={flash} className="share-flash" aria-hidden="true" /> : null}
       {confirmReset ? (
         <div className="modal">
           <p>{others ? "ERASE THIS SAVE? THE OTHERS STAY." : "ERASE THIS CITY?"}</p>

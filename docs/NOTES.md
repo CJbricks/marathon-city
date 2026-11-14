@@ -38,6 +38,8 @@ src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks t
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
+src/components/game/shareCapture.js  Copies that canvas to a PNG and shares or downloads it.
+src/lib/shareCity.js       The share sentence, the filename, and the footer colors. No canvas.
 src/app/layout.js          Font, tab title, share-card tags, viewport, Chakra provider.
 src/app/favicon.ico        Tab icon. 16, 32, 48, and 64, from the 32×32 drawing.
 src/app/icon.png           512×512 icon. Same drawing, each pixel copied 16 times.
@@ -65,7 +67,7 @@ Someone opens `/`.
 4. `replay()` drops activities before a chosen start date and calls `simulate()` with today's UTC date as `asOf`. Parks and streak vehicles only count for weeks that have ended by that date.
 5. The JSON comes back. `Game` keeps a copy in `sessionStorage` so the next refresh can draw before the network returns. The store is still the source of truth: the fresh response replaces the cache.
 6. If there is no active save, the opening screens run. **Resume** lists the named cities (up to 3). **New City** asks for a name, then the city picker, Strava (only if it is not connected yet), all-history or a date, then the race-day question. **Demo city** skips Strava and loads the sample log under the name "Demo city".
-7. The city screen mounts `CityView`, which builds a Pixi canvas in the browser. Lighting calls `lightingAt(new Date())`, so it follows the phone clock. The bottom bar's middle label is the save's name, not the theme.
+7. The city screen mounts `CityView`, which builds a Pixi canvas in the browser. Lighting calls `lightingAt(new Date())`, so it follows the phone clock. The bottom bar's middle label is the save's name, not the theme. **Share my city** on the menu copies that canvas to a PNG. See [Share my city](#share-my-city).
 
 ## Named saves
 
@@ -333,6 +335,20 @@ Two functions in `gridFit.js` close that. `CityView` calls them after every zoom
 Zooming back out onto the opening fit does not keep the corner the fingers were on. That scale is the "show the whole city" scale, so `placeZoom` puts the pan back to the centered contain-fit from `gridPlacement`.
 
 iOS Safari also tries to zoom the page itself on a pinch. The canvas sets `touch-action: none` (in CSS and on the element), and the page calls `preventDefault` on `gesturestart` and `gesturechange`, so the browser zoom does not fight the grid zoom. The backdrop, nearest-neighbor scaling, `roundPixels`, and `resolution: 1` with `autoDensity: false` stay as described above.
+
+## Share my city
+
+Menu, then **Share my city**, copies the city and closes the menu first. The MENU button and the bottom bar are HTML, so they are not in the picture. The menu is closed before the copy anyway, so the shutter is not compared against the open box.
+
+The picture is not whatever pinch is on screen. A phone fit leaves the diamond small and the file mostly near-ground, which is the dark muddy field. `shareFrame` in `src/lib/shareCity.js` builds a 4:5 portrait at scale 1. The diamond fills most of the width, the back corner sits under a band of sky, and there is ground under the front corner. CityView moves the sky container and the grid to that camera, renders once, and puts the pinch back before the browser paints. The pointer listeners are not touched. The screen-sized sky fill is hidden for that one render. It is a rectangle the size of the phone, and on the 4:5 frame it would cover the corner.
+
+The copy uses `renderer.extract.canvas` with antialiasing off and resolution 1. The WebGL canvas is created with `preserveDrawingBuffer` left off, on purpose. Keeping that buffer would hold a full extra frame of memory on every phone, and pinch zoom does not need it. The cost of leaving it off is that `canvas.toBlob` on the on-screen canvas comes back black. Extract does not read that buffer. It renders into its own texture and the PNG copies those pixels with `putImageData`, so nothing is resampled. Opaque sky and ground are alpha 255, and those bytes match a screenshot of the same texel. Extract's texture is premultiplied, so a partial-alpha edge is stored darker than the texel. Those pixels are divided by their alpha. Opaque pixels are not touched, which is what keeps a sky sample exact. The output canvas is sRGB. The footer is the same band as before, scaled by a whole number so the pixel type is still readable on a phone.
+
+The share sheet is `navigator.share` with the PNG file, the title `Miles and Miles`, and the sentence `<name>: <miles> miles of running built this city.` plus `https://marathon-city.vercel.app`. That call only happens when `navigator.canShare({ files })` is true, which is iPhone Safari. Anywhere else the same PNG downloads. The filename is the save name in lowercase, with spaces turned into hyphens, then `-miles-and-miles.png`. `CJ's Denver` becomes `cjs-denver-miles-and-miles.png`.
+
+The share call has to happen in the same turn as the tap. iOS forgets the tap if the page waits on a promise first, and then the sheet throws and looks like a failure. The pixels are copied synchronously, then `navigator.share` is called, and only then does the code wait. Closing the sheet without sending is `AbortError`. That is the person changing their mind, so there is no red note. On a successful share the note says CITY SHARED. On a download it says IMAGE SAVED. A white shutter with the theme's accent bars blinks over the screen either way. It is HTML, so it is not in the PNG. The button stays disabled until that finishes so a second tap does not start a second copy.
+
+The sentence, the filename, and the two backup palettes are pure functions in `src/lib/shareCity.js`. `npm test` checks them. The canvas part needs a browser, which is why it is not in that file.
 
 ## Favicon and the home-screen icon
 

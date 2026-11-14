@@ -20,15 +20,22 @@
 // not know it. Austin at dusk adds a few bat rectangles over the bridge.
 // They are an overlay, like the cars: the city texture is not repainted
 // just to flap a wing. Denver never enters that branch.
+//
+// Share my city asks this view for a PNG. For that one render the sky and
+// the grid move to a 4:5 frame at scale 1, then the pinch is put back
+// before the browser paints. The pointer listeners are not replaced. The
+// menu and the bottom bar are HTML, so they are not in the picture.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
+import { shareFrame } from "@/lib/shareCity";
 import { dustPuffs } from "./dust";
 import { hex } from "./pixelPen";
+import { beginCityShare } from "./shareCapture";
 import { themeFor } from "./themes";
-import { clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
+import { CITY_BOUNDS, clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
 import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransitMarks, drawTransitMovers } from "./overlaySprites";
 import {
   DEPTH_BUCKETS,
@@ -130,13 +137,20 @@ function viewClock() {
 // wobble is ignored so a shaky pinch does not skip a step.
 const PINCH_STEP_RATIO = 1.18;
 
-export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
+export default function CityView({ city, fx, celebrate, theme = "Denver", viewRef }) {
   const hostRef = useRef(null);
   const stateRef = useRef({ city, fx, celebrate, theme });
+  // The share button lives in Game.js. The Pixi app only exists after
+  // boot(), so the handle is published from there and cleared on the way
+  // out. The ref is stored in an effect, not during render: reading it
+  // while rendering is what the lint rule rejects. A tap before boot
+  // finishes gets "not ready".
+  const viewRefHolder = useRef(null);
 
   useEffect(() => {
     stateRef.current = { city, fx, celebrate, theme };
-  }, [city, fx, celebrate, theme]);
+    viewRefHolder.current = viewRef;
+  }, [city, fx, celebrate, theme, viewRef]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -625,6 +639,50 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         target.addEventListener("gesturestart", stopBrowserPinch, gestureOpts);
         target.addEventListener("gesturechange", stopBrowserPinch, gestureOpts);
       }
+      const slot = viewRefHolder.current;
+      if (slot) {
+        slot.current = {
+          // Synchronous on purpose. Game awaits the sheet afterwards.
+          // Doing the copy here, before any await, keeps the tap alive
+          // for iOS. The pinch is moved only for this render and put back
+          // before the function returns, so the browser never paints it.
+          share(meta) {
+            const frame = shareFrame(CITY_BOUNDS);
+            const saved = [fill, backdrop, world, screenFx].map((layer) => ({
+              layer,
+              x: layer.position.x,
+              y: layer.position.y,
+              sx: layer.scale.x,
+              sy: layer.scale.y,
+              visible: layer.visible,
+            }));
+            // The fill and the confetti are sized to the phone. On the
+            // 4:5 frame they would cover the corner with the screen's
+            // sky rectangle. The sky texture is the backdrop, and it
+            // already covers this frame.
+            fill.visible = false;
+            screenFx.visible = false;
+            backdrop.scale.set(frame.scale);
+            backdrop.position.set(frame.panX, frame.panY);
+            world.scale.set(frame.scale);
+            world.position.set(frame.panX, frame.panY);
+            try {
+              return beginCityShare(application, meta, frame);
+            } finally {
+              for (const snap of saved) {
+                snap.layer.scale.set(snap.sx, snap.sy);
+                snap.layer.position.set(snap.x, snap.y);
+                snap.layer.visible = snap.visible;
+              }
+              try {
+                application.render();
+              } catch {
+                // The ticker paints the next frame if this one could not.
+              }
+            }
+          },
+        };
+      }
       host.cleanup = () => {
         observer.disconnect();
         canvas.removeEventListener("pointerdown", down);
@@ -642,6 +700,8 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
     boot();
     return () => {
       dead = true;
+      const slot = viewRefHolder.current;
+      if (slot) slot.current = null;
       host.cleanup?.();
       // React strict mode runs this cleanup before init's await resolves.
       // Destroying a half-started app throws, and the next mount still works.
