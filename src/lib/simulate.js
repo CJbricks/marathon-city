@@ -1,9 +1,9 @@
 // Deterministic city replay.
 // Give it the same activities and the same rules and it returns the same
-// lots, heights, landmarks, parks, side quests, and transit lines. Nothing here is random
-// in the usual sense: building types come from a seeded generator, and the
-// seed is the activity date plus its position, so a re-run cannot reshuffle
-// the skyline.
+// lots, heights, landmarks, parks, side quests, transit lines, vehicles,
+// and pedestrians. Nothing here is random in the usual sense: building
+// types come from a seeded generator, and the seed is the activity date
+// plus its position, so a re-run cannot reshuffle the skyline.
 //
 // The browser and the server both import this file. It must stay free of
 // Node APIs (no fs, no database) so a Log run animation can replay on the
@@ -324,23 +324,25 @@ export function simulate(input, rules = rulesDefault) {
   const sqEarned = new Set();
   const transit = [];
 
-  // Walks are the only year-to-date quests left. A ride or a lifting
-  // session returns here without earning a block.
+  // Walks and rides are year-to-date, and each calendar year starts at
+  // zero. A name that is already earned is skipped, so next year's miles
+  // can unlock the next stadium without earning the first one again.
+  // Weight sessions and anything else return without a block.
   function checkSideQuests(act) {
-    if (act.kind !== "walk") return;
+    if (act.kind !== "walk" && act.kind !== "ride") return;
     const y = act.date.slice(0, 4);
-    ytd[y] = ytd[y] || { walk: 0 };
-    ytd[y].walk += act.h;
-    const list = R.sideQuests.walk || [];
+    ytd[y] = ytd[y] || { walk: 0, ride: 0 };
+    ytd[y][act.kind] += act.h;
+    const list = R.sideQuests[act.kind] || [];
     for (const q of list) {
       if (sqEarned.has(q.name)) continue;
-      if (ytd[y].walk < hund(q.miles)) continue;
+      if (q.miles == null || ytd[y][act.kind] < hund(q.miles)) continue;
       sqEarned.add(q.name);
       const [bx, by] = M.sideQuestBlocks[q.name];
-      const val = `${mi(ytd[y].walk)} walk mi`;
+      const val = `${mi(ytd[y][act.kind])} ${act.kind} mi`;
       sideQuests.push({
         name: q.name,
-        kind: "walk",
+        kind: act.kind,
         threshold: q.miles,
         date: act.date,
         ytdAtEarn: val,
@@ -513,6 +515,69 @@ export function simulate(input, rules = rulesDefault) {
   }
   awardParksThrough(addDays(R.asOfDate, 1));
 
+  // Streak weeks use the same Monday (parks.weekStartsOn) and the same
+  // "the Sunday is over" test as parks: weekEnd < asOfDate. A week counts
+  // once, no matter how many runs landed in it. Weeks that are not exactly
+  // 7 days apart are a new streak. The first afterWeeks weeks of each
+  // streak add nothing. Vehicles already pushed stay in the array.
+  const vehicleCfg = R.vehicles || {};
+  const vehicleTypes = vehicleCfg.types || [];
+  const afterWeeks = vehicleCfg.afterWeeks ?? 2;
+  const finishedWeeks = [];
+  const seenWeeks = new Set();
+  for (const run of runs) {
+    const week = weekStart(run.date);
+    if (seenWeeks.has(week)) continue;
+    seenWeeks.add(week);
+    if (addDays(week, 6) < R.asOfDate) finishedWeeks.push(week);
+  }
+  finishedWeeks.sort();
+  const vehicles = [];
+  let streak = [];
+  const flushStreak = () => {
+    if (vehicleTypes.length) {
+      const earned = Math.max(0, streak.length - afterWeeks);
+      for (let i = 0; i < earned; i++) {
+        const index = vehicles.length;
+        const week = streak[afterWeeks + i];
+        const type = vehicleTypes[index % vehicleTypes.length];
+        vehicles.push({
+          id: index + 1,
+          type,
+          index,
+          week,
+          date: addDays(week, 6),
+        });
+        log.push(`${addDays(week, 6)}  Vehicle: ${type} (streak week of ${week})`);
+      }
+    }
+    streak = [];
+  };
+  for (const week of finishedWeeks) {
+    if (streak.length && daysBetween(streak[streak.length - 1], week) !== 7) flushStreak();
+    streak.push(week);
+  }
+  flushStreak();
+
+  // People come from every walk mile ever logged, summed in hundredths so
+  // 0.1 + 0.1 + 0.1 stays 0.30. Year-to-date landmarks above do not reset
+  // this total. The seed is the walk rows themselves, so the overlay can
+  // place walkers without rolling a new random set on each visit.
+  let lifetimeWalkH = 0;
+  const walkRows = [];
+  for (const act of acts) {
+    if (act.kind !== "walk") continue;
+    lifetimeWalkH += act.h;
+    walkRows.push(`${act.stravaId}|${act.date}|${act.h}`);
+  }
+  const perPerson = hund(R.pedestrians?.milesPerPerson ?? 0.25);
+  const pedestrianCount = perPerson > 0 ? Math.floor(lifetimeWalkH / perPerson) : 0;
+  const pedestrians = {
+    count: pedestrianCount,
+    miles: mi(lifetimeWalkH),
+    seed: hashStr(walkRows.join(";") || "no-walks"),
+  };
+
   const done = buildings.filter((b) => b.status === "complete");
   const byType = {};
   for (const b of done) {
@@ -555,10 +620,15 @@ export function simulate(input, rules = rulesDefault) {
     parks,
     sideQuests,
     transit,
+    vehicles,
+    pedestrians,
     log,
     summary: {
       asOf: R.asOfDate,
       totalRunMiles: mi(cumRun),
+      vehicles: vehicles.length,
+      pedestrians: pedestrianCount,
+      lifetimeWalkMiles: mi(lifetimeWalkH),
       buildingsCompleted: done.length,
       completedByType: byType,
       storiesInCompletedRegularBuildings: completedStories,

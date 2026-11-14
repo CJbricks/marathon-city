@@ -4,16 +4,17 @@
 // that stays put. The lots and buildings are a second texture, and only
 // that one follows a drag or a pinch. Both start at the size from
 // gridFit.js: the whole 640×500 picture fits inside the view, so a tall
-// phone does not zoom the diamond off the sides. The crane, the plane,
-// the parade, and the transit lines are drawn on top of the grid. A moving
-// bus never calls paintScene, so the skyline stays cached.
+// phone does not zoom the diamond off the sides. Pinching in past 1× snaps
+// to 1, 2, 3… so the pixels stay square. The crane, the plane, the parade,
+// the transit lines, the streak vehicles, and the walkers are drawn on top
+// of the grid. None of those call paintScene, so the skyline stays cached.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
 import { dustPuffs } from "./dust";
-import { gridPlacement } from "./gridFit";
+import { gridPlacement, stepZoom } from "./gridFit";
 import { HORIZON_Y, SCENE_H, SCENE_W, paintExtendedBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
@@ -112,6 +113,103 @@ function pointOnRoad(span, t) {
   const u = span.axis === "h" ? along : span.fixed;
   const v = span.axis === "h" ? span.fixed : along;
   return project(u, v, 2);
+}
+
+// Same road, shifted onto the sidewalk. A horizontal road moves in v, a
+// vertical road moves in u, so the walker is beside the lane instead of
+// under the cars.
+function pointOnEdge(span, t, side) {
+  const along = span.start + (span.end - span.start) * t;
+  const offset = side ? 0.38 : -0.28;
+  const u = span.axis === "h" ? along : span.fixed + offset;
+  const v = span.axis === "h" ? span.fixed + offset : along;
+  return project(u, v, 1);
+}
+
+const SHIRTS = [0xd62828, 0x1565c0, 0xfdd835, 0x2e7d32, 0xf57c00, 0x6a1b9a];
+const VEHICLE_LAP = { car: 6500, truck: 11000, bus: 9000, police: 7500 };
+
+// One number from the walk rows, mixed with the walker's index. The same
+// activities always put the same person on the same sidewalk.
+function walkerPhase(seed, index) {
+  let x = (seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0;
+  x ^= x << 13;
+  x ^= x >>> 17;
+  x ^= x << 5;
+  return (x >>> 0) / 4294967296;
+}
+
+function drawVehicle(g, x, y, type, blink) {
+  const px = Math.round(x);
+  const py = Math.round(y);
+  if (type === "truck") {
+    g.rect(px - 6, py - 3, 7, 3).fill({ color: 0xc4a574 });
+    g.rect(px + 1, py - 5, 4, 5).fill({ color: 0x37474f });
+    g.rect(px + 2, py - 4, 2, 2).fill({ color: 0x9ad0f5 });
+  } else if (type === "bus") {
+    // Navy city bus. The ultra-unlock bus is the yellow coach with stop
+    // poles, drawn by drawTransit. This one has no poles and no yellow body.
+    g.rect(px - 6, py - 4, 12, 4).fill({ color: 0x0d47a1 });
+    g.rect(px - 4, py - 3, 2, 2).fill({ color: 0xfff3c4 });
+    g.rect(px - 1, py - 3, 2, 2).fill({ color: 0xfff3c4 });
+    g.rect(px + 2, py - 3, 2, 2).fill({ color: 0xfff3c4 });
+  } else if (type === "police") {
+    g.rect(px - 4, py - 3, 8, 3).fill({ color: 0xf5f5f5 });
+    g.rect(px - 4, py - 3, 3, 3).fill({ color: 0x212121 });
+    g.rect(px, py - 5, 2, 2).fill({ color: blink ? 0xd62828 : 0x1e88e5 });
+  } else {
+    g.rect(px - 4, py - 3, 8, 3).fill({ color: 0xc62828 });
+    g.rect(px - 1, py - 5, 3, 2).fill({ color: 0x9ad0f5 });
+  }
+  g.rect(px - 3, py, 2, 1).fill({ color: 0x212121 });
+  g.rect(px + 2, py, 2, 1).fill({ color: 0x212121 });
+}
+
+function drawWalker(g, x, y, frame, shirt) {
+  const px = Math.round(x);
+  const py = Math.round(y);
+  g.rect(px, py - 7, 2, 2).fill({ color: 0xf1c27d });
+  g.rect(px, py - 5, 2, 3).fill({ color: shirt });
+  if (frame) {
+    g.rect(px - 1, py - 2, 1, 2).fill({ color: 0x263238 });
+    g.rect(px + 2, py - 2, 1, 2).fill({ color: 0x263238 });
+  } else {
+    g.rect(px, py - 2, 1, 2).fill({ color: 0x263238 });
+    g.rect(px + 1, py - 2, 1, 2).fill({ color: 0x263238 });
+  }
+}
+
+// One Graphics object is the pool. clear() each frame, then redraw at most
+// maxAnimated of each. The city remembers the full counts. Drawing hundreds
+// of sprites, or baking them into the texture, would repaint the skyline
+// every time a foot moved.
+function drawPopulation(g, city, now) {
+  g.clear();
+  if (!city?.map) return;
+  const vehicles = city.vehicles || [];
+  const vehicleCap = rules.vehicles?.maxAnimated ?? 16;
+  const blink = Math.floor(now / 240) % 2;
+  for (let i = 0; i < vehicles.length && i < vehicleCap; i++) {
+    const vehicle = vehicles[i];
+    const span = transitRoad(vehicle, city.map);
+    const lap = VEHICLE_LAP[vehicle.type] || 8000;
+    const t = (now / lap + (vehicle.index || i) * 0.17) % 1;
+    const [x, y] = pointOnRoad(span, t);
+    drawVehicle(g, x, y, vehicle.type, blink);
+  }
+  const people = city.pedestrians;
+  const count = people?.count || 0;
+  if (!count) return;
+  const cap = Math.min(count, rules.pedestrians?.maxAnimated ?? 32);
+  const seed = people.seed >>> 0;
+  for (let i = 0; i < cap; i++) {
+    const span = transitRoad({ index: i + 3 }, city.map);
+    const phase = walkerPhase(seed, i);
+    const raw = (now / 16000 + phase) % 1;
+    const t = i % 3 === 0 ? 1 - raw : raw;
+    const [x, y] = pointOnEdge(span, t, i % 2 === 0);
+    drawWalker(g, x, y, Math.floor(now / 180 + i) % 2, SHIRTS[i % SHIRTS.length]);
+  }
 }
 
 function drawTransit(g, city, now) {
@@ -224,7 +322,10 @@ export default function CityView({ city, fx, celebrate }) {
       // but it is not part of the cached city texture.
       const parade = new Graphics();
       const transit = new Graphics();
-      world.addChild(citySprite, transit, crane, dust, parade);
+      // Vehicles and walkers share one graphics object. It is cleared every
+      // frame. It is not a child of the cached city sprite.
+      const population = new Graphics();
+      world.addChild(citySprite, transit, population, crane, dust, parade);
       const screenFx = new Graphics();
       application.stage.addChild(fill, backdrop, world, screenFx);
       const bits = [];
@@ -233,15 +334,31 @@ export default function CityView({ city, fx, celebrate }) {
       // until both corners left the 390px width. gridPlacement fits the
       // picture inside the view instead. The backdrop is placed once per
       // resize and then stays. Only `world` is dragged and pinched.
+      // `placed` stays the contain-fit. `zoom` is the grid scale, which
+      // steps through whole numbers once the user goes past 1×.
       let placed = gridPlacement(application.screen.width, application.screen.height);
+      let zoom = placed.scale;
+      let panX = placed.x;
+      let panY = placed.y;
       const applyPlace = (container) => {
         container.scale.set(placed.scale);
         container.position.set(placed.x, placed.y);
       };
+      const placeWorld = () => {
+        world.scale.set(zoom);
+        // At 2× and up, a fractional camera makes nearest-neighbor pixels
+        // shimmer. The pan itself keeps the fraction so a slow drag still
+        // adds up. Only the position we hand to Pixi is rounded.
+        if (Number.isInteger(zoom)) world.position.set(Math.round(panX), Math.round(panY));
+        else world.position.set(panX, panY);
+      };
       const fit = () => {
         placed = gridPlacement(application.screen.width, application.screen.height);
         applyPlace(backdrop);
-        applyPlace(world);
+        zoom = placed.scale;
+        panX = placed.x;
+        panY = placed.y;
+        placeWorld();
       };
       fit();
       application.renderer.on("resize", fit);
@@ -327,7 +444,9 @@ export default function CityView({ city, fx, celebrate }) {
           dust.clear();
         }
         const celebrating = stateRef.current.celebrate;
-        drawTransit(transit, shown, performance.now());
+        const frameNow = performance.now();
+        drawTransit(transit, shown, frameNow);
+        drawPopulation(population, shown, frameNow);
         parade.clear();
         if (celebrating) drawParade(parade, shown, performance.now());
         screenFx.clear();
@@ -381,18 +500,39 @@ export default function CityView({ city, fx, celebrate }) {
         const pts = [...pointers.values()];
         if (pts.length >= 2) {
           const now = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-          if (pinchDist) world.scale.set(Math.max(0.3, Math.min(6, world.scale.x * (now / pinchDist))));
-          pinchDist = now;
+          if (pinchDist) {
+            const ratio = now / pinchDist;
+            // A small finger wobble is not a zoom step. About 18% is one
+            // click on the ladder (fit → 1 → 2 …). Resetting the baseline
+            // lets one long pinch climb more than one step.
+            if (ratio >= 1.18) {
+              zoom = stepZoom(zoom, placed.scale, 1);
+              placeWorld();
+              pinchDist = now;
+            } else if (ratio <= 1 / 1.18) {
+              zoom = stepZoom(zoom, placed.scale, -1);
+              placeWorld();
+              pinchDist = now;
+            }
+          } else pinchDist = now;
         } else {
           pinchDist = 0;
-          world.x += event.clientX - prev.x;
-          world.y += event.clientY - prev.y;
+          panX += event.clientX - prev.x;
+          panY += event.clientY - prev.y;
+          placeWorld();
         }
       };
       const up = (event) => pointers.delete(event.pointerId);
+      let wheelAt = 0;
       const wheel = (event) => {
         event.preventDefault();
-        world.scale.set(Math.max(0.3, Math.min(6, world.scale.x * (event.deltaY > 0 ? 0.9 : 1.1))));
+        const now = performance.now();
+        // A trackpad fires a burst of wheel events for one flick. Taking
+        // every event would jump from the fit scale to the cap.
+        if (now - wheelAt < 180) return;
+        wheelAt = now;
+        zoom = stepZoom(zoom, placed.scale, event.deltaY > 0 ? -1 : 1);
+        placeWorld();
       };
       canvas.addEventListener("pointerdown", down);
       canvas.addEventListener("pointermove", move);

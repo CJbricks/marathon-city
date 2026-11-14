@@ -1,8 +1,9 @@
 // Turns a saved activity list into the city the screen draws.
 // Both the route handlers and the browser call this, with the asOf date
-// the server chose. Sharing that date matters: parks are awarded only for
-// weeks that have fully ended by asOf, so the two sides must agree or the
-// animation would finish on a different skyline than the database.
+// the server chose. Sharing that date matters: parks and streak vehicles
+// are awarded only for weeks that have fully ended by asOf, so the two
+// sides must agree or the animation would finish on a different skyline
+// than the database.
 
 import rules from "./rules.js";
 import { simulate } from "./simulate.js";

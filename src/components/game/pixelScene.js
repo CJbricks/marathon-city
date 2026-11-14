@@ -7,6 +7,10 @@
 // roads, and buildings are painted by paintScene with gridOnly. CityView
 // keeps the backdrop still and moves only the grid.
 //
+// Side-quest blocks (stadiums, the creek, the zoo, the gardens) are painted
+// into this same picture. Cars and pedestrians are not. Those move every
+// frame, so CityView draws them on top and leaves them out of sceneSignature.
+//
 // Isometric math, same as the prototype: a lot at (u, v) lands at
 //   x = OX + (u - v) * 12
 //   y = OY + (u + v) * 6
@@ -460,6 +464,83 @@ function drawQuest(data, q, ambient) {
     for (let i = 0; i < 3; i++) {
       box(data, x + i * 0.55, y + 0.3, x + i * 0.55 + 0.5, y + 1.4, 0, 8 + (i % 2) * 4, mul(hex(i % 2 ? "#c45c32" : "#d8d0bc"), ambient));
     }
+  } else if (name === "Cherry Creek Trail") {
+    // Water on the far side of the block, a dirt trail on the near side,
+    // and a plank bridge across the creek. The posts are a few pixels tall
+    // so the bridge still reads when the whole city is fit on a phone.
+    diamond(data, x, y, hex("#3a7ad0"));
+    diamond(data, x + 1, y, hex("#2f6fbe"));
+    diamond(data, x, y + 1, hex("#c4a574"));
+    diamond(data, x + 1, y + 1, hex("#6aa84f"));
+    const [ax, ay] = project(x + 0.05, y + 0.85, 4);
+    const [bx] = project(x + 1.95, y + 0.85, 4);
+    hline(data, ax, bx, ay, hex("#5a3a1a"));
+    hline(data, ax, bx, ay - 1, hex("#f0ece0"));
+    hline(data, ax, bx, ay - 2, hex("#d8d0bc"));
+    for (const post of [ax + 2, bx - 4]) {
+      put(data, post, ay - 3, hex("#5a3a1a"));
+      put(data, post, ay - 4, hex("#5a3a1a"));
+      put(data, post, ay - 5, hex("#f0d060"));
+    }
+    const [tx, ty] = project(x + 1.55, y + 1.55);
+    tree(data, tx, ty, false, hex("#2f7a32"));
+  } else if (name === "Denver Zoo") {
+    diamond(data, x, y, hex("#3f8f3a"));
+    diamond(data, x + 1, y, hex("#3f8f3a"));
+    diamond(data, x, y + 1, hex("#2f7a32"));
+    diamond(data, x + 1, y + 1, hex("#2f7a32"));
+    // Body, ear, head, and a trunk that hangs in front. The eye is one
+    // dark pixel so the gray shape reads as an animal, not a rock.
+    const [cx, cy] = project(x + 0.85, y + 0.95, 0);
+    fillPoly(data, [[cx - 10, cy + 1], [cx + 8, cy + 1], [cx + 6, cy - 8], [cx - 8, cy - 8]], hex("#9aa0a6"));
+    fillPoly(data, [[cx - 10, cy - 2], [cx - 16, cy], [cx - 15, cy - 8], [cx - 7, cy - 8]], hex("#7d848c"));
+    fillPoly(data, [[cx + 4, cy - 8], [cx + 11, cy - 11], [cx + 10, cy - 3], [cx + 4, cy - 4]], hex("#c5ccd1"));
+    put(data, cx + 8, cy - 8, hex("#263238"));
+    put(data, cx + 11, cy - 2, hex("#8e959c"));
+    put(data, cx + 12, cy, hex("#8e959c"));
+    put(data, cx + 12, cy + 2, hex("#8e959c"));
+    put(data, cx + 11, cy + 4, hex("#8e959c"));
+    for (const u of [0.3, 0.75, 1.2, 1.65]) {
+      const [px, py] = project(x + u, y + 1.75, 0);
+      put(data, px, py, hex("#8d6e4a"));
+      put(data, px, py - 1, hex("#c4a574"));
+      put(data, px, py - 2, hex("#c4a574"));
+      put(data, px, py - 3, hex("#f0d060"));
+    }
+  } else if (name === "Denver Botanic Gardens") {
+    diamond(data, x, y, hex("#3f8f3a"));
+    diamond(data, x + 1, y, hex("#4caf50"));
+    diamond(data, x, y + 1, hex("#2f7a32"));
+    diamond(data, x + 1, y + 1, hex("#3f8f3a"));
+    box(data, x + 0.35, y + 0.15, x + 1.65, y + 1.15, 0, 8, hex("#d7eefc"));
+    for (let k = 0; k < 5; k++) {
+      const inset = k * 0.1;
+      const glass = k % 2 ? hex("#f4fbff") : hex("#7eb6e0");
+      fillPoly(
+        data,
+        [
+          project(x + 0.45 + inset, y + 0.25 + inset * 0.35, 9 + k * 3),
+          project(x + 1.55 - inset, y + 0.25 + inset * 0.35, 9 + k * 3),
+          project(x + 1.55 - inset, y + 1.05 - inset * 0.25, 9 + k * 3),
+          project(x + 0.45 + inset, y + 1.05 - inset * 0.25, 9 + k * 3),
+        ],
+        glass,
+      );
+    }
+    const beds = [
+      [0.3, 1.45, "#d62828"],
+      [0.7, 1.65, "#fdd835"],
+      [1.2, 1.5, "#e040fb"],
+      [1.6, 1.7, "#f57c00"],
+    ];
+    for (const [u, v, color] of beds) {
+      const [fx, fy] = project(x + u, y + v, 2);
+      const petal = hex(color);
+      put(data, fx, fy, petal);
+      put(data, fx + 1, fy, petal);
+      put(data, fx, fy - 1, petal);
+      put(data, fx + 1, fy - 1, petal);
+    }
   } else {
     box(data, x + 0.2, y + 0.2, x + 1.6, y + 1.6, 0, 10, mul(hex("#8a4030"), ambient));
   }
@@ -704,7 +785,8 @@ export function sceneSignature(city, phase) {
   const buildings = city.buildings.map((b) => `${b.id}:${b.status}:${b.storiesBuilt}`).join(";");
   const marks = city.landmarks.map((l) => l.key).join(",");
   const quests = city.sideQuests.map((q) => q.name).join(",");
-  // Transit is left out. CityView redraws those stripes every frame, and a
-  // moving bus must not throw away the cached city texture.
+  // Transit, streak vehicles, and pedestrians are left out on purpose.
+  // CityView redraws them every frame on the overlay. A moving car or a
+  // walker must not throw away the cached city texture.
   return `${phase}|${buildings}|${marks}|${city.parks.length}|${quests}`;
 }
