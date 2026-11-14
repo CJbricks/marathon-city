@@ -38,14 +38,20 @@ src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks t
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
-src/app/layout.js          Font, title, viewport, Chakra provider.
+src/app/layout.js          Font, title, share card, viewport, Chakra provider.
 src/app/favicon.ico        Tab icon. 16, 32, 48, and 64, from the 32×32 drawing.
 src/app/icon.png           512×512 icon. Same drawing, each pixel copied 16 times.
 src/app/apple-icon.png     180×180 home-screen icon. Solid, no transparent pixels.
+src/app/opengraph-image.png  1200×630 share image. Same pixels as twitter-image.png.
+src/app/twitter-image.png    The picture on an X / Twitter card.
+src/app/opengraph-image.alt.txt  Alt text for the share image.
+src/app/twitter-image.alt.txt    The same sentence, for the Twitter image.
 src/app/page.js            Mounts Game. Stays a Server Component.
 prototype/                 The original scripts and stills. The app does not execute them.
 prototype/icon32_drawn.png The 32×32 drawing every icon size is scaled from.
+prototype/og_source.png    The 488×414 Austin close-up the share image is cropped from.
 scripts/make-icons.mjs     Rebuilds favicon.ico, icon.png, and apple-icon.png.
+scripts/make-og.mjs        Rebuilds the two share images. Does not touch the favicon.
 docs/austin-theme-screenshot.png  The Austin scene that drawing came from. Not served.
 ```
 
@@ -53,7 +59,7 @@ docs/austin-theme-screenshot.png  The Austin scene that drawing came from. Not s
 
 Someone opens `/`.
 
-1. `page.js` renders `Game`. The HTML shell (font, title, viewport) still comes from `layout.js` on the server.
+1. `page.js` renders `Game`. The HTML shell (font, title, share card, viewport) still comes from `layout.js` on the server.
 2. `Game` fetches `GET /api/session`. That Route Handler reads the `mc_user` cookie, creates one if it is missing, and asks the store for the save.
 3. The store is Postgres when `DATABASE_URL` is set, and `.data/store.json` otherwise. The route does not branch on that; `getStore()` does. `GET /api/health` reports which one is in use.
 4. `replay()` drops activities before a chosen start date and calls `simulate()` with today's UTC date as `asOf`. Parks and streak vehicles only count for weeks that have ended by that date.
@@ -349,6 +355,29 @@ The scale is nearest-neighbor. A source pixel is copied into a block. It is not 
 
 `docs/austin-theme-screenshot.png` is the Austin scene the drawing was made from. It is a reference for the next person who opens the master. The site does not serve it. The full scene is the wrong favicon: at 16 pixels the tower and the dome disappear into the skyline.
 
+## The share card
+
+When someone pastes the site into iMessage, Slack, or X, the preview is a title, a sentence, and one picture, taken from tags in `<head>`. Next writes those tags from `metadata` in `src/app/layout.js` and from a few file names next to that file. There is still no `<head>` element in the layout.
+
+The title on the browser tab and on the card is **Miles and Miles**. The description is "Every run builds the city." The same words are `og:title`, `og:description`, `twitter:title`, and `twitter:description`, so a crawler that reads only one of those sets still gets the sentence. `og:site_name` is Miles and Miles. `og:type` is `website`. `twitter:card` is `summary_large_image`, the wide card.
+
+`metadataBase` is `https://marathon-city.vercel.app`. The image tags have to be absolute URLs. A relative `/opengraph-image.png` with no base can be resolved against localhost, and the preview is then a broken image. The base is the production origin on purpose. A preview deploy still advertises that origin. `og:url` is that same origin. It is the page the card links to.
+
+The picture is two files, because Open Graph and Twitter look for different names:
+
+- `src/app/opengraph-image.png`
+- `src/app/twitter-image.png`
+
+They are the same 1200×630 picture. Next reads the size out of the PNG and adds `og:image:width` and `og:image:height`. The alt text is `opengraph-image.alt.txt` and `twitter-image.alt.txt`, one sentence each: the Capitol dome, the UT Tower, and St. Mary Cathedral. Next copies that sentence into `og:image:alt` and `twitter:image:alt`.
+
+Leave `openGraph.images` and `twitter.images` unset in `layout.js`. Those fields replace the files. The icons work the same way: the metadata object does not list them.
+
+The master is `prototype/og_source.png`, 488 by 414, a close-up of the Austin city. `npm run og` runs `scripts/make-og.mjs`. The app does not run the script. The committed PNGs are what Next serves. Run the script again only after the close-up changes. The script does not write `favicon.ico`, `icon.png`, or `apple-icon.png`.
+
+The scale is nearest-neighbor, the same rule as the favicon. A source pixel is copied into a 3×3 block. It is not averaged with its neighbors. 3× is the integer that fills a 1200×630 card. 2× of 488 is 976, which is short of 1200. 4× cannot land on 630, because 630 is not divisible by 4, and the crop would slice a pixel. 3× makes 1464×1242. The card is the centered 1200×630 of that picture, which is source pixels 44,102 through 443,311. That window still holds the dome, the tower's red roof and clock, and the cathedral steeple with its rose window. The houses along the bottom of the close-up sit outside the card.
+
+The script checks two things before it writes. Every output color has to already be in the source, which fails if a pixel was blended. The three landmark boxes have to sit inside the crop, which fails if the window moves off them. `npm test` decodes the committed PNGs and checks they still match what the script would write.
+
 ## Commands
 
 ```bash
@@ -359,6 +388,7 @@ npm test
 npm run lint
 npm run build
 npm run icons     # rebuilds the favicon from prototype/icon32_drawn.png
+npm run og        # rebuilds the share image from prototype/og_source.png
 npm run migrate   # skips with a log line when DATABASE_URL is unset
                   # Vercel runs this automatically via vercel-build
 ```

@@ -4,8 +4,8 @@
 //
 // This file is a Server Component. It has no "use client", so it runs on the
 // server and does not ship its own JavaScript to the browser. That is the
-// right place to load a font and set the document title. The Chakra wrapper
-// it renders is a Client Component; see providers.js.
+// right place to load a font, set the document title, and describe the link
+// preview. The Chakra wrapper it renders is a Client Component; see providers.js.
 
 import { Press_Start_2P } from "next/font/google";
 import Providers from "./providers";
@@ -26,12 +26,39 @@ const pixel = Press_Start_2P({
 // <head> element ourselves. `viewport` is what makes the layout scale on a phone
 // (width=device-width, initial-scale=1) instead of rendering as a desktop page.
 //
-// The icons are files beside this one, not fields in this object:
-// favicon.ico (the tab), icon.png (512), and apple-icon.png (the iPhone
-// home screen). Next adds the <link> tags from those names. See docs/NOTES.md.
+// "Miles and Miles" is the browser tab and the title on a shared link.
+// The one-line description is the sentence under that title in iMessage,
+// Slack, and X. The same words are set on the Open Graph and Twitter
+// fields so a crawler that reads only one of those sets still gets them.
+//
+// metadataBase is the production origin. The share image is a relative
+// path (/opengraph-image.png). Without a base, that path can be resolved
+// against localhost and the preview is a broken image. Preview deploys
+// still advertise this origin, because this is the site people share.
+//
+// The pictures are files beside this one, the same way the icons are.
+// opengraph-image.png and twitter-image.png are the 1200×630 card.
+// The .alt.txt files are the sentence a screen reader speaks for it.
+// Leave openGraph.images and twitter.images unset. Those fields replace
+// the files. favicon.ico, icon.png, and apple-icon.png are still the tab
+// and the home-screen icon. This object does not list them either.
+// See docs/NOTES.md.
 export const metadata = {
-  title: "Marathon City",
-  description: "A Denver city that grows one story for every mile you run.",
+  metadataBase: new URL("https://marathon-city.vercel.app"),
+  title: "Miles and Miles",
+  description: "Every run builds the city.",
+  openGraph: {
+    title: "Miles and Miles",
+    description: "Every run builds the city.",
+    url: "https://marathon-city.vercel.app",
+    siteName: "Miles and Miles",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Miles and Miles",
+    description: "Every run builds the city.",
+  },
 };
 
 export const viewport = {
