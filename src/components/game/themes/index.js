@@ -4,7 +4,12 @@
 // that name into the object paintScene draws with. The rules, the
 // database, and the city code do not know about pixels. Adding a third
 // city is a new file in this folder, one line in THEMES, and one name
-// in names.js. It is not a change to simulate.js.
+// in names.js.
+//
+// Austin's library, gallery, and bakery are the exception to "art only".
+// Their thresholds live in rules.js under cities.Austin, and simulate.js
+// places them only when the save's city is Austin. A city that only
+// changes drawings still does not need a simulator change.
 //
 // A theme has this shape:
 //   id            string, the save's city name

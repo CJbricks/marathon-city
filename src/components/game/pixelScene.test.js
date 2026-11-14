@@ -165,6 +165,9 @@ describe("theme seam", () => {
     expect(themeFor("Austin").labels.unionStation).toBe("Congress Avenue Bridge");
     expect(themeFor("Austin").labels.courthouse).toBe("UT Tower");
     expect(themeFor("Austin").labels.cathedral).toBe("St. Mary Cathedral");
+    expect(themeFor("Austin").labels.lbjLibrary).toBe("LBJ Presidential Library");
+    expect(themeFor("Austin").labels.marthasGallery).toBe("Martha's Art Gallery");
+    expect(themeFor("Austin").labels.rockmansBakery).toBe("Rockman's Bakery");
     expect(themeFor("Austin").labels["Big Blue Bear"]).toBe("Giga Texas");
   });
 
@@ -258,10 +261,53 @@ describe("Austin landmarks", () => {
     expect(count(night.data, orange)).toBeGreaterThan(20);
     expect(count(day.data, cream)).toBeGreaterThan(80);
   });
+
+  function extra(key) {
+    return listProps({
+      buildings: [],
+      landmarks: [{ key, x: 16, y: 13 }],
+      parks: [],
+      sideQuests: [],
+    })[0];
+  }
+
+  it("draws the library, the gallery, and the bakery, and Denver draws none of them", () => {
+    const travertine = (r, g, b) => r > 170 && g > 140 && b > 100 && r > b + 20;
+    const recess = (r, g, b) => r > 70 && r < 140 && g > 50 && g < 110 && b < 80;
+    const orange = (r, g, b) => r > 150 && g < 120 && b < 50;
+    const cream = (r, g, b) => r > 210 && g > 190 && b > 160;
+    const loaf = (r, g, b) => r > 180 && g > 130 && g < 220 && b > 40 && b < 140 && r > b;
+    for (const key of ["lbjLibrary", "marthasGallery", "rockmansBakery"]) {
+      expect(paintPropPixels(extra(key), light, "Denver")).toBeNull();
+    }
+    const library = paintPropPixels(extra("lbjLibrary"), light, "Austin");
+    const gallery = paintPropPixels(extra("marthasGallery"), light, "Austin");
+    const bakery = paintPropPixels(extra("rockmansBakery"), light, "Austin");
+    expect(count(library.data, travertine)).toBeGreaterThan(80);
+    expect(count(library.data, recess)).toBeGreaterThan(20);
+    expect(count(gallery.data, orange)).toBeGreaterThan(15);
+    expect(count(gallery.data, cream)).toBeGreaterThan(20);
+    expect(count(bakery.data, orange)).toBeGreaterThan(10);
+    expect(count(bakery.data, loaf)).toBeGreaterThan(15);
+  });
 });
 
 describe("mover occlusion", () => {
   const light = lightingAtMinutes(12 * 60 + 30);
+
+  it("gives each Austin landmark the depth of its own lot front", () => {
+    const props = listProps({
+      buildings: [],
+      landmarks: [
+        { key: "lbjLibrary", x: 16, y: 11 },
+        { key: "marthasGallery", x: 16, y: 13 },
+        { key: "rockmansBakery", x: 17, y: 14 },
+      ],
+      parks: [],
+      sideQuests: [],
+    });
+    expect(props.map((prop) => prop.depth)).toEqual([propDepth(16, 11, 1), propDepth(16, 13, 1), propDepth(17, 14, 1)]);
+  });
 
   function boxFor(prop, theme) {
     const crop = paintPropPixels(prop, light, theme);
@@ -298,6 +344,9 @@ describe("mover occlusion", () => {
     ["Austin", landmark("unionStation", 14, 14)],
     ["Austin", landmark("artMuseum", 14, 13)],
     ["Austin", landmark("cathedral", 14, 8)],
+    ["Austin", landmark("lbjLibrary", 16, 11)],
+    ["Austin", landmark("marthasGallery", 16, 13)],
+    ["Austin", landmark("rockmansBakery", 17, 14)],
     ["Austin", capitol],
     ["Austin", tower],
     ["Denver", landmark("courthouse", 13, 14)],

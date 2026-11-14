@@ -131,7 +131,7 @@ Two strings matter:
 - `DATABASE_URL` is the pooled URL. The host name contains `-pooler`. The running app uses this one. A serverless function lives for one request, and the pooler lets many of those requests share a few real database connections. The driver turns prepared statements off for that host (`prepare: false` in `src/lib/pgClient.mjs`) because the pooler does not keep the session a prepared statement belongs to. SSL is required. Neon refuses a plain connection.
 - `DATABASE_URL_UNPOOLED` is the direct URL. `scripts/migrate.mjs` prefers it, and uses `DATABASE_URL` only when the unpooled one is absent. Creating tables wants a direct connection. The script logs which variable name it used, not the value.
 
-`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. It also adds `code` on each city, `city_access` for a browser that opened a code, and `code_attempts` for wrong guesses. A database that still has one city per person gets `save_id`, `name`, `slot`, and `active` on that row. The row is kept: slot 1, active, named after its theme (so an old Denver save still says Denver). Its runs are pointed at that `save_id`. A run that belonged to no city is removed so the new key can be required. Cities that exist keep their runs. Every statement is written so running it again is a no-op, which is why it is safe on every deploy. The `DO` blocks are one statement each. Semicolons inside them change the old primary key. They are not separate commands.
+`src/lib/schema.sql` is the migration. It creates `users`, `strava_tokens`, `activities`, and `city_saves` if they are missing, and adds the race-day columns if an older database does not have them. It also adds `activities.start_local`, the Strava `start_date_local` string. The bakery reads the hour out of that text. A null means the clock was not stored. It does not mean midnight. It also adds `code` on each city, `city_access` for a browser that opened a code, and `code_attempts` for wrong guesses. A database that still has one city per person gets `save_id`, `name`, `slot`, and `active` on that row. The row is kept: slot 1, active, named after its theme (so an old Denver save still says Denver). Its runs are pointed at that `save_id`. A run that belonged to no city is removed so the new key can be required. Cities that exist keep their runs. Every statement is written so running it again is a no-op, which is why it is safe on every deploy. The `DO` blocks are one statement each. Semicolons inside them change the old primary key. They are not separate commands.
 
 The migration runs at build time, from the `vercel-build` script in `package.json`: migrate, then `next build`. Vercel already has the URL in the build environment, so the tables exist before the new deployment starts serving traffic. Nobody has to open a database console and paste SQL. If `DATABASE_URL` is unset, the script prints one line and exits successfully. `npm run build` on a laptop does not call the migration. `npm run migrate` still does, and it skips the same way when the URL is empty.
 
@@ -140,6 +140,8 @@ The migration runs at build time, from the `vercel-build` script in `package.jso
 ## How to change the rules
 
 Edit `src/lib/rules.js`. Heights, the 100-mile Union Station line, the park week rule, and the side-quest lists are all in that object. Key order inside `ringWeights` matters, because the weighted picker walks the keys in insertion order.
+
+`cities.Austin.landmarks` applies only when the save's city is Austin. Denver never reads the object. `lbjLibrary.cumulativeRunMiles` is 500. `marthasGallery.minDistance` is 5 and `afterRuns` is 0, so the first faster run of at least 5 miles builds the gallery, and the Blanton still waits for its own 20 runs. `rockmansBakery.earlyRuns` is 10 and `beforeHour` is 6 (5:59 counts, 6:00 does not). `at` is the lot, written `[blockX, blockY, lotX, lotY]`. The Austin tests check 499 against 500, 9 early runs against 10, and 5:59 against 6:00.
 
 `types.run` includes `TrailRun` and `Trail Run` next to `Run`. The simulator looks the activity name up in that list and then runs the same mile loop, so a trail run builds stories and can unlock Union Station, the Capitol, a cathedral, the courthouse, an art-museum PR, and a park. `stravaActivityType` in `src/lib/strava.js` prefers Strava's `sport_type` over `type`, because a trail run often arrives with `type: "Run"` and `sport_type: "TrailRun"`.
 
@@ -174,7 +176,7 @@ The isometric placement is `x = (u - v) * 24`, `y = (u + v) * 12`, with the orig
 To add or change a Denver sprite, edit `src/components/game/themes/denver.js`. Do not put the new shape in `rules.js`.
 
 - A new ordinary type goes in `drawBuilding`. Give it a base color, call `pen.box` for the three faces, then `pen.windows` for the dots. `stories` is already the height. Use `b.variant` as the seed if two buildings of the same type should not match. An odd variant of a rowhouse is a Victorian (bay and turret). An even one is the flat-front house.
-- A civic landmark goes in `drawLandmark`, keyed by `unionStation`, `courthouse`, `artMuseum`, or `cathedral`. Every cathedral uses the `cathedral` key, so the second and third get the same twin-spire sprite rather than a copy of some other building. The Capitol is a building (`type === "capitol"`), not a separate landmark sprite, because it has a story count. Museum buildings are the `museum` type: a gallery and one shard, not the cathedral spires.
+- A civic landmark goes in `drawLandmark`, keyed by `unionStation`, `courthouse`, `artMuseum`, or `cathedral`. Every cathedral uses the `cathedral` key, so the second and third get the same twin-spire sprite rather than a copy of some other building. The Capitol is a building (`type === "capitol"`), not a separate landmark sprite, because it has a story count. Museum buildings are the `museum` type: a gallery and one shard, not the cathedral spires. Austin's library, gallery, and bakery are extra keys in `themes/austin.js` (`lbjLibrary`, `marthasGallery`, `rockmansBakery`). Denver's painter has no branch for them, so a Denver city does not grow a new sprite. They are ordinary landmarks in `listProps`, so each one is its own sprite sorted by the front of its lot. A walker or a car behind that front is hidden. The lot is still 48 pixels across and a story is still 6 pixels.
 - A side-quest block goes in `drawQuest`, matched on the quest name from `rules.js`.
 - Parks go in `drawPark`. Washington Park and City Park get the lake; every park gets trees and a path.
 
@@ -210,7 +212,9 @@ The picker is the only place a person chooses a theme. Denver and Austin are bot
 
 The city is still rebuilt from the activity rows. The theme is not baked into those rows. `Game` passes `payload.save.city` into `CityView` as `theme`. `themeFor` turns the string into drawings. A save from before Austin existed has `city: "Denver"`. A blank city column is read back as Denver too.
 
-Drawing does not look at the mile rules. The simulator still unlocks `unionStation` at 100 miles and still names that quest `"Coors Field"` in the city object, because both cities share `rules.js`. Austin's `labels` map is the name a person would say for that slot. The painter matches the slot key (or the Denver quest name) and draws the Austin shape. That is why the thresholds did not move: 250 miles is still the capitol slot, and in Austin that slot is the pink-granite Texas State Capitol.
+The shared slots do not look at a different mile table. The simulator still unlocks `unionStation` at 100 miles and still names that quest `"Coors Field"` in the city object, because both cities share `rules.js`. Austin's `labels` map is the name a person would say for that slot. The painter matches the slot key (or the Denver quest name) and draws the Austin shape. 250 miles is still the capitol slot, and in Austin that slot is the pink-granite Texas State Capitol.
+
+Three landmarks are not renames. `replay()` passes `save.city` into the rules. When that name is Austin, `simulate()` also reads `rules.cities.Austin` and may add `lbjLibrary`, `marthasGallery`, and `rockmansBakery`. A Denver save, and a save with no city, skips that object, and the lots those buildings would have used stay in the normal pool. The demo log has no watch times, so an Austin demo earns the library (the log is past 500 miles) and the gallery (the log has a pace PR) and does not earn the bakery.
 
 What Austin changes, besides the buildings:
 
@@ -226,6 +230,9 @@ Slots Austin paints, using Denver's unlocks:
 | Union Station (100 mi) | Congress Avenue Bridge, with bats at dusk and night |
 | Courthouse (streak) | UT Tower, cream shaft, red tile roof, orange crown |
 | Art Museum (pace PR) | Blanton Museum of Art, a canopy of colored petals |
+| LBJ Library (500 run mi, Austin only) | Travertine slab, recessed top band, its own lot |
+| Martha's Art Gallery (first 5-mile pace PR, Austin only) | Small cream storefront, burnt-orange awning, across from the Blanton |
+| Rockman's Bakery (10 runs before 6:00am local, Austin only) | Awning and a loaf sign |
 | Cathedral (every 200 mi) | St. Mary Cathedral, one steeple and a rose window |
 | Half marathon, in order | Barton Springs Pool, Mount Bonnell, Pennybacker Bridge |
 | Full marathon, in order | Giga Texas, then Frost Bank Tower |
@@ -233,11 +240,11 @@ Slots Austin paints, using Denver's unlocks:
 | Rides, 10 / 25 / 50 | Q2 Stadium, Moody Center, DKR Texas Memorial Stadium |
 | Walks, 10 / 25 / 50 | Sixth Street, South Congress, Circuit of the Americas |
 
-Ordinary buildings follow the same rings. A rowhouse is a Hyde Park or Bouldin bungalow (cream or wood, red hip roof, a porch) instead of a Victorian. Mixed-use is a South Congress shop under a red roof. Offices are limestone. A skyscraper is one of three shapes, chosen from its variant: stacked slabs (the Independent), a glass sail, or a bronze shaft (Sixth and Guadalupe). State buildings are limestone with a small Texas flag. The sprinkled museum type is a limestone gallery, not a second Blanton. Giga Texas uses the Big Blue Bear's block, which is already on the southeast edge, so the factory sits on the east side without moving a lot. Nothing in the Austin file draws a seal, a wordmark, or a mascot.
+Ordinary buildings follow the same rings. A rowhouse is a Hyde Park or Bouldin bungalow (cream or wood, red hip roof, a porch) instead of a Victorian. Mixed-use is a South Congress shop under a red roof. Offices are limestone. A skyscraper is one of three shapes, chosen from its variant: stacked slabs (the Independent), a glass sail, or a bronze shaft (Sixth and Guadalupe). State buildings are limestone with a small Texas flag. The sprinkled museum type is a limestone gallery, not a second Blanton. Giga Texas uses the Big Blue Bear's block, which is already on the southeast edge, so the factory sits on the east side without moving a lot. Nothing in the Austin file draws a seal, a wordmark, or a mascot. The library is a travertine slab with a set-back top, the gallery is a cream shop and an orange awning, and the bakery is an awning with a loaf on the sign.
 
 ## How to add a third city
 
-Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile numbers stay shared. Copy `themes/austin.js` to `themes/chicago.js` (or whatever the city is) and export an object with the same shape. The field list is at the top of `themes/index.js`. Omit `sky` and `lake` if this city should keep Denver's sky and dry prairie.
+Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile numbers stay shared. Austin's library, gallery, and bakery are already the `cities.Austin` block; a new city that only changes drawings should not add a second block there. Copy `themes/austin.js` to `themes/chicago.js` (or whatever the city is) and export an object with the same shape. The field list is at the top of `themes/index.js`. Omit `sky` and `lake` if this city should keep Denver's sky and dry prairie.
 
 Then:
 

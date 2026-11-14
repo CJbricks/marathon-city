@@ -5,6 +5,10 @@
 //
 // asOfDate is the fixture date used by the golden test. A live replay passes
 // today's date instead, so a finished quiet week can still earn a park.
+//
+// cities.Austin is the one set of numbers Denver does not share. The
+// simulator reads it only when the save's city is Austin. The drawings
+// for those keys live in themes/austin.js.
 
 const rules = {
   asOfDate: "2026-10-29",
@@ -175,6 +179,54 @@ const rules = {
   raceDay: {
     confetti: 36,
     paradeMs: 9000,
+  },
+
+  // Austin-only landmarks. Denver's replay never reads this object, so
+  // Union Station, the Capitol, and the lot map stay put. `at` is
+  // [blockX, blockY, lotX, lotY] on the 7×7 map. The lot is held empty
+  // until the landmark unlocks, which is what keeps it off someone else's
+  // building. A road tile (block coordinate where the lot index would land
+  // on a multiple of blockLots + 1) is not a valid `at`.
+  cities: {
+    Austin: {
+      landmarks: {
+        lbjLibrary: {
+          name: "LBJ Presidential Library",
+          // Lifetime run miles. The Texas Capitol is the shared capitol
+          // slot and still unlocks at landmarks.capitol (250).
+          cumulativeRunMiles: 500,
+          max: 1,
+          // Its own lot, east of the civic square, not one of the four
+          // civic slots the Capitol and the Blanton already use.
+          at: [5, 3, 0, 1],
+        },
+        marthasGallery: {
+          name: "Martha's Art Gallery",
+          // A new pace PR. The first run of at least minDistance miles only
+          // sets the best pace. The next one that is faster per mile is the
+          // PR, and that is the only one that builds the gallery. afterRuns
+          // is 0 so it does not wait the 20 runs the Blanton waits. max 1
+          // means a later PR does not add a second gallery.
+          minDistance: 5,
+          afterRuns: 0,
+          max: 1,
+          // Across the street from the Blanton (the artMuseum civic slot).
+          at: [5, 4, 0, 0],
+        },
+        rockmansBakery: {
+          name: "Rockman's Bakery",
+          // How many lifetime runs must start before beforeHour:00 local.
+          // 6 means 5:59 counts and 6:00 does not. The clock is Strava's
+          // start_date_local, not the server's timezone.
+          earlyRuns: 10,
+          beforeHour: 6,
+          max: 1,
+          // A corner lot in the same block as the gallery, closer to the
+          // camera, so the awning has a street of its own.
+          at: [5, 4, 1, 1],
+        },
+      },
+    },
   },
 };
 

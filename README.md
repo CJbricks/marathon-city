@@ -63,6 +63,12 @@ Landmarks unlock from milestones:
 - **The Denver Art Museum** for a pace PR. The prototype counts a PR only on a run of at least 5 miles, and only after the first 20 runs.
 - **The Cathedral Basilica** at one per 200 banked run miles, with no ceiling unless `max` is set in `src/lib/rules.js`. 700 miles is 3. 1000 miles is 5. A single 13.1 mile run does not unlock one early.
 
+Austin adds three landmarks Denver does not earn. The numbers live in `cities.Austin` inside `src/lib/rules.js`. The Texas State Capitol is still the shared capitol slot and still unlocks at 250 run miles.
+
+- **LBJ Presidential Library** at 500 lifetime run miles, on its own lot beside the civic square.
+- **Martha's Art Gallery** the first time a run of at least 5 miles is a new pace personal record. A later PR does not add another. The lot is across the street from the Blanton.
+- **Rockman's Bakery** when 10 runs have a Strava `start_date_local` before 6:00am. 5:59 counts. 6:00 does not. A run with no clock (a typed distance, or the demo log) does not count.
+
 Trail runs count as runs. Strava's `TrailRun` sport type and a log line that says `Trail Run` both add their miles to stories, Union Station, the Capitol, cathedrals, the courthouse streak, art-museum pace PRs, and parks.
 
 After you pick a start date, the app asks if you are training for a specific day. Yes saves a date and an optional name, such as Austin Marathon on 2027-02-14. No skips it. On that local calendar day the city plays confetti and a small parade, and shows the name if you gave one. Change it later from the city menu. `?raceday=1` previews the celebration on any day. The counts and the timing live in `raceDay` inside `src/lib/rules.js`.
@@ -83,7 +89,7 @@ Lifetime walk miles (every year added together) place `floor(miles / 0.25)` pede
 
 A run or trail run longer than 26.2 miles unlocks the next transit line. The order in `transit.types` is a bike route, then a bus route, then a light-rail line, and then it starts over. There is no cap. Exactly 26.2 miles stays a marathon and does not lay track. The lines are pixel stripes on the overlay (a bike-lane dash, a bus with stops, a rail with a train) along roads that are already in the city. They are not part of the cached texture, so a moving bus does not repaint every building. Change `transit.overMiles` or `transit.types` in `src/lib/rules.js` to edit the threshold and the cycle.
 
-`src/lib/rules.js` is the editable source for these numbers, including `perCity` on museums, `milesPer` / `max` on landmarks, `vehicles`, and `pedestrians`. `prototype/summary.txt` is the older replay, from before cathedrals followed the mileage bank. Stadiums were ride miles in that prototype, then moved onto half marathons, and are ride miles again now. Half marathons are the creek, the zoo, and the gardens.
+`src/lib/rules.js` is the editable source for these numbers, including `perCity` on museums, `milesPer` / `max` on landmarks, `cities.Austin` for the library, the gallery, and the bakery, `vehicles`, and `pedestrians`. `prototype/summary.txt` is the older replay, from before cathedrals followed the mileage bank. Stadiums were ride miles in that prototype, then moved onto half marathons, and are ride miles again now. Half marathons are the creek, the zoo, and the gardens.
 
 ## Logging a run
 

@@ -185,6 +185,28 @@ describe("named saves", () => {
     expect(body.activities).toHaveLength(1);
   });
 
+  it("keeps the watch time and builds Rockman's from an Austin save", async () => {
+    const store = getStore();
+    await store.ensureUser("user-1");
+    const save = await store.createSave("user-1", { name: "Dawn", city: "Austin", startMode: "all" });
+    const rows = Array.from({ length: 10 }, (_, i) => ({
+      stravaId: `dawn-${i}`,
+      type: "Run",
+      date: `2024-02-${String(i + 1).padStart(2, "0")}`,
+      miles: 2,
+      seconds: 1200,
+      title: "early",
+      seq: i,
+      startLocal: `2024-02-${String(i + 1).padStart(2, "0")}T05:59:00`,
+    }));
+    await store.addActivities("user-1", save.id, rows);
+    const stored = await store.listActivities(save.id);
+    expect(stored[0].startLocal).toBe("2024-02-01T05:59:00");
+    const body = await cityPayload("user-1");
+    expect(body.city.landmarks.filter((l) => l.key === "rockmansBakery")).toHaveLength(1);
+    expect(body.city.landmarks.filter((l) => l.key === "lbjLibrary")).toHaveLength(0);
+  });
+
   it("stores a failed-code lock on the device key", async () => {
     const store = getStore();
     let state = null;

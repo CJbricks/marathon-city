@@ -14,6 +14,9 @@
 //   bungalows have a red hip roof and a porch, shops have an awning,
 //   the capitol is a pink dome (not gold), the UT Tower is a thin
 //   cream shaft with an orange top, the bridge sits on green water.
+//   The LBJ Library is a wide travertine slab with a set-back top.
+//   Martha's is a small cream shop with an orange awning. Rockman's
+//   is a bakery awning with a loaf on a sign. None of those is a logo.
 
 import { hex, mix, mul, pick, rng } from "../pixelPen";
 import { STORY, project } from "../sceneLayout";
@@ -65,6 +68,9 @@ export const AUSTIN_LABELS = {
   unionStation: "Congress Avenue Bridge",
   courthouse: "UT Tower",
   artMuseum: "Blanton Museum of Art",
+  lbjLibrary: "LBJ Presidential Library",
+  marthasGallery: "Martha's Art Gallery",
+  rockmansBakery: "Rockman's Bakery",
   cathedral: "St. Mary Cathedral",
   "Cherry Creek Trail": "Barton Springs Pool",
   "Denver Zoo": "Mount Bonnell",
@@ -504,10 +510,114 @@ function drawCathedral(pen, l, ambient) {
   pen.put(sx, sy - 38, hex("#6a3048"));
 }
 
+// The LBJ Library is a travertine monolith: one wide cream slab, a dark
+// band where the top floor steps back, and a smaller cap on that recess.
+// It is not a dome and not the UT Tower. Heights are multiples of STORY
+// (6px) so they stay on the same scale as every other lot.
+function drawLbjLibrary(pen, l, ambient) {
+  const x = l.x;
+  const y = l.y;
+  const stone = mul(hex("#e6d2b0"), ambient);
+  const joint = mul(hex("#c8aa78"), ambient);
+  const recess = hex("#6e5438");
+  const u0 = x + 0.08;
+  const v0 = y + 0.14;
+  const u1 = x + 0.92;
+  const v1 = y + 0.9;
+  const slab = STORY * 5;
+  pen.box(x + 0.04, y + 0.08, x + 0.96, y + 0.96, 0, STORY, mix(stone, 0.82));
+  pen.box(u0, v0, u1, v1, 0, slab, stone);
+  pen.windows(u0, v0, u1, v1, slab, (side, t, n, k) => {
+    if (t > 2 && t < n - 3 && k >= slab - STORY - 1 && k <= slab - 3) {
+      return side === "R" ? mix(recess, 0.85) : recess;
+    }
+    if (t % 7 === 0 && k > 2 && k < slab - 2) return joint;
+    return null;
+  });
+  pen.box(x + 0.22, y + 0.28, x + 0.78, y + 0.74, slab, STORY + 2, mix(stone, 1.08));
+}
+
+// A small gallery, not the Blanton. The box shader turns cream into gray
+// on the right face, so the walls are painted back in cream and the
+// painting is a framed orange block. The awning is the burnt-orange band.
+// None of it is a wordmark or a longhorn.
+function drawMarthasGallery(pen, l, ambient, night) {
+  const x = l.x;
+  const y = l.y;
+  const wall = mul(CREAM, ambient);
+  const creamL = hex("#f7f1e4");
+  const creamR = hex("#e7dcc8");
+  const u0 = x + 0.22;
+  const v0 = y + 0.26;
+  const u1 = x + 0.8;
+  const v1 = y + 0.86;
+  const h = STORY * 2 + 4;
+  pen.box(u0, v0, u1, v1, 0, h, wall);
+  pen.windows(u0, v0, u1, v1, h, (side, t, n, k) => {
+    const stone = side === "R" ? creamR : creamL;
+    if (k >= h - 2) return mix(stone, 0.92);
+    if (k < 5 && t > n * 0.4 && t < n * 0.62) return hex("#6a3a28");
+    if (k > 5 && k < h - 3 && t > 2 && t < n - 3) {
+      const frame = t < 5 || t > n - 6 || k < 8 || k > h - 5;
+      if (frame) return hex("#6a3a28");
+      return night ? LIT : ORANGE;
+    }
+    return stone;
+  });
+  // A lip along the front, not a second roof. A full-lot awning hides
+  // the painting under its top face.
+  pen.box(u0 + 0.08, v1 - 0.02, u1 - 0.06, v1 + 0.2, 7, 3, ORANGE);
+  pen.box(u0, v0, u1, v1, h, 3, creamL);
+}
+
+// A corner bakery. The awning and the loaf are the silhouette. The sign is
+// a wide roll with two short scores, not letters and not a round badge.
+function drawRockmansBakery(pen, l, ambient, night) {
+  const x = l.x;
+  const y = l.y;
+  const wall = mul(hex("#f6e6cc"), ambient);
+  const crust = hex("#e2b15a");
+  const crumb = hex("#f0d090");
+  const score = hex("#c48a3a");
+  const u0 = x + 0.18;
+  const v0 = y + 0.24;
+  const u1 = x + 0.82;
+  const v1 = y + 0.84;
+  const h = STORY * 2 + 4;
+  pen.box(u0, v0, u1, v1, 0, h, wall);
+  pen.windows(u0, v0, u1, v1, h, (side, t, n, k) => {
+    const stone = side === "R" ? hex("#ead7b4") : hex("#f6e6cc");
+    if (k >= h - 2) return mix(stone, 0.9);
+    if (k < 6 && t > n * 0.55 && t < n * 0.78) return hex("#6a3a28");
+    if (k > 3 && k < 8 && t > 2 && t < n * 0.48) {
+      if ((t + k) % 5 === 0) return crust;
+      return night ? LIT : crumb;
+    }
+    return stone;
+  });
+  pen.box(u0 + 0.06, v1 - 0.02, u1 - 0.04, v1 + 0.2, 7, 3, ORANGE);
+  const [ax, ay] = project(u0 + 0.08, v1 + 0.16, 10);
+  const [bx] = project(u1 - 0.06, v1 + 0.16, 10);
+  for (let i = 0; i < bx - ax; i += 4) pen.fillRect(ax + i, ay - 2, 2, 3, CREAM);
+  const [sx, sy] = project(x + 0.62, y + 0.58, h + 2);
+  pen.fillRect(sx + 3, sy - 2, 2, 8, hex("#6a3a28"));
+  for (let dy = -3; dy <= 2; dy += 1) {
+    const w = dy === -3 || dy === 2 ? 4 : 6;
+    pen.hline(sx - w + 3, sx + w + 3, sy - 6 + dy, dy < 0 ? crumb : crust);
+  }
+  pen.put(sx + 1, sy - 7, score);
+  pen.put(sx + 2, sy - 6, score);
+  pen.put(sx + 5, sy - 7, score);
+  pen.put(sx + 6, sy - 6, score);
+}
+
 function drawLandmark(pen, l, ambient, night) {
   if (l.key === "unionStation") drawBridge(pen, l);
   else if (l.key === "courthouse") drawTowerLandmark(pen, l, ambient, night);
   else if (l.key === "artMuseum") drawBlanton(pen, l, ambient);
+  else if (l.key === "lbjLibrary") drawLbjLibrary(pen, l, ambient);
+  else if (l.key === "marthasGallery") drawMarthasGallery(pen, l, ambient, night);
+  else if (l.key === "rockmansBakery") drawRockmansBakery(pen, l, ambient, night);
   else if (l.key === "cathedral") drawCathedral(pen, l, ambient);
 }
 

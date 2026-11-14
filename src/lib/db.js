@@ -394,6 +394,9 @@ function rowToActivity(r) {
     seconds: r.moving_seconds,
     title: r.title,
     seq: Number(r.seq),
+    // Empty on rows saved before this column existed. An unknown clock
+    // is not an early run. Midnight would unlock the bakery by accident.
+    startLocal: r.start_local || "",
   };
 }
 
@@ -608,10 +611,12 @@ function createPostgresStore() {
       const fresh = [];
       for (const a of rows) {
         const inserted = await sql`
-          INSERT INTO activities (save_id, user_id, strava_id, type, activity_date, miles, moving_seconds, title, seq)
+          INSERT INTO activities (
+            save_id, user_id, strava_id, type, activity_date, miles, moving_seconds, title, seq, start_local
+          )
           VALUES (
             ${saveId}, ${userId}, ${String(a.stravaId)}, ${a.type}, ${a.date}, ${a.miles},
-            ${Math.round(a.seconds || 0)}, ${a.title || ""}, ${a.seq || 0}
+            ${Math.round(a.seconds || 0)}, ${a.title || ""}, ${a.seq || 0}, ${a.startLocal || null}
           )
           ON CONFLICT (save_id, strava_id) DO NOTHING
           RETURNING *
