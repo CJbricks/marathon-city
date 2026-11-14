@@ -18,10 +18,11 @@
 //   lane          { day, night } center-line dashes
 //   crosswalk     one color
 //   skirt         [frontFace, sideFace] the lip under the diamond
-//   sky           optional. { day, night, toward } mixes the clock sky
-//                 toward one color. Omit it and the keyframe sky is used.
-//   lake          optional. { color, shine } water on the prairie, outside
-//                 the diamond. Omit it and the ground stays dry.
+//   sky           optional. { day: [top, mid, horizon], night: same, cloud }
+//                 replaces the clock sky. Omit it and the keyframe sky is used.
+//   lake          optional. { color, shine, band } a ribbon along the front
+//                 edge of the diamond, `band` picture pixels wide. Omit it
+//                 and the ground stays dry. The band is not the whole foreground.
 //   drawBuilding(pen, building, ambient, night)
 //   drawLandmark(pen, landmark, ambient, night)
 //   drawPark(pen, park)

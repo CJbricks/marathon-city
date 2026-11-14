@@ -43,7 +43,7 @@ import {
   paintPropPixels,
   project,
   propDepth,
-  tintSkyColor,
+  themeSkyStop,
 } from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
@@ -346,17 +346,14 @@ export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
         if (!shown) return;
         const light = viewClock();
         const themeObj = themeFor(themeName);
-        const skyTop = tintSkyColor(light.sky[0], light, themeObj);
+        const skyTop = themeSkyStop(light, themeObj, 0);
         const [r, g, b] = skyTop;
         application.renderer.background.color = (r << 16) + (g << 8) + b;
         const key = `${themeName}|${light.phase}|${Math.round(application.screen.width)}|${Math.round(application.screen.height)}|${Math.round(placed.y)}|${placed.scale.toFixed(4)}`;
         if (key !== fillKey) {
           fillKey = key;
           const shownLight = themeObj.sky
-            ? {
-                ...light,
-                sky: [0, 1, 2].map((i) => tintSkyColor(light.sky[i], light, themeObj)),
-              }
+            ? { ...light, sky: [0, 1, 2].map((i) => themeSkyStop(light, themeObj, i)) }
             : light;
           drawFill(
             fill,

@@ -194,11 +194,20 @@ describe("theme seam", () => {
     // The top row is the keyframe color, before the gradient starts.
     // A tint applied to Denver would move this pixel.
     expect(at(denverSky, 10, 0)).toEqual([0x5b, 0x8f, 0xd6]);
-    expect(at(austin, 10, 0)).not.toEqual(at(denverSky, 10, 0));
-    // The front prairie is lake water on Austin and tan on Denver.
-    const water = at(austin, 640, 980);
-    const sand = at(denverSky, 640, 980);
+    // Austin's top is a warm light blue. The row near the hills is gold,
+    // so the sky is a gradient and not one gray.
+    expect(at(austin, 10, 0)).toEqual([0x8e, 0xc8, 0xee]);
+    const low = at(austin, 10, 200);
+    expect(low[0]).toBeGreaterThan(low[2]);
+    // The ribbon sits just under the front tip (y 880). Twenty pixels
+    // below that is water. Further down, and off to the side, is grass.
+    const water = at(austin, 640, 900);
+    const grass = at(austin, 640, 980);
+    const side = at(austin, 1200, 700);
     expect(water[2]).toBeGreaterThan(water[0]);
+    expect(grass[0]).toBeGreaterThan(grass[2]);
+    expect(side[0]).toBeGreaterThan(side[2]);
+    const sand = at(denverSky, 640, 980);
     expect(sand[0]).toBeGreaterThan(sand[2]);
     expect(denver[3]).toBe(255);
   });
@@ -243,7 +252,9 @@ describe("Austin landmarks", () => {
     const day = paintPropPixels(tower, light, "Austin");
     const night = paintPropPixels(tower, lightingAtMinutes(22 * 60), "Austin");
     const orange = (r, g, b) => r > 180 && g > 50 && g < 160 && b < 80;
+    const cream = (r, g, b) => r > 230 && g > 210 && b > 180;
     expect(count(night.data, orange)).toBeGreaterThan(count(day.data, orange));
     expect(count(night.data, orange)).toBeGreaterThan(20);
+    expect(count(day.data, cream)).toBeGreaterThan(80);
   });
 });

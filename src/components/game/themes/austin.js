@@ -34,10 +34,10 @@ const WATER_DEEP = hex("#1f6f72");
 
 const GROUND = {
   far: "#6e8a3c",
-  mid: "#b7a24e",
-  near: "#d4c48a",
-  // Same band heights as Denver so the prairie still breaks in the same
-  // place. Only the colors change, from sand to green-gold hill country.
+  mid: "#c4a84a",
+  // The field under the city. Caliche gold with enough green that it
+  // reads as Hill Country grass, not the lake and not Denver's sand.
+  near: "#b7a23a",
   farUntil: 20,
   midUntil: 72,
 };
@@ -397,20 +397,27 @@ function drawBridge(pen, l) {
 function drawTowerLandmark(pen, l, ambient, night) {
   const x = l.x;
   const y = l.y;
-  const stone = mul(LIMESTONE, ambient);
-  // Narrow shaft. A full-lot box would be another office. The tower is
-  // the thin cream line with the orange crown.
-  const u0 = x + 0.34;
-  const v0 = y + 0.3;
-  const u1 = x + 0.66;
-  const v1 = y + 0.7;
-  pen.box(x + 0.28, y + 0.42, x + 0.72, y + 0.9, 0, 6, mix(stone, 0.9));
-  pen.box(u0, v0, u1, v1, 6, 48, stone);
-  pen.windows(u0, v0, u1, v1, 48, (side, t, n, k) => {
-    if (t <= 0 || t >= n - 1 || k < 4) return null;
-    if (k > 30 && k < 40) return null;
-    if (t % 3 === 1 && k % 6 > 1 && k % 6 < 5) return side === "L" ? hex("#6a5c4c") : hex("#4e4338");
-    return null;
+  // The box shader paints the right face at 55% brightness. On a thin
+  // shaft that face is most of the tower, and limestone came out brown.
+  // These two creams are written back over the faces. The right edge is
+  // only a step darker, so the corner still turns, and the shaft stays
+  // white even when the clock ambient is dim. `ambient` is unused on
+  // purpose for that reason.
+  void ambient;
+  const shaft = hex("#fff8ef");
+  const shaftShade = hex("#f3e6d2");
+  const u0 = x + 0.36;
+  const v0 = y + 0.32;
+  const u1 = x + 0.64;
+  const v1 = y + 0.68;
+  pen.box(x + 0.3, y + 0.46, x + 0.7, y + 0.92, 0, 5, shaftShade);
+  pen.box(u0, v0, u1, v1, 5, 52, shaft);
+  pen.windows(u0, v0, u1, v1, 52, (side, t, n, k) => {
+    if (t <= 0 || t >= n - 1) return side === "R" ? shaftShade : shaft;
+    const win = k > 8 && k < 44 && k % 6 > 1 && k % 6 < 5 && t % 4 === 2;
+    if (win) return side === "L" ? hex("#6a5c4c") : hex("#4e4338");
+    if (side === "R" && t > n * 0.7) return shaftShade;
+    return shaft;
   });
   const [cx, cy] = project(x + 0.5, y + 0.5, 40);
   pen.disc(cx, cy, 4, CREAM);
@@ -422,9 +429,9 @@ function drawTowerLandmark(pen, l, ambient, night) {
   // it is still orange, or the tower would not read at noon.
   const glow = night ? hex("#ff7a18") : hex("#e07020");
   const band = night ? 12 : 7;
-  pen.box(u0 - 0.02, v0 + 0.02, u1 + 0.02, v1 - 0.02, 46, band, glow);
-  hipRoof(pen, u0 - 0.04, v0, u1 + 0.04, v1, 46 + band, 8, TILE);
-  const [tx, ty] = project(x + 0.5, y + 0.5, 46 + band + 8);
+  pen.box(u0 - 0.02, v0 + 0.02, u1 + 0.02, v1 - 0.02, 48, band, glow);
+  hipRoof(pen, u0 - 0.04, v0, u1 + 0.04, v1, 48 + band, 8, TILE);
+  const [tx, ty] = project(x + 0.5, y + 0.5, 48 + band + 8);
   pen.fillRect(tx - 1, ty - 6, 2, 6, CREAM);
   pen.put(tx, ty - 7, ORANGE);
 }
@@ -759,13 +766,19 @@ export const austinTheme = {
   labels: AUSTIN_LABELS,
   ground: GROUND,
   mountains: MOUNTAINS,
-  // Lady Bird Lake, painted on the prairie outside the diamond. The grid
-  // is a second picture, so this water shows beside the city, not on a lot.
-  // The bridge draws its own water, because the civic lot sits inland.
-  lake: { color: "#2f8f86", shine: "#b7e4dc" },
-  // Mix the clock sky toward golden hour. Night uses the smaller number
-  // so the stars stay dark. Denver has no sky field, and its sky is untouched.
-  sky: { day: 0.5, night: 0.14, toward: "#ffd7a8" },
+  // Lady Bird Lake is a ribbon along the south edge of the diamond, two
+  // lots wide (48 picture pixels). The civic block is inland, so the
+  // Congress Avenue Bridge draws its own water on its lot instead of
+  // sitting on this ribbon.
+  lake: { color: "#2f8f86", shine: "#b7e4dc", band: 48 },
+  // Three stops, not one tint. Top is a warm light blue, the middle is
+  // peach, the horizon is gold. One peach mixed into every stop turned
+  // the whole sky gray. Night stops stay dark so the stars still read.
+  sky: {
+    day: ["#8ec8ee", "#f3c49a", "#ffd59a"],
+    night: ["#1a1634", "#3a2848", "#6a4030"],
+    cloud: "#fff3dc",
+  },
   grass: ["#5f8f45", "#4e7a38", "#7aa352"],
   road: { day: "#5a463c", night: "#2c221c" },
   sidewalk: { day: "#f0e6d4", night: "#6e6254" },
