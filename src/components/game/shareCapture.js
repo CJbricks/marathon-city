@@ -8,19 +8,27 @@
 // returns a blank PNG. The browser may throw the drawing buffer away after
 // it has shown the frame, and Safari does. Extract never reads that buffer.
 //
-// The copy is 1:1, resolution 1, antialias off. The blocks stay the blocks
-// on screen, including the pinned sky and ground. The MENU button and the
-// bottom bar are HTML on top of the canvas, so they are not in this
-// picture. A footer band is painted under the view instead, in the theme's
-// colors, with the name, the miles, the counts, and the site line.
+// The copy is resolution 1 and antialias off. CityView points the sky and
+// the grid at a 4:5 frame for this one render, at an integer scale, then
+// puts the pinch back before the browser paints. The phone-sized sky fill
+// is hidden for that render: it is a rectangle the size of the screen, and
+// leaving it on paints a dark block over the corner of the share picture.
+// The MENU button and the bottom bar are HTML, so they are not in the
+// picture. The menu is closed before this runs. A footer band is painted
+// under the view, in the theme's colors.
+//
+// Extract reads a premultiplied render texture. Opaque sky and ground
+// (alpha 255) already match the pixels on screen, which is why those
+// bytes are copied unchanged. A partial-alpha pixel is stored darker than
+// the texel. Dividing the color by the alpha puts that edge back. Reading
+// the on-screen WebGL canvas with toBlob does not: preserveDrawingBuffer
+// is off, and that read comes back black.
 //
 // navigator.share has to be called in the same turn as the tap. iOS forgets
 // the tap if the page waits on a promise first, and the sheet then fails.
 // This function copies synchronously and calls share before it returns.
 // Closing the sheet is AbortError, which is not shown as an error. A phone
-// that cannot share files downloads the PNG instead. The grid's scale and
-// pan are not written here. The pointer listeners stay the ones CityView
-// already installed.
+// that cannot share files downloads the PNG instead.
 
 import { Rectangle } from "pixi.js";
 import {
@@ -29,6 +37,7 @@ import {
   FOOTER_RULE,
   SHARE_TITLE,
   footerBandHeight,
+  footerPixelScale,
   isShareCancel,
   shareBandPalette,
   shareFooter,
@@ -89,24 +98,39 @@ function drawCenteredLine(ctx, text, y, px, color, family, maxWidth) {
   ctx.fillText(text, x, Math.round(y));
 }
 
-export function extractCityCanvas(application) {
+export function extractCityCanvas(application, frame) {
   const renderer = application?.renderer;
   if (!renderer || !application.stage) throw new Error("City is not ready.");
-  const width = Math.round(application.screen.width);
-  const height = Math.round(application.screen.height);
+  const width = Math.round(frame?.width || application.screen.width);
+  const height = Math.round(frame?.height || application.screen.height);
   if (width < 2 || height < 2) throw new Error("City is not ready.");
-  // frame is the screen rectangle in stage space. The sky container and
-  // the zoomed grid are children of the stage, so this includes both.
-  // It does not include the HTML menu or the bottom bar.
+  // The rectangle is in stage pixels. CityView has already moved the sky
+  // and the grid so this rectangle is the 4:5 picture. It does not include
+  // the HTML menu or the bottom bar.
   return renderer.extract.canvas({
     target: application.stage,
     frame: new Rectangle(0, 0, width, height),
     resolution: 1,
     antialias: false,
-    // colorRgba is 0–1. The sky fill covers the screen; this only shows
-    // if a pixel of the stage was never painted.
+    // Only uncovered pixels use this. The sky texture covers the frame.
     clearColor: renderer.background?.colorRgba ?? [0, 0, 0, 1],
   });
+}
+
+// Pixi stores partial coverage premultiplied, and extract does not divide
+// it back out. Opaque pixels are the screen color already. Leave them
+// alone so a sky sample stays byte-for-byte with the screenshot.
+function straightenPartialAlpha(image) {
+  const data = image.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3];
+    if (alpha === 0 || alpha === 255) continue;
+    const scale = 255 / alpha;
+    data[i] = Math.min(255, Math.round(data[i] * scale));
+    data[i + 1] = Math.min(255, Math.round(data[i + 1] * scale));
+    data[i + 2] = Math.min(255, Math.round(data[i + 2] * scale));
+  }
+  return image;
 }
 
 export function composeShareCard(source, meta) {
@@ -114,30 +138,32 @@ export function composeShareCard(source, meta) {
   const h = source.height;
   const colors = bandColors(meta?.theme);
   const footer = shareFooter(meta);
-  const band = footerBandHeight();
+  const ui = footerPixelScale(w);
+  const band = footerBandHeight(ui);
   const out = document.createElement("canvas");
   out.width = w;
   out.height = h + band;
-  const ctx = out.getContext("2d");
-  // putImageData copies the extracted pixels with no resampling. drawImage
-  // would be allowed to smooth them, which turns the blocks into mush.
+  // srgb so the PNG is the same bytes the screen composite uses, not a
+  // display-p3 reinterpretation that dulls the sky.
+  const ctx = out.getContext("2d", { colorSpace: "srgb" });
   ctx.imageSmoothingEnabled = false;
   const src = source.getContext("2d");
-  ctx.putImageData(src.getImageData(0, 0, w, h), 0, 0);
+  const pixels = straightenPartialAlpha(src.getImageData(0, 0, w, h));
+  ctx.putImageData(pixels, 0, 0);
   ctx.fillStyle = colors.background;
   ctx.fillRect(0, h, w, band);
   ctx.fillStyle = colors.rule;
-  ctx.fillRect(0, h, w, FOOTER_RULE);
+  ctx.fillRect(0, h, w, FOOTER_RULE * ui);
   const family = pixelFamily();
-  const maxWidth = Math.max(8, w - 16);
-  const top = h + FOOTER_RULE + FOOTER_PAD_Y;
+  const maxWidth = Math.max(8, w - 16 * ui);
+  const top = h + (FOOTER_RULE + FOOTER_PAD_Y) * ui;
   const lines = [
-    [footer.name, 8, colors.name],
-    [footer.stats, 7, colors.stats],
-    [footer.credit, 6, colors.credit],
+    [footer.name, 8 * ui, colors.name],
+    [footer.stats, 7 * ui, colors.stats],
+    [footer.credit, 6 * ui, colors.credit],
   ];
   lines.forEach(([text, px, color], index) => {
-    drawCenteredLine(ctx, text, top + index * FOOTER_LINE, px, color, family, maxWidth);
+    drawCenteredLine(ctx, text, top + index * FOOTER_LINE * ui, px, color, family, maxWidth);
   });
   return out;
 }
@@ -179,20 +205,10 @@ export function downloadBlob(blob, filename) {
 // Returns { promise } that resolves to "shared", "downloaded", or
 // "cancelled". The promise is started here, before this function returns,
 // so the caller can await it without delaying the share() call itself.
-export function beginCityShare(application, meta) {
-  let shot;
-  try {
-    shot = extractCityCanvas(application);
-  } finally {
-    // Extract renders into a texture. Paint the screen again so the city
-    // the person is pinching does not sit on a detached target. The zoom
-    // and the pan live on the grid container and are not changed.
-    try {
-      application?.render?.();
-    } catch {
-      // The ticker draws the next frame if this one could not.
-    }
-  }
+export function beginCityShare(application, meta, frame) {
+  // Do not render the screen here. The share camera is still applied, and
+  // the caller restores the pinch before painting.
+  const shot = extractCityCanvas(application, frame);
   const card = composeShareCard(shot, meta);
   const blob = pngBlobFromCanvas(card);
   const message = shareMessage(meta);

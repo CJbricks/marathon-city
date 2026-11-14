@@ -3,15 +3,18 @@
 // two theme palettes.
 
 import { describe, expect, it } from "vitest";
+import { cityDiamond } from "../components/game/sceneLayout.js";
 import {
   SHARE_CREDIT,
   SHARE_TITLE,
   footerBandHeight,
+  footerPixelScale,
   isShareCancel,
   shareBandPalette,
   shareCaption,
   shareFilename,
   shareFooter,
+  shareFrame,
   shareMessage,
 } from "./shareCity.js";
 
@@ -97,6 +100,43 @@ describe("shareBandPalette", () => {
     expect(shareBandPalette("austin").background).toBe("#2c1810");
     expect(shareBandPalette("Boulder").background).toBe("#05143a");
     expect(shareBandPalette().rule).toBe("#fdd835");
+  });
+});
+
+describe("shareFrame", () => {
+  const diamond = cityDiamond();
+  const frame = shareFrame(diamond);
+
+  it("is a 4:5 portrait at an integer scale", () => {
+    expect(frame.scale).toBe(1);
+    expect(Number.isInteger(frame.scale)).toBe(true);
+    expect(frame.height / frame.width).toBeCloseTo(5 / 4, 2);
+    expect(Number.isInteger(frame.panX)).toBe(true);
+    expect(Number.isInteger(frame.panY)).toBe(true);
+  });
+
+  it("fits the diamond across most of the width, with sky above and ground below", () => {
+    const diamondW = diamond.right - diamond.left;
+    expect((diamondW * frame.scale) / frame.width).toBeCloseTo(0.86, 2);
+    const left = frame.panX + diamond.left * frame.scale;
+    const right = frame.panX + diamond.right * frame.scale;
+    const back = frame.panY + diamond.top * frame.scale;
+    const front = frame.panY + diamond.bottom * frame.scale;
+    expect(left).toBeGreaterThan(8);
+    expect(right).toBeLessThan(frame.width - 8);
+    expect(Math.abs(left - (frame.width - right))).toBeLessThanOrEqual(1);
+    expect(back).toBe(frame.skyBand);
+    expect(back).toBeGreaterThan(frame.height * 0.15);
+    expect(front).toBeLessThan(frame.height - 40);
+  });
+});
+
+describe("footerPixelScale", () => {
+  it("grows the band by whole pixels on a wide picture", () => {
+    expect(footerPixelScale(390)).toBe(1);
+    expect(footerPixelScale(1200)).toBe(3);
+    expect(footerBandHeight(3)).toBe(footerBandHeight(1) * 3);
+    expect(footerBandHeight()).toBeLessThan(120);
   });
 });
 

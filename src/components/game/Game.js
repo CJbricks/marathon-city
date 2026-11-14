@@ -547,6 +547,15 @@ export default function Game() {
     sharingRef.current = true;
     setSharing(true);
     setNotice("");
+    // The menu is HTML, so it is not in the Pixi picture, but it sits on
+    // top of the city the person is looking at. Close it before the copy
+    // so the shutter and the toast land on the city, and so a dim box is
+    // not what they compare the PNG to. hidden applies now. React removes
+    // the node on the next paint, which is after this copy.
+    setMenu(false);
+    document.querySelectorAll(".city-screen .modal").forEach((node) => {
+      node.hidden = true;
+    });
     try {
       const city = payload?.city;
       // No await before view.share(). The copy and navigator.share run

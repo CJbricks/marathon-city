@@ -25,8 +25,45 @@ export const FOOTER_RULE = 4;
 export const FOOTER_PAD_Y = 8;
 export const FOOTER_LINE = 18;
 
-export function footerBandHeight() {
-  return FOOTER_RULE + FOOTER_PAD_Y + FOOTER_LINE * 3 + FOOTER_PAD_Y;
+// The band is designed at phone size. A 4:5 share picture is wider than
+// the phone, so the type is scaled by a whole number. A fraction would
+// resample the pixel font. 390 is the phone width that size was written for.
+export function footerPixelScale(pictureWidth) {
+  const width = Number(pictureWidth);
+  if (!Number.isFinite(width) || width <= 0) return 1;
+  return Math.max(1, Math.round(width / 390));
+}
+
+export function footerBandHeight(pixelScale = 1) {
+  const scale = Math.max(1, Math.round(Number(pixelScale) || 1));
+  return (FOOTER_RULE + FOOTER_PAD_Y + FOOTER_LINE * 3 + FOOTER_PAD_Y) * scale;
+}
+
+// The share picture is not the pinched phone view. The diamond is wide
+// and short, and a tall phone fit leaves most of the file as the near
+// ground, which reads as a dark muddy field. This frame is a 4:5 portrait
+// at an integer scale, with the diamond filling most of the width and a
+// band of sky above the back corner. panX/panY are the container position
+// for `screen = pan + scene * scale`. The caller puts the pinch back
+// after the copy.
+export function shareFrame(bounds, options = {}) {
+  const scale = Math.max(1, Math.round(Number(options.scale) || 1));
+  const widthFill = Math.min(0.95, Math.max(0.5, Number(options.widthFill) || 0.86));
+  const aspect = Number(options.aspect) > 0 ? Number(options.aspect) : 5 / 4;
+  const left = Number(bounds?.left) || 0;
+  const right = Number(bounds?.right) || 0;
+  const top = Number(bounds?.top) || 0;
+  const bottom = Number(bounds?.bottom) || 0;
+  const diamondW = Math.max(1, right - left);
+  const width = Math.max(1, Math.round((diamondW * scale) / widthFill));
+  const height = Math.max(1, Math.round(width * aspect));
+  const panX = Math.round((width - (left + right) * scale) / 2);
+  // Scene y=0 is the top sky stop, the same flat color as the top of the
+  // phone. Starting the frame lower steps into the gradient, and a sky
+  // sample then disagrees with a screenshot even though nothing was tinted.
+  const panY = 0;
+  const skyBand = Math.round(top * scale);
+  return { width, height, scale, panX, panY, skyBand };
 }
 
 export function formatShareMiles(miles) {

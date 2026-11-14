@@ -21,20 +21,21 @@
 // They are an overlay, like the cars: the city texture is not repainted
 // just to flap a wing. Denver never enters that branch.
 //
-// Share my city asks this view for a PNG. That copy is an offscreen
-// extract of the stage (sky and grid together). It does not change the
-// zoom, the pan, or these pointer listeners. The menu and the bottom bar
-// are HTML, so they are not in the picture.
+// Share my city asks this view for a PNG. For that one render the sky and
+// the grid move to a 4:5 frame at scale 1, then the pinch is put back
+// before the browser paints. The pointer listeners are not replaced. The
+// menu and the bottom bar are HTML, so they are not in the picture.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
+import { shareFrame } from "@/lib/shareCity";
 import { dustPuffs } from "./dust";
 import { hex } from "./pixelPen";
 import { beginCityShare } from "./shareCapture";
 import { themeFor } from "./themes";
-import { clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
+import { CITY_BOUNDS, clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
 import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransitMarks, drawTransitMovers } from "./overlaySprites";
 import {
   DEPTH_BUCKETS,
@@ -643,9 +644,42 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         slot.current = {
           // Synchronous on purpose. Game awaits the sheet afterwards.
           // Doing the copy here, before any await, keeps the tap alive
-          // for iOS. Zoom and pan are not part of this call.
+          // for iOS. The pinch is moved only for this render and put back
+          // before the function returns, so the browser never paints it.
           share(meta) {
-            return beginCityShare(application, meta);
+            const frame = shareFrame(CITY_BOUNDS);
+            const saved = [fill, backdrop, world, screenFx].map((layer) => ({
+              layer,
+              x: layer.position.x,
+              y: layer.position.y,
+              sx: layer.scale.x,
+              sy: layer.scale.y,
+              visible: layer.visible,
+            }));
+            // The fill and the confetti are sized to the phone. On the
+            // 4:5 frame they would cover the corner with the screen's
+            // sky rectangle. The sky texture is the backdrop, and it
+            // already covers this frame.
+            fill.visible = false;
+            screenFx.visible = false;
+            backdrop.scale.set(frame.scale);
+            backdrop.position.set(frame.panX, frame.panY);
+            world.scale.set(frame.scale);
+            world.position.set(frame.panX, frame.panY);
+            try {
+              return beginCityShare(application, meta, frame);
+            } finally {
+              for (const snap of saved) {
+                snap.layer.scale.set(snap.sx, snap.sy);
+                snap.layer.position.set(snap.x, snap.y);
+                snap.layer.visible = snap.visible;
+              }
+              try {
+                application.render();
+              } catch {
+                // The ticker paints the next frame if this one could not.
+              }
+            }
           },
         };
       }
