@@ -2,6 +2,10 @@
 // few pixel specks rise off the base and the sides of that lot.
 // The speck list is fixed. CityView fills the same eight slots every frame
 // instead of allocating a new puff for every tick of the build.
+//
+// Distances are picture pixels on the 1280×1000 scene, double the old
+// 640×500 puffs, so a speck is still a puff and not a dot next to a
+// building whose stories are 6 pixels tall.
 
 const SPECS = [
   { side: -1, along: 0.2, lag: 0.05 },
@@ -29,12 +33,12 @@ export function dustPuffs(now, anchors) {
       slot.s = 0;
       continue;
     }
-    const drift = spec.side * (3 + t * 12);
-    const rise = 4 + t * 14;
-    const along = (spec.along - 0.5) * 10;
+    const drift = spec.side * (6 + t * 24);
+    const rise = 8 + t * 28;
+    const along = (spec.along - 0.5) * 20;
     slot.x = Math.round(origin[0] + drift + along);
     slot.y = Math.round(origin[1] - rise);
-    slot.s = t < 0.55 ? 5 : 3;
+    slot.s = t < 0.55 ? 10 : 6;
     slot.tone = i % 2;
     slot.side = spec.side;
   }

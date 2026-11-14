@@ -3,14 +3,20 @@
 // Shows the painted city. The sky, mountains, and prairie are one texture
 // that stays put. The lots and buildings are a second texture, and only
 // that one follows a drag or a pinch. Both start at the size from
-// gridFit.js: the whole 640×500 picture fits inside the view, so a tall
+// gridFit.js: the whole 1280×1000 picture fits inside the view, so a tall
 // phone does not zoom the diamond off the sides. Pinching in past 1× snaps
 // to 1, 2, 3… so the pixels stay square. Each snap keeps the picture pixel
 // between the fingers under the fingers, then clamps the pan so the diamond
 // cannot leave the screen. Zooming back to the opening fit recenters it.
 // The crane, the plane, the parade, the transit lines, the streak vehicles,
-// and the walkers are drawn on top of the grid. None of those call
-// paintScene, so the skyline stays cached.
+// and the walkers are drawn in the same picture pixels as the buildings.
+// Buildings are their own sprites, sorted by how close they are. A car is
+// drawn in the gap before any building that is in front of it, so it
+// disappears behind that building instead of sitting on the roof. None of
+// the movers call paintScene, so the skyline stays cached.
+//
+// Which drawings are in the texture comes from the save's city name
+// ("Denver"). That name is the theme. The pinch math does not know it.
 
 import { useEffect, useRef } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
@@ -18,7 +24,21 @@ import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
 import { dustPuffs } from "./dust";
 import { clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
-import { HORIZON_Y, SCENE_H, SCENE_W, paintExtendedBackdrop, paintScene, project, sceneSignature } from "./pixelScene";
+import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransitMarks, drawTransitMovers } from "./overlaySprites";
+import {
+  DEPTH_BUCKETS,
+  HORIZON_Y,
+  SCENE_H,
+  SCENE_W,
+  bucketIndex,
+  fitBackdropExtras,
+  listProps,
+  paintExtendedBackdrop,
+  paintGroundPixels,
+  paintPropPixels,
+  project,
+  propDepth,
+} from "./pixelScene";
 
 const DUST_LIGHT = 0xfff3c4;
 const DUST_DARK = 0xc4a574;
@@ -27,7 +47,7 @@ function packRgb([r, g, b]) {
   return (r << 16) + (g << 8) + b;
 }
 
-// Flat color behind the detailed picture. It covers any gap the 640×500
+// Flat color behind the detailed picture. It covers any gap the 1280×1000
 // scene does not reach, with sky at the top and sandy ground at the bottom.
 // horizonY is where that picture's own ground starts, so the flat sand
 // meets the painted prairie instead of cutting across the mountains.
@@ -52,7 +72,17 @@ function adoptTexture(sprite, canvas) {
   if (previous && previous !== Texture.EMPTY) previous.destroy(true);
 }
 
-const CONFETTI = [0xfdd835, 0xd62828, 0xffffff, 0xf57c00, 0x43a047, 0x1e88e5];
+function canvasFromPixels(pixels, w, h) {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+  const image = ctx.createImageData(w, h);
+  image.data.set(pixels);
+  ctx.putImageData(image, 0, 0);
+  return canvas;
+}
 
 // ?time=22:00 previews a clock hour without waiting for it. The live view
 // still uses the device clock when the query is absent.
@@ -65,243 +95,18 @@ function viewClock() {
   return lightingAt(new Date());
 }
 
-function drawCrane(g, x, y, stories, bob) {
-  g.clear();
-  const base = project(x + 0.12, y + 0.12, 0);
-  const top = project(x + 0.12, y + 0.12, stories * 3 + 18);
-  const mastX = Math.round(base[0]);
-  const topY = Math.round(top[1]);
-  g.moveTo(mastX, base[1]).lineTo(mastX, topY).stroke({ width: 2, color: 0xf0c020, pixelLine: true });
-  g.moveTo(mastX + 1, base[1]).lineTo(mastX + 1, topY).stroke({ width: 1, color: 0xc89a10, pixelLine: true });
-  const jib = mastX + 28 + bob;
-  g.moveTo(mastX - 10, topY).lineTo(jib, topY).stroke({ width: 2, color: 0xf0c020, pixelLine: true });
-  g.moveTo(mastX, topY - 6).lineTo(jib, topY).stroke({ width: 1, color: 0xc89a10, pixelLine: true });
-  g.moveTo(mastX, topY - 6).lineTo(mastX - 10, topY).stroke({ width: 1, color: 0xc89a10, pixelLine: true });
-  g.rect(mastX - 12, topY + 1, 4, 3).fill({ color: 0x808080 });
-  g.moveTo(jib - 6, topY).lineTo(jib - 6, topY + 12).stroke({ width: 1, color: 0x404040, pixelLine: true });
-  g.rect(jib - 8, topY + 12, 4, 2).fill({ color: 0xf0c020 });
-  g.rect(mastX, topY - 8, 2, 2).fill({ color: 0xff3030 });
-}
 
-function drawPlane(g, x, y) {
-  g.clear();
-  const s = 3;
-  const px = (dx, dy, w, h, color) => g.rect(x + dx * s, y + dy * s, w * s, h * s).fill({ color });
-  px(0, 0, 22, 4, 0xffffff);
-  px(4, 3, 12, 2, 0xd62828);
-  px(6, -3, 8, 3, 0xfdd835);
-  px(18, 0, 4, 3, 0x0d2a6b);
-  px(22, 1, 3, 2, 0xf0c020);
-}
-
-// Each unlocked ultra owns one existing road. The mode list in rules.js
-// decides bike, bus, or light rail, and the index picks which road so a
-// later ultra does not sit on the same stripe.
-function transitRoad(piece, map) {
-  const { tiles, period } = map;
-  const lanes = [];
-  for (let v = period; v < tiles; v += period) lanes.push({ axis: "h", fixed: v });
-  for (let u = period; u < tiles; u += period) lanes.push({ axis: "v", fixed: u });
-  const lane = lanes[piece.index % lanes.length];
-  const lap = Math.floor(piece.index / lanes.length);
-  return {
-    ...lane,
-    start: 1 + (lap % 3),
-    end: Math.max(3, tiles - 2 - (lap % 2)),
-  };
-}
-
-function pointOnRoad(span, t) {
-  const along = span.start + (span.end - span.start) * t;
-  const u = span.axis === "h" ? along : span.fixed;
-  const v = span.axis === "h" ? span.fixed : along;
-  return project(u, v, 2);
-}
-
-// Same road, shifted onto the sidewalk. A horizontal road moves in v, a
-// vertical road moves in u, so the walker is beside the lane instead of
-// under the cars.
-function pointOnEdge(span, t, side) {
-  const along = span.start + (span.end - span.start) * t;
-  const offset = side ? 0.38 : -0.28;
-  const u = span.axis === "h" ? along : span.fixed + offset;
-  const v = span.axis === "h" ? span.fixed + offset : along;
-  return project(u, v, 1);
-}
-
-const SHIRTS = [0xd62828, 0x1565c0, 0xfdd835, 0x2e7d32, 0xf57c00, 0x6a1b9a];
-// One trip along a road, in milliseconds, at speedMultiplier 1.
-// A larger lap is a slower vehicle. rules.vehicles.speedMultiplier scales
-// all four (car, truck, streak bus, police). The ultra lines do not use it.
-const VEHICLE_LAP = { car: 6500, truck: 11000, bus: 9000, police: 7500 };
-// One sidewalk crossing, and one frame of the two-frame walk, at
-// speedMultiplier 1. The pedestrian multiplier scales both, so the feet
-// and the travel slow down together.
-const WALKER_LAP_MS = 16000;
-const WALKER_STEP_MS = 180;
 // About 18% of finger spread is one click on the zoom ladder. A smaller
 // wobble is ignored so a shaky pinch does not skip a step.
 const PINCH_STEP_RATIO = 1.18;
 
-// 1 is the pace the lap times were drawn for. Smaller is slower. A missing
-// or nonsense value keeps the original pace instead of parking everyone at NaN.
-function overlayPace(multiplier) {
-  const value = Number(multiplier);
-  return Number.isFinite(value) && value >= 0 ? value : 1;
-}
-
-// One number from the walk rows, mixed with the walker's index. The same
-// activities always put the same person on the same sidewalk.
-function walkerPhase(seed, index) {
-  let x = (seed ^ Math.imul(index + 1, 0x9e3779b1)) >>> 0;
-  x ^= x << 13;
-  x ^= x >>> 17;
-  x ^= x << 5;
-  return (x >>> 0) / 4294967296;
-}
-
-function drawVehicle(g, x, y, type, blink) {
-  const px = Math.round(x);
-  const py = Math.round(y);
-  if (type === "truck") {
-    g.rect(px - 6, py - 3, 7, 3).fill({ color: 0xc4a574 });
-    g.rect(px + 1, py - 5, 4, 5).fill({ color: 0x37474f });
-    g.rect(px + 2, py - 4, 2, 2).fill({ color: 0x9ad0f5 });
-  } else if (type === "bus") {
-    // Navy city bus. The ultra-unlock bus is the yellow coach with stop
-    // poles, drawn by drawTransit. This one has no poles and no yellow body.
-    g.rect(px - 6, py - 4, 12, 4).fill({ color: 0x0d47a1 });
-    g.rect(px - 4, py - 3, 2, 2).fill({ color: 0xfff3c4 });
-    g.rect(px - 1, py - 3, 2, 2).fill({ color: 0xfff3c4 });
-    g.rect(px + 2, py - 3, 2, 2).fill({ color: 0xfff3c4 });
-  } else if (type === "police") {
-    g.rect(px - 4, py - 3, 8, 3).fill({ color: 0xf5f5f5 });
-    g.rect(px - 4, py - 3, 3, 3).fill({ color: 0x212121 });
-    g.rect(px, py - 5, 2, 2).fill({ color: blink ? 0xd62828 : 0x1e88e5 });
-  } else {
-    g.rect(px - 4, py - 3, 8, 3).fill({ color: 0xc62828 });
-    g.rect(px - 1, py - 5, 3, 2).fill({ color: 0x9ad0f5 });
-  }
-  g.rect(px - 3, py, 2, 1).fill({ color: 0x212121 });
-  g.rect(px + 2, py, 2, 1).fill({ color: 0x212121 });
-}
-
-function drawWalker(g, x, y, frame, shirt) {
-  const px = Math.round(x);
-  const py = Math.round(y);
-  g.rect(px, py - 7, 2, 2).fill({ color: 0xf1c27d });
-  g.rect(px, py - 5, 2, 3).fill({ color: shirt });
-  if (frame) {
-    g.rect(px - 1, py - 2, 1, 2).fill({ color: 0x263238 });
-    g.rect(px + 2, py - 2, 1, 2).fill({ color: 0x263238 });
-  } else {
-    g.rect(px, py - 2, 1, 2).fill({ color: 0x263238 });
-    g.rect(px + 1, py - 2, 1, 2).fill({ color: 0x263238 });
-  }
-}
-
-// One Graphics object is the pool. clear() each frame, then redraw at most
-// maxAnimated of each. The city remembers the full counts. Drawing hundreds
-// of sprites, or baking them into the texture, would repaint the skyline
-// every time a foot moved.
-function drawPopulation(g, city, now) {
-  g.clear();
-  if (!city?.map) return;
-  const vehicles = city.vehicles || [];
-  const vehicleCap = rules.vehicles?.maxAnimated ?? 16;
-  // Streak traffic only. drawTransit keeps its own laps for the ultra bus
-  // and the light rail, so this knob does not slow those.
-  const vehiclePace = overlayPace(rules.vehicles?.speedMultiplier);
-  const blink = Math.floor(now / 240) % 2;
-  for (let i = 0; i < vehicles.length && i < vehicleCap; i++) {
-    const vehicle = vehicles[i];
-    const span = transitRoad(vehicle, city.map);
-    const lap = VEHICLE_LAP[vehicle.type] || 8000;
-    // The phase offset stays a fraction of the lap. Only the clock is
-    // scaled, so editing speedMultiplier changes pace and not the spawn slot.
-    const t = ((now * vehiclePace) / lap + (vehicle.index || i) * 0.17) % 1;
-    const [x, y] = pointOnRoad(span, t);
-    drawVehicle(g, x, y, vehicle.type, blink);
-  }
-  const people = city.pedestrians;
-  const count = people?.count || 0;
-  if (!count) return;
-  const cap = Math.min(count, rules.pedestrians?.maxAnimated ?? 32);
-  const seed = people.seed >>> 0;
-  const walkPace = overlayPace(rules.pedestrians?.speedMultiplier);
-  for (let i = 0; i < cap; i++) {
-    const span = transitRoad({ index: i + 3 }, city.map);
-    const phase = walkerPhase(seed, i);
-    const raw = ((now * walkPace) / WALKER_LAP_MS + phase) % 1;
-    const t = i % 3 === 0 ? 1 - raw : raw;
-    const [x, y] = pointOnEdge(span, t, i % 2 === 0);
-    const frame = Math.floor((now * walkPace) / WALKER_STEP_MS + i) % 2;
-    drawWalker(g, x, y, frame, SHIRTS[i % SHIRTS.length]);
-  }
-}
-
-function drawTransit(g, city, now) {
-  g.clear();
-  const pieces = city?.transit;
-  if (!pieces?.length || !city.map) return;
-  for (const piece of pieces) {
-    const span = transitRoad(piece, city.map);
-    if (piece.mode === "bike") {
-      for (let i = 0; i < 16; i += 2) {
-        const [x, y] = pointOnRoad(span, i / 16);
-        g.rect(Math.round(x), Math.round(y), 4, 2).fill({ color: 0x2e7d32 });
-        g.rect(Math.round(x) + 1, Math.round(y), 2, 1).fill({ color: 0xfdd835 });
-      }
-    } else if (piece.mode === "bus") {
-      for (let i = 0; i <= 4; i++) {
-        const [x, y] = pointOnRoad(span, i / 4);
-        g.rect(Math.round(x) - 1, Math.round(y) - 4, 2, 4).fill({ color: 0xf57c00 });
-        g.rect(Math.round(x) - 2, Math.round(y), 4, 2).fill({ color: 0xfdd835 });
-      }
-      // This lap is the yellow ultra coach. It is not rules.vehicles.speedMultiplier.
-      const t = (now / 9000 + piece.index * 0.17) % 1;
-      const [x, y] = pointOnRoad(span, t);
-      g.rect(Math.round(x) - 4, Math.round(y) - 5, 8, 4).fill({ color: 0xfdd835 });
-      g.rect(Math.round(x) - 2, Math.round(y) - 4, 2, 2).fill({ color: 0x1e88e5 });
-    } else {
-      for (let i = 0; i <= 20; i++) {
-        const [x, y] = pointOnRoad(span, i / 20);
-        g.rect(Math.round(x), Math.round(y), 2, 1).fill({ color: 0xd0d0d0 });
-        g.rect(Math.round(x) + 3, Math.round(y) - 1, 2, 1).fill({ color: 0x9a9a9a });
-      }
-      // Light rail keeps its own lap too. The streak speed knob does not apply.
-      const t = (now / 7000 + piece.index * 0.13) % 1;
-      const [x, y] = pointOnRoad(span, t);
-      g.rect(Math.round(x) - 5, Math.round(y) - 6, 12, 4).fill({ color: 0xd62828 });
-      g.rect(Math.round(x) - 3, Math.round(y) - 5, 2, 2).fill({ color: 0xffffff });
-      g.rect(Math.round(x) + 2, Math.round(y) - 5, 2, 2).fill({ color: 0xffffff });
-    }
-  }
-}
-
-function drawParade(g, city, now) {
-  g.clear();
-  if (!city?.map) return;
-  const { tiles, period } = city.map;
-  const v = period;
-  const span = Math.max(1, tiles - 3);
-  const lap = (now % rules.raceDay.paradeMs) / rules.raceDay.paradeMs;
-  for (let i = 0; i < 6; i++) {
-    const u = 1 + ((lap + i / 6) % 1) * span;
-    const [x, y] = project(u, v, 3);
-    const color = CONFETTI[i % CONFETTI.length];
-    g.rect(Math.round(x), Math.round(y) - 7, 3, 4).fill({ color });
-    g.rect(Math.round(x) + 1, Math.round(y) - 9, 2, 2).fill({ color: 0xfdd835 });
-  }
-}
-
-export default function CityView({ city, fx, celebrate }) {
+export default function CityView({ city, fx, celebrate, theme = "Denver" }) {
   const hostRef = useRef(null);
-  const stateRef = useRef({ city, fx, celebrate });
+  const stateRef = useRef({ city, fx, celebrate, theme });
 
   useEffect(() => {
-    stateRef.current = { city, fx, celebrate };
-  }, [city, fx, celebrate]);
+    stateRef.current = { city, fx, celebrate, theme };
+  }, [city, fx, celebrate, theme]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -324,11 +129,13 @@ export default function CityView({ city, fx, celebrate }) {
         antialias: false,
         preference: "webgl",
         roundPixels: true,
-        // CSS pixels, not device pixels. autoDensity writes the canvas
-        // style so Safari cannot display the bitmap at three times the
-        // width and letterbox it in the middle of the phone.
+        // One canvas pixel per CSS pixel, and no retina backing store.
+        // A device-pixel buffer would be three times as wide on a phone
+        // and the browser would scale it back down, which softens the
+        // blocks. globals.css pins the canvas to its box (width and
+        // height 100%), so Safari still fills the screen.
         resolution: 1,
-        autoDensity: true,
+        autoDensity: false,
       });
       if (dead) {
         try {
@@ -352,17 +159,33 @@ export default function CityView({ city, fx, celebrate }) {
       const skySprite = new Sprite(Texture.EMPTY);
       backdrop.addChild(skySprite);
       const world = new Container();
-      const citySprite = new Sprite(Texture.EMPTY);
-      const crane = new Graphics();
-      const dust = new Graphics();
-      // Parade lives in scene space so it follows the street when you pan,
-      // but it is not part of the cached city texture.
-      const parade = new Graphics();
-      const transit = new Graphics();
-      // Vehicles and walkers share one graphics object. It is cleared every
-      // frame. It is not a child of the cached city sprite.
-      const population = new Graphics();
-      world.addChild(citySprite, transit, population, crane, dust, parade);
+      // Lawns and streets. Everything with height lives in `depth`, sorted
+      // so a closer building is drawn after the car it should hide.
+      const groundSprite = new Sprite(Texture.EMPTY);
+      const depth = new Container();
+      depth.sortableChildren = true;
+      const marks = new Graphics();
+      marks.zIndex = 0.25;
+      depth.addChild(marks);
+      const buckets = [];
+      for (let i = 0; i < DEPTH_BUCKETS; i += 1) {
+        const g = new Graphics();
+        g.zIndex = i + 0.5;
+        depth.addChild(g);
+        buckets.push(g);
+      }
+      // The crane and the dust share one object so they stay on the lot
+      // that is going up, just in front of that building.
+      const siteFx = new Graphics();
+      depth.addChild(siteFx);
+      world.addChild(groundSprite, depth);
+      const propSprites = new Map();
+      const usedBuckets = new Set();
+      const layerFor = (key) => {
+        const i = bucketIndex(key);
+        usedBuckets.add(i);
+        return buckets[i];
+      };
       const screenFx = new Graphics();
       application.stage.addChild(fill, backdrop, world, screenFx);
       const bits = [];
@@ -420,17 +243,70 @@ export default function CityView({ city, fx, celebrate }) {
 
       let skyKey = "";
       let fillKey = "";
-      const upload = (live, light) => {
-        const sig = sceneSignature(live, light.phase);
-        if (sig === painted) return;
-        painted = sig;
-        adoptTexture(citySprite, paintScene(live, light, { gridOnly: true }));
-        texBytes = SCENE_W * SCENE_H * 4;
-        host.dataset.texBytes = String(texBytes);
+      let groundKey = "";
+      let marksKey = "";
+      const upload = (live, light, themeName) => {
+        const groundSig = `${themeName}|${light.phase}|${live.map?.tiles}|${live.map?.period}`;
+        if (groundSig !== groundKey) {
+          groundKey = groundSig;
+          adoptTexture(groundSprite, canvasFromPixels(paintGroundPixels(live, light, { theme: themeName }), SCENE_W, SCENE_H));
+          texBytes = SCENE_W * SCENE_H * 4;
+        }
+        // Each prop keeps its own signature. A story going up repaints
+        // that one building. A lighting change repaints all of them,
+        // because the phase is part of the signature. Cars are not.
+        const props = listProps(live);
+        const alive = new Set();
+        let propBytes = 0;
+        for (const prop of props) {
+          alive.add(prop.id);
+          const sig = `${themeName}|${light.phase}|${prop.sig}`;
+          let sprite = propSprites.get(prop.id);
+          if (sprite && sprite.propSig === sig) {
+            sprite.zIndex = prop.depth;
+            propBytes += sprite.propBytes || 0;
+            continue;
+          }
+          const crop = paintPropPixels(prop, light, themeName);
+          if (!crop) {
+            if (sprite) {
+              depth.removeChild(sprite);
+              const previous = sprite.texture;
+              sprite.destroy();
+              if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+              propSprites.delete(prop.id);
+            }
+            continue;
+          }
+          if (!sprite) {
+            sprite = new Sprite(Texture.EMPTY);
+            depth.addChild(sprite);
+            propSprites.set(prop.id, sprite);
+          }
+          adoptTexture(sprite, canvasFromPixels(crop.data, crop.w, crop.h));
+          sprite.position.set(crop.x, crop.y);
+          sprite.zIndex = prop.depth;
+          sprite.propSig = sig;
+          sprite.propBytes = crop.w * crop.h * 4;
+          propBytes += sprite.propBytes;
+        }
+        for (const [id, sprite] of propSprites) {
+          if (alive.has(id)) continue;
+          depth.removeChild(sprite);
+          const previous = sprite.texture;
+          sprite.destroy();
+          if (previous && previous !== Texture.EMPTY) previous.destroy(true);
+          propSprites.delete(id);
+        }
+        const sig = `${groundSig}|${props.length}|${propBytes}`;
+        if (sig !== painted) {
+          painted = sig;
+          host.dataset.texBytes = String(texBytes + propBytes);
+        }
       };
 
       const paint = () => {
-        const { city: live, fx: liveFx } = stateRef.current;
+        const { city: live, fx: liveFx, theme: themeName = "Denver" } = stateRef.current;
         const shown = liveFx?.city || live;
         if (!shown) return;
         const light = viewClock();
@@ -448,29 +324,31 @@ export default function CityView({ city, fx, celebrate }) {
           );
         }
         // Grow the pinned picture until it covers the screen, but keep the
-        // original 640×500 block on the same spot as the grid. A drag moves
-        // the grid only. The extra sky and ground stay here.
-        const extraTop = Math.ceil(Math.max(0, placed.y) / placed.scale);
-        const extraBottom = Math.ceil(
-          Math.max(0, application.screen.height - (placed.y + SCENE_H * placed.scale)) / placed.scale,
+        // 1280×1000 block on the same spot as the grid. A drag moves the
+        // grid only. The extra sky and ground stay here. fitBackdropExtras
+        // stops that picture from passing the GPU's texture limit.
+        const extra = fitBackdropExtras(
+          Math.ceil(Math.max(0, placed.y) / placed.scale),
+          Math.ceil(Math.max(0, application.screen.height - (placed.y + SCENE_H * placed.scale)) / placed.scale),
+          Math.ceil(Math.max(0, placed.x) / placed.scale),
+          Math.ceil(Math.max(0, application.screen.width - (placed.x + SCENE_W * placed.scale)) / placed.scale),
         );
-        const extraLeft = Math.ceil(Math.max(0, placed.x) / placed.scale);
-        const extraRight = Math.ceil(
-          Math.max(0, application.screen.width - (placed.x + SCENE_W * placed.scale)) / placed.scale,
-        );
-        const nextSky = `${light.phase}|${extraTop}|${extraBottom}|${extraLeft}|${extraRight}`;
+        const nextSky = `${themeName}|${light.phase}|${extra.top}|${extra.bottom}|${extra.left}|${extra.right}`;
         if (nextSky !== skyKey) {
           skyKey = nextSky;
-          adoptTexture(skySprite, paintExtendedBackdrop(light, extraTop, extraBottom, extraLeft, extraRight));
-          skySprite.position.set(-extraLeft, -extraTop);
+          adoptTexture(skySprite, paintExtendedBackdrop(light, extra.top, extra.bottom, extra.left, extra.right, themeName));
+          skySprite.position.set(-extra.left, -extra.top);
         }
-        upload(shown, light);
+        upload(shown, light, themeName);
         const site = liveFx?.crane || shown.buildings.find((building) => building.status === "in_progress");
         if (site) {
-          const bob = Math.round(Math.sin(performance.now() / 420) * 2);
+          // Just in front of this lot, and behind any building closer to
+          // the camera. The bucket for this depth is 0.5 above the integer,
+          // so 0.25 keeps the crane between its own building and the cars.
+          siteFx.zIndex = propDepth(site.x, site.y, 1) + 0.25;
+          const bob = Math.round(Math.sin(performance.now() / 420) * 4);
           const stories = site.stories ?? site.targetStories ?? site.storiesBuilt ?? 2;
-          drawCrane(crane, site.x, site.y, stories, bob);
-          dust.clear();
+          drawCrane(siteFx, site.x, site.y, stories, bob);
           if (liveFx?.dust) {
             const puffs = dustPuffs(performance.now(), {
               west: project(site.x, site.y + 1, 0),
@@ -479,22 +357,27 @@ export default function CityView({ city, fx, celebrate }) {
             });
             for (const puff of puffs) {
               if (!puff.s) continue;
-              dust.rect(puff.x, puff.y, puff.s, puff.s).fill({ color: puff.tone ? DUST_DARK : DUST_LIGHT });
+              siteFx.rect(puff.x, puff.y, puff.s, puff.s).fill({ color: puff.tone ? DUST_DARK : DUST_LIGHT });
               // A second pixel makes the speck read as a puff instead of a dot
               // on the pavement. Still a rectangle, still the same eight slots.
-              if (!puff.tone) dust.rect(puff.x + 3, puff.y - 2, 2, 2).fill({ color: 0xfff6d0 });
+              if (!puff.tone) siteFx.rect(puff.x + 6, puff.y - 4, 4, 4).fill({ color: 0xfff6d0 });
             }
           }
         } else {
-          crane.clear();
-          dust.clear();
+          siteFx.clear();
         }
         const celebrating = stateRef.current.celebrate;
         const frameNow = performance.now();
-        drawTransit(transit, shown, frameNow);
-        drawPopulation(population, shown, frameNow);
-        parade.clear();
-        if (celebrating) drawParade(parade, shown, performance.now());
+        const transitKey = (shown.transit || []).map((piece) => `${piece.mode}:${piece.index}`).join(",");
+        if (transitKey !== marksKey) {
+          marksKey = transitKey;
+          drawTransitMarks(marks, shown);
+        }
+        for (const i of usedBuckets) buckets[i].clear();
+        usedBuckets.clear();
+        drawTransitMovers(layerFor, shown, frameNow);
+        drawPopulation(layerFor, shown, frameNow);
+        if (celebrating) drawParade(layerFor, shown, frameNow);
         screenFx.clear();
         if (liveFx?.plane) {
           const w = application.screen.width;

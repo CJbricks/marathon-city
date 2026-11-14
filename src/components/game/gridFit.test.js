@@ -75,7 +75,9 @@ describe("stepZoom", () => {
   });
 
   it("treats a contain-fit above 1 as the smallest scale", () => {
-    const fit = gridPlacement(1440, 900).scale;
+    // Both sides have to be larger than the 1280×1000 picture. A 900px
+    // tall window used to be, back when the picture was 500px tall.
+    const fit = gridPlacement(1800, 1400).scale;
     expect(fit).toBeGreaterThan(1);
     expect(Number.isInteger(fit)).toBe(false);
     expect(stepZoom(fit, fit, 1)).toBe(2);

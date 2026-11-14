@@ -17,10 +17,10 @@ describe("dustPuffs", () => {
     expect(drawn.length).toBeGreaterThan(0);
     for (const puff of drawn) {
       const origin = puff.side < 0 ? anchors.west : puff.side > 0 ? anchors.east : anchors.south;
-      expect(Math.abs(puff.x - origin[0])).toBeLessThan(28);
+      expect(Math.abs(puff.x - origin[0])).toBeLessThan(56);
       expect(puff.y).toBeLessThanOrEqual(origin[1]);
-      expect(puff.y).toBeGreaterThan(origin[1] - 24);
-      expect(puff.s).toBeLessThanOrEqual(5);
+      expect(puff.y).toBeGreaterThan(origin[1] - 48);
+      expect(puff.s).toBeLessThanOrEqual(10);
     }
     const early = first.map((puff) => puff.y);
     const later = dustPuffs(450, anchors);

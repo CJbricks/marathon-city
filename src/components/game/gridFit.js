@@ -1,4 +1,4 @@
-// Where the 640×500 city picture sits when the page opens, which scales a
+// Where the 1280×1000 city picture sits when the page opens, which scales a
 // pinch is allowed to stop on, and how a zoom or a drag stays on screen.
 //
 // Covering the whole phone (scale by the taller side) zoomed the diamond
@@ -12,9 +12,11 @@
 //
 // Pinching in past 1× snaps to 1, 2, 3… so each city pixel becomes a solid
 // block of screen pixels. The opening fit is allowed to stay a fraction
-// (about 0.61 on a 390px phone). Zooming back out returns to that fit,
-// centered, instead of stopping on 0.9 or 0.8. Same idea as brick-city's
-// chooseScale: a whole-number scale is what keeps nearest-neighbor art crisp.
+// (about 0.30 on a 390px phone, because the picture is 1280 pixels wide).
+// The diamond still fills the same fraction of the screen as the old
+// 640-wide picture did. Zooming back out returns to that fit, centered,
+// instead of stopping on 0.9 or 0.8. Same idea as brick-city's chooseScale:
+// a whole-number scale is what keeps nearest-neighbor art crisp.
 //
 // The snap used to change only the scale. The picture is drawn as
 // screen = pan + scene * zoom, so a bigger zoom with the same pan grows
@@ -22,17 +24,18 @@
 // off that corner. placeZoom solves the pan so one scene pixel stays under
 // the fingers, then clampCityPan keeps the diamond from leaving the view.
 
-import { SCENE_H, SCENE_W } from "./pixelScene";
+import { SCENE_H, SCENE_W, cityDiamond } from "./sceneLayout";
 
-// Outer corners of the 22-tile diamond, in that picture's pixels.
-// project(0, 0) is the back corner, project(22, 0) the right, project(0, 22)
-// the left, and project(22, 22) the front. 22 is the map's tile count.
-export const GRID_LEFT = 56;
-export const GRID_RIGHT = 584;
-export const GRID_TOP = 176;
-export const GRID_BOTTOM = 440;
+// Outer corners of the 22-tile diamond, in picture pixels. They come from
+// the same project() the painter uses, so a change to the lot size moves
+// the clamp with it. 22 is the map's tile count.
+const DIAMOND = cityDiamond();
+export const GRID_LEFT = DIAMOND.left;
+export const GRID_RIGHT = DIAMOND.right;
+export const GRID_TOP = DIAMOND.top;
+export const GRID_BOTTOM = DIAMOND.bottom;
 
-// The box clampCityPan watches. It is the diamond, not the full 640×500
+// The box clampCityPan watches. It is the diamond, not the full 1280×1000
 // picture: the rest of that picture is sky and prairie, and the backdrop
 // already covers those.
 export const CITY_BOUNDS = {
