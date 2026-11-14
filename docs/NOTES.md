@@ -38,14 +38,20 @@ src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks t
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
-src/app/layout.js          Font, title, viewport, Chakra provider.
+src/app/layout.js          Font, tab title, share-card tags, viewport, Chakra provider.
 src/app/favicon.ico        Tab icon. 16, 32, 48, and 64, from the 32×32 drawing.
 src/app/icon.png           512×512 icon. Same drawing, each pixel copied 16 times.
 src/app/apple-icon.png     180×180 home-screen icon. Solid, no transparent pixels.
+src/app/opengraph-image.png  1200×630 share picture for og:image.
+src/app/twitter-image.png    The same picture, under the name X requests.
+src/app/opengraph-image.alt.txt  The sentence in place of that picture.
+src/app/twitter-image.alt.txt    The same sentence for the Twitter card.
 src/app/page.js            Mounts Game. Stays a Server Component.
 prototype/                 The original scripts and stills. The app does not execute them.
 prototype/icon32_drawn.png The 32×32 drawing every icon size is scaled from.
+prototype/og_source.png    The 488×414 Austin close-up the share card is cut from.
 scripts/make-icons.mjs     Rebuilds favicon.ico, icon.png, and apple-icon.png.
+scripts/make-og.mjs        Rebuilds opengraph-image.png and twitter-image.png.
 docs/austin-theme-screenshot.png  The Austin scene that drawing came from. Not served.
 ```
 
@@ -349,6 +355,31 @@ The scale is nearest-neighbor. A source pixel is copied into a block. It is not 
 
 `docs/austin-theme-screenshot.png` is the Austin scene the drawing was made from. It is a reference for the next person who opens the master. The site does not serve it. The full scene is the wrong favicon: at 16 pixels the tower and the dome disappear into the skyline.
 
+## The share card
+
+A link pasted into iMessage, Slack, or X shows a card. The card is not the page. Those apps read a few tags in `<head>` and one image. They do not run the game.
+
+`src/app/layout.js` sets the words:
+
+- The browser tab, `og:title`, `twitter:title`, and `og:site_name` are all `Miles and Miles`.
+- The description under that name, for the page and for both cards, is `A dynamic city built on your strava stats.`
+- `metadataBase` is `https://marathon-city.vercel.app`. Next builds the image URL from that origin, so the tag is an absolute `https://` link. A path with no host is ignored by most of those apps, and the card would be words with no picture.
+- `og:type` is `website`. `og:url` is `/`, which `metadataBase` turns into the home page. `twitter:card` is `summary_large_image`, the wide card. `summary` would shrink the city to a small square.
+
+The picture is files next to `layout.js`, the same way the favicon is. The metadata object does not list an image path. Adding one by hand would put a second `og:image` next to the one Next already emits.
+
+- `src/app/opengraph-image.png` is what Facebook, Slack, and iMessage request (`og:image`).
+- `src/app/twitter-image.png` is the same picture under the name X looks for (`twitter:image`). Next does not reuse one file for both tags, so both are committed. The bytes match.
+- `opengraph-image.alt.txt` and `twitter-image.alt.txt` are one sentence: the pink Capitol dome, the cream UT Tower, and the cathedral spire. A screen reader uses it in place of the picture, and some cards print it as the image caption. The script does not write these files. They are words, not pixels. The file is that one line and nothing after it. Next copies the bytes into `og:image:alt`, so a trailing blank line would show up inside the tag.
+
+The card is 1200 by 630. That is the size the large card expects.
+
+The drawing is `prototype/og_source.png`, a 488 by 414 close-up of the Austin scene. `npm run og` runs `scripts/make-og.mjs`. The script copies each source pixel into a 3 by 3 block, which makes a 1464 by 1242 picture, and then cuts a 1200 by 630 window out of that. The window starts 72 source pixels in and 96 down (216 by 288 after the scale). That crop keeps the pink Capitol dome, the cream UT Tower with its orange crown and clock, and the cathedral spire with the blue rose window. Towers at the edges and the roofs along the bottom are outside the card.
+
+The scale is nearest-neighbor. A source pixel is copied, not averaged with its neighbors. Averaging would invent colors between the pink granite and the sky, and the dome would go soft. The script checks that every output pixel is a color from the source, and that four landmark pixels (the tower crown, the dome, the spire, the rose window) are still the colors they were. The app does not run the script. The committed PNGs are what Next serves. Run the script again only after the drawing changes.
+
+The favicon is a different picture, the 32 by 32 tower-and-dome drawing. `npm run og` does not write `favicon.ico`, `icon.png`, or `apple-icon.png`.
+
 ## Commands
 
 ```bash
@@ -359,6 +390,7 @@ npm test
 npm run lint
 npm run build
 npm run icons     # rebuilds the favicon from prototype/icon32_drawn.png
+npm run og        # rebuilds the share card from prototype/og_source.png
 npm run migrate   # skips with a log line when DATABASE_URL is unset
                   # Vercel runs this automatically via vercel-build
 ```

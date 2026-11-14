@@ -10,7 +10,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "migrate": "node scripts/migrate.mjs",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "og": "node scripts/make-og.mjs"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.37.0",
