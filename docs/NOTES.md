@@ -419,6 +419,24 @@ The scale is nearest-neighbor. A source pixel is copied, not averaged with its n
 
 The favicon is a different picture, the 32 by 32 tower-and-dome drawing. `npm run og` does not write `favicon.ico`, `icon.png`, or `apple-icon.png`.
 
+## The Next.js security patch
+
+`next` was pinned at `16.4.3`. That release prints a build notice that the installed version has a known security vulnerability (`Installed Next.js version … is affected by a known security vulnerability`). `npm audit` agreed: `next` 16.0.0 through 16.4.4 carried seven advisories, every one of them moderate. The fixes shipped in `16.4.5`. The newest stable release on the 16 line is `16.4.6`, which is that patch plus a small bug-fix backport, so the pin moved from `16.4.3` to `16.4.6` and nowhere else.
+
+`react` and `react-dom` stayed at `19.3.0`. `eslint-config-next` stayed at `16.4.3`. The new Next release still accepts React 19, and the ESLint config does not have to match the framework version for the app to build. Strava client id and secret were not part of this change. They stay in the Vercel environment.
+
+The seven advisories, as `npm audit` and the GitHub advisory records name them, all moderate:
+
+- CVE-2026-119790 / GHSA-mfr8-8qww-v76h. A `use cache` function called both directly and through `unstable_cache()` can return another root param's cached value.
+- CVE-2026-119351 / GHSA-vc7v-qv4w-wrv8. Nested `use cache` functions can leak a value across root params.
+- CVE-2026-119349 / GHSA-rhh4-g77r-r9qj. Binary arguments to `use cache` can share one cache identity across users.
+- CVE-2026-119350 / GHSA-vvgp-ww4w-46vf. A self-hosted app with Cache Components can have a shared fallback shell poisoned.
+- CVE-2026-119348 / GHSA-pc58-hwjq-p385. Forwarding a fetched response unchanged can mix one client's response into another's.
+- CVE-2026-119347 / GHSA-7qx7-33qx-rqx2. The image optimizer can be handed an SVG it was supposed to reject.
+- CVE-2026-119346 / GHSA-f3mh-rxg3-f5g2. An Edge runtime route can expose an HttpOnly cookie on an internal response header.
+
+This app does not turn on Cache Components, does not call `use cache` or `unstable_cache`, does not use `next/image`, and does not run routes on the Edge runtime. The city, the screens, and the route handlers are the same code. `16.4.6` also compresses a route-handler body when it was not already compressed, and it includes Turbopack fixes. Dev and build still pass `--webpack`, so those Turbopack fixes do not run here. After the bump, `npm audit` no longer lists `next`.
+
 ## Commands
 
 ```bash
