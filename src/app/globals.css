@@ -404,6 +404,126 @@ button.city-card:disabled {
   left: 8px;
   z-index: 3;
 }
+/* The medal shares MENU's top edge so the two sit on one line. It is on
+   the right, where the extended sky is on a tall phone, clear of the
+   rotate pair in the grass and of the plane banner (that banner stays
+   on the left half). 36px is a thumb target without covering the corner
+   of the skyline. z-index sits above the scrim so a second tap closes. */
+.medal-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 7;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+}
+.medal-btn.on {
+  border-color: var(--mc-border);
+  color: var(--mc-accent);
+}
+.medal-mark .ribbon,
+.medal-mark .rim {
+  fill: var(--mc-accent);
+}
+.medal-mark .face {
+  fill: var(--mc-banner);
+}
+.medal-mark .star {
+  fill: var(--mc-ink);
+}
+.records-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: transparent;
+}
+.records-panel {
+  position: absolute;
+  top: 52px;
+  right: 8px;
+  z-index: 6;
+  width: min(240px, calc(100vw - 72px));
+  max-height: calc(100dvh - 180px);
+  overflow: auto;
+  box-sizing: border-box;
+  background: var(--mc-stage);
+  color: #fff;
+  border: 4px solid var(--mc-border);
+  padding: 8px;
+  text-align: left;
+}
+.records-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.records-title {
+  margin: 0;
+  color: var(--mc-accent);
+  font-size: 8px;
+  line-height: 1.4;
+}
+.records-x {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 4px 6px;
+}
+.pr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pr-row {
+  border-top: 2px solid var(--mc-border);
+  padding-top: 6px;
+}
+.pr-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.pr-label {
+  color: var(--mc-title);
+  text-transform: uppercase;
+}
+.pr-time {
+  color: #fff;
+}
+.pr-date,
+.pr-name,
+.records-status {
+  margin: 2px 0 0;
+  font-size: 6px;
+  line-height: 1.6;
+  color: var(--mc-muted);
+}
+.pr-link {
+  display: inline-block;
+  margin-top: 2px;
+  color: var(--mc-accent);
+  font-size: 6px;
+  line-height: 1.6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+.records-status {
+  margin-top: 8px;
+}
 /* The turn controls are HTML on the canvas box, not sprites in the
    grid, so a drag or a pinch leaves them where they are. The opening
    fit keeps the whole picture on screen, and the diamond ends well

@@ -14,6 +14,11 @@
 // A laptop with a new DATABASE_URL still runs `npm run migrate` once.
 // A city code is five digits stored on the save. Another browser that
 // types the code plays that same city. Their Strava login stays their own.
+//
+// Best efforts are cached by Strava activity id, not by the city. The
+// summary list Log run stores does not include them. A later detail
+// request writes the five distances once, and a city-code visitor reads
+// that cache without a Strava token of their own.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -23,7 +28,29 @@ import { postgresOptions, runtimeUrl } from "./pgClient.mjs";
 import { SaveRejected, cleanName, planCreate } from "./saves.js";
 
 function empty() {
-  return { users: {}, tokens: {}, activities: {}, saves: {}, access: {}, guest: {}, attempts: {} };
+  return {
+    users: {},
+    tokens: {},
+    activities: {},
+    saves: {},
+    access: {},
+    guest: {},
+    attempts: {},
+    efforts: {},
+    stravaReads: [],
+  };
+}
+
+// efforts is JSON text in Postgres and an array in the file. A broken
+// value is treated as "not cached" so the next open can ask Strava again
+// instead of freezing a bad parse as an empty record list.
+function parseStoredEfforts(value) {
+  try {
+    const raw = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(raw) ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 function validCode(value) {
@@ -157,6 +184,8 @@ function createJsonStore() {
       data.tokens ||= {};
       data.activities ||= {};
       data.saves ||= {};
+      data.efforts ||= {};
+      data.stravaReads ||= [];
       return data;
     } catch {
       return empty();
@@ -346,6 +375,47 @@ function createJsonStore() {
         const fresh = rows.filter((a) => a.stravaId && !have.has(String(a.stravaId)));
         data.activities[saveId] = [...(data.activities[saveId] || []), ...fresh];
         return fresh;
+      });
+    },
+    async getEfforts(ids) {
+      const data = await read();
+      const out = {};
+      for (const id of ids) {
+        const key = String(id);
+        const row = data.efforts?.[key];
+        if (!row) continue;
+        const efforts = parseStoredEfforts(row.efforts);
+        if (!efforts) continue;
+        out[key] = { efforts, fetchedAt: row.fetchedAt || null };
+      }
+      return out;
+    },
+    async saveEffort(stravaId, efforts) {
+      const key = String(stravaId || "");
+      if (!key) return;
+      return update((data) => {
+        data.efforts ||= {};
+        data.efforts[key] = {
+          efforts: Array.isArray(efforts) ? efforts : [],
+          fetchedAt: new Date().toISOString(),
+        };
+      });
+    },
+    async listReadStamps(sinceMs) {
+      const data = await read();
+      const since = Number(sinceMs) || 0;
+      return (data.stravaReads || [])
+        .map((stamp) => new Date(stamp).getTime())
+        .filter((stamp) => Number.isFinite(stamp) && stamp >= since);
+    },
+    async recordRead(at = new Date()) {
+      return update((data) => {
+        const when = new Date(at);
+        const keepAfter = when.getTime() - 26 * 60 * 60 * 1000;
+        data.stravaReads = [
+          ...(data.stravaReads || []).filter((stamp) => new Date(stamp).getTime() >= keepAfter),
+          when.toISOString(),
+        ];
       });
     },
     async getTokens(userId) {
@@ -624,6 +694,49 @@ function createPostgresStore() {
         if (inserted.length) fresh.push(rowToActivity(inserted[0]));
       }
       return fresh;
+    },
+    async getEfforts(ids) {
+      const wanted = [...new Set(ids.map((id) => String(id)).filter(Boolean))];
+      if (!wanted.length) return {};
+      const rows = await sql`
+        SELECT strava_id, efforts, fetched_at
+        FROM activity_efforts
+        WHERE strava_id IN ${sql(wanted)}
+      `;
+      const out = {};
+      for (const row of rows) {
+        const efforts = parseStoredEfforts(row.efforts);
+        if (!efforts) continue;
+        out[row.strava_id] = {
+          efforts,
+          fetchedAt: row.fetched_at ? new Date(row.fetched_at).toISOString() : null,
+        };
+      }
+      return out;
+    },
+    async saveEffort(stravaId, efforts) {
+      const key = String(stravaId || "");
+      if (!key) return;
+      const json = JSON.stringify(Array.isArray(efforts) ? efforts : []);
+      await sql`
+        INSERT INTO activity_efforts (strava_id, efforts, fetched_at)
+        VALUES (${key}, ${json}, NOW())
+        ON CONFLICT (strava_id) DO UPDATE SET
+          efforts = EXCLUDED.efforts,
+          fetched_at = EXCLUDED.fetched_at
+      `;
+    },
+    async listReadStamps(sinceMs) {
+      const since = new Date(Number(sinceMs) || 0).toISOString();
+      const rows = await sql`
+        SELECT read_at FROM strava_reads WHERE read_at >= ${since}
+      `;
+      return rows.map((row) => new Date(row.read_at).getTime());
+    },
+    async recordRead(at = new Date()) {
+      const when = new Date(at).toISOString();
+      await sql`INSERT INTO strava_reads (read_at) VALUES (${when})`;
+      await sql`DELETE FROM strava_reads WHERE read_at < NOW() - INTERVAL '26 hours'`;
     },
     async getTokens(userId) {
       const [row] = await sql`SELECT * FROM strava_tokens WHERE user_id = ${userId}`;

@@ -16,6 +16,10 @@ src/lib/cityCode.js        Five-digit city code and the guess limit.
 src/lib/db.js              Postgres if DATABASE_URL is set, otherwise .data/store.json.
 src/lib/schema.sql         Tables. `npm run migrate` applies this.
 src/lib/strava.js          OAuth URL, token exchange, refresh, activity fetch.
+src/lib/records.js         Which cached best efforts count as this city's records.
+src/lib/effortFill.js      Fetches a few missing best-effort lists. Server only.
+src/app/api/records        Medal data. GET is the cache. POST fills a small batch.
+src/components/game/RecordsMedal.js  The top-right medal and the records panel.
 src/lib/session.js         The httpOnly cookie that is only a user id.
 src/lib/demo.js            Reads prototype/activities.txt for Demo city.
 src/app/api/session        Loads the save and replays it.
@@ -122,6 +126,22 @@ The callback does not download runs. The start date is chosen on the next screen
 ## Strava
 
 `/api/strava/start` redirects to Strava with scopes `read,activity:read_all`. A random `state` is stored in a short-lived cookie and checked in `/api/strava/callback` before the code is exchanged. Tokens are columns in the store, not cookies and not `NEXT_PUBLIC_` variables. `?prompt=force` shows the checkboxes again after a connect that left out all-activity access.
+
+## Personal records
+
+The medal in the top-right corner opens them. It is HTML, on the same line as MENU and on the opposite corner, so a drag does not move it and it is not in the Share my city PNG. The rotate buttons stay in the grass under the city. The panel sits under the medal, short of that grass, and it closes on a tap outside, the X, or Esc.
+
+Strava's activity list does not include best efforts. Those are on the detailed activity, `GET /activities/{id}`, in `best_efforts`. The names this city keeps are `1 mile`, `5k`, `10k`, `Half-Marathon`, and `Marathon`. A 10 mile effort is not a marathon, and a segment effort is a different list, so it is not read. Local Legend is not read either.
+
+The time is that effort's `elapsed_time`, shown as `m:ss` under an hour and `h:mm:ss` from an hour up. The run's own moving time is not a substitute, and neither is `pr_rank` (that rank is Strava's all-time mark, which may sit outside this city's start date). A distance with no effort is left out of the panel. No dashes. If every distance is missing, the panel says so. If some runs are still unfetched, the rows that are already cached are shown and the panel says it is still checking.
+
+The window is the same one the skyline uses. A dated city starts on its start date. All-history and demo have no start. A date after today is left out. The fastest elapsed time wins. A tie keeps the earlier run, because that is when the time was first run.
+
+Each numeric Strava id is fetched once and stored in `activity_efforts` (or `efforts` in the laptop JSON file). An empty array means Strava had none of the five distances, and it is not requested again. A missing row means not yet. The cache is keyed by Strava's activity id, not by the city, so two saves and a phone that opened the city code share it. That phone does not use the owner's token. Strava's client id and secret stay in the server environment.
+
+Opening the medal, on a phone that has connected Strava, asks for a few uncached runs (longer ones first). Log run does the same for the runs it just stored. The counter stops before Strava's 100 requests per 15 minutes and 1,000 per day, and it leaves ten requests so the activity list and a token refresh can still run. A 429 stops the batch and does not cache that run. The panel then says Strava is busy and shows what is already saved.
+
+Demo rows and typed distances use ids like `demo-3` and `manual-…`. Those are not sent to Strava, and they do not become records.
 
 ## Server and client
 

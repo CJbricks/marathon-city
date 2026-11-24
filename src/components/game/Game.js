@@ -28,6 +28,7 @@ import { isRaceDay, uniqueLandmarkCount } from "@/lib/raceDay";
 import { randomQuote } from "@/lib/quotes";
 import { isRunActivity, replay, shouldFlyPlane } from "@/lib/replay";
 import { MAX_SAVES, cleanName } from "@/lib/saves";
+import RecordsMedal from "./RecordsMedal";
 import { themeClass } from "./themes/names";
 import {
   CodeScreen,
@@ -782,6 +783,14 @@ export default function Game() {
       <button type="button" className="pixel-btn menu-btn" onClick={() => setMenu(true)}>
         MENU
       </button>
+      {/* Same row as MENU, on the other corner. The panel is HTML, so it
+          stays put while the city is dragged and stays out of the PNG. */}
+      <RecordsMedal
+        key={payload.save?.id || "city"}
+        records={payload.records}
+        connected={Boolean(payload.connected)}
+        hidden={Boolean(menu || confirmReset || manual)}
+      />
       {fx?.label ? <p className="story-pop">{fx.label}</p> : null}
       {fx?.milesShown != null ? <p className="mile-pop">{fx.milesShown.toFixed(2)} MI</p> : null}
       {celebrate && payload.save?.raceName ? <p className="race-name">{payload.save.raceName}</p> : null}

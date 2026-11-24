@@ -207,6 +207,53 @@ describe("named saves", () => {
     expect(body.city.landmarks.filter((l) => l.key === "lbjLibrary")).toHaveLength(0);
   });
 
+  it("serves cached records for the city's dates and leaves an unfetched run pending", async () => {
+    const store = getStore();
+    await store.ensureUser("user-1");
+    const save = await store.createSave("user-1", {
+      name: "Block",
+      city: "Denver",
+      startMode: "date",
+      startDate: "2026-06-01",
+    });
+    await store.addActivities("user-1", save.id, [
+      run("101", 6, "2026-05-01"),
+      run("102", 6, "2026-07-01"),
+      run("103", 3, "2026-07-02"),
+    ]);
+    await store.saveEffort("101", [{ name: "1 mile", seconds: 250 }]);
+    await store.saveEffort("102", [{ name: "1 mile", seconds: 330 }]);
+    const body = await cityPayload("user-1");
+    expect(body.records.pending).toBe(true);
+    expect(body.records.rows).toEqual([
+      expect.objectContaining({
+        label: "Mile",
+        seconds: 330,
+        time: "5:30",
+        date: "2026-07-01",
+        stravaId: "102",
+        url: "https://www.strava.com/activities/102",
+      }),
+    ]);
+  });
+
+  it("remembers best efforts by Strava id and forgets reads older than a day", async () => {
+    const store = getStore();
+    await store.saveEffort("9001", [{ name: "1 mile", seconds: 312 }]);
+    await store.saveEffort("9001", [{ name: "1 mile", seconds: 300 }]);
+    await store.saveEffort("9002", []);
+    const found = await store.getEfforts(["9001", "9002", "9003"]);
+    expect(found["9001"].efforts).toEqual([{ name: "1 mile", seconds: 300 }]);
+    expect(found["9002"].efforts).toEqual([]);
+    expect(found["9003"]).toBeUndefined();
+
+    const stale = new Date(Date.now() - 30 * 60 * 60 * 1000);
+    await store.recordRead(stale);
+    expect(await store.listReadStamps(Date.now() - 26 * 60 * 60 * 1000)).toEqual([]);
+    await store.recordRead(new Date());
+    expect(await store.listReadStamps(0)).toHaveLength(1);
+  });
+
   it("stores a failed-code lock on the device key", async () => {
     const store = getStore();
     let state = null;

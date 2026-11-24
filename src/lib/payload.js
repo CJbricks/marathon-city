@@ -5,9 +5,12 @@
 // the same function locally so it does not need a new request per frame.
 // Replaying three cities is the same function as replaying one. The miles
 // still come only from that city's own rows. `code` is the five digits
-// another phone can type to open this same city.
+// another phone can type to open this same city. `records` is the medal:
+// cached best efforts inside this city's date window. This file does not
+// call Strava. A missing effort stays missing until the medal asks.
 
 import { getStore, storageKind } from "./db.js";
+import { cachedRecords } from "./effortFill.js";
 import { replay, utcToday, visibleActivities } from "./replay.js";
 import { stravaConfigured } from "./strava.js";
 
@@ -66,12 +69,18 @@ export async function cityPayload(userId) {
     activeCity = played.city;
   }
   const tokens = await store.getTokens(userId);
+  // Read from the cache only. Opening the page must not call Strava;
+  // the medal asks for a few missing efforts when someone taps it.
+  const records = active
+    ? await cachedRecords(store, activeActivities, active, asOf)
+    : { rows: [], pending: false, runs: 0, cached: 0 };
   return {
     save: forClient(active),
     saves: summaries,
     activities: activeActivities,
     city: activeCity,
     asOf,
+    records,
     connected: Boolean(tokens),
     stravaConfigured: stravaConfigured(),
     storage: storageKind(),
