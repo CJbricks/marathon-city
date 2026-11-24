@@ -876,10 +876,10 @@ export const austinTheme = {
   labels: AUSTIN_LABELS,
   ground: GROUND,
   mountains: MOUNTAINS,
-  // Lady Bird Lake is a ribbon along the south edge of the diamond, two
-  // lots wide (48 picture pixels). The civic block is inland, so the
-  // Congress Avenue Bridge draws its own water on its lot instead of
-  // sitting on this ribbon.
+  // Lady Bird Lake is a ribbon along the south and east edges of the
+  // map, two lots wide (48 picture pixels). A view turn moves those
+  // edges. The civic block is inland, so the Congress Avenue Bridge
+  // draws its own water on its lot instead of sitting on this ribbon.
   lake: { color: "#2f8f86", shine: "#b7e4dc", band: 48 },
   // Three stops, not one tint. Top is a warm light blue, the middle is
   // peach, the horizon is gold. One peach mixed into every stop turned

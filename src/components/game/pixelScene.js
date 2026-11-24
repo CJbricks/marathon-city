@@ -16,8 +16,15 @@
 // Cars, pedestrians, dust, and the crane are not in this picture. They
 // move every frame, so CityView draws them on top and leaves them out
 // of sceneSignature.
+//
+// A view turn does not come through this file as a new save. CityView
+// passes a copy whose lots are already moved, and viewQuarter on that
+// copy turns the streets and the lake the same way. Depth is the moved
+// lot's front corner, so a tower that rotated toward the camera is
+// drawn later and covers the cars in front of it.
 
 import { createPen, hex, mix, mul, rng } from "./pixelPen";
+import { mirrorBuildingSprite, normalizeQuarter, rotateGridPoint } from "./rotation";
 import { HORIZON_Y, MAP_TILES, SCENE_H, SCENE_W, project } from "./sceneLayout";
 import { drawStreets } from "./streets";
 import { themeFor } from "./themes";
@@ -143,34 +150,103 @@ function skyAndLand(pen, light, theme) {
       pen.put(x, y, (x * 3 + y * 5) % 17 === 0 ? mix(c, 0.86) : c);
     }
   }
-  // A lake is a ribbon along the front edges of the diamond, not a fill
-  // of the prairie. The grid is a second picture, so water inside the
-  // lots would be covered anyway. Denver has no lake, and this does not run.
-  // Everything past the ribbon stays the theme's ground color.
-  if (theme.lake) paintLakeRibbon(pen, theme, light);
+  // The lake used to be painted here, on the backdrop. It now lives on
+  // the ground picture with the streets, so a view turn, a pan, and a
+  // pinch all carry the ribbon with the shore. The prairie under the
+  // picture stays dry either way.
 }
 
 // One lot toward the camera is 24 picture pixels (two half-heights).
 // The ribbon is that thick, twice, and then it stops. A wider band is
 // what made the lake eat the bottom of the phone.
-function paintLakeRibbon(pen, theme, light) {
+function paintLakeRibbon(pen, theme, light, quarter = 0) {
   const water = mul(hex(theme.lake.color), light.ambient);
   const shine = hex(theme.lake.shine);
   const band = theme.lake.band || 48;
   const tiles = MAP_TILES;
-  const left = project(0, tiles);
-  const front = project(tiles, tiles);
-  const right = project(tiles, 0);
-  strokeRibbon(pen, left, front, band, water, shine);
-  strokeRibbon(pen, right, front, band, water, shine);
-  // The two edges meet at a point. A short cap keeps the ribbon from
-  // splitting into two ditches under that corner. It is still only
-  // `band` pixels deep, so the field below stays grass.
-  for (let dy = 1; dy <= band; dy += 1) {
-    const half = Math.max(2, Math.round(dy * 0.35));
-    for (let dx = -half; dx <= half; dx += 1) {
-      const x = Math.round(front[0] + dx);
-      const y = Math.round(front[1] + dy);
+  const turns = normalizeQuarter(quarter);
+  // Lady Bird Lake follows the south and east edges of the map
+  // (u = tiles and v = tiles), not whichever edge happens to be at
+  // the bottom of the screen. Quarter 0 leaves those edges at the
+  // front, which is the ribbon the city has always had.
+  const corner = (u, v) => {
+    const [ru, rv] = rotateGridPoint(u, v, turns, tiles);
+    return project(ru, rv);
+  };
+  const left = corner(0, tiles);
+  const front = corner(tiles, tiles);
+  const right = corner(tiles, 0);
+  if (!turns) {
+    strokeRibbon(pen, left, front, band, water, shine);
+    strokeRibbon(pen, right, front, band, water, shine);
+    // The two edges meet at a point. A short cap keeps the ribbon from
+    // splitting into two ditches under that corner. It is still only
+    // `band` pixels deep, so the field below stays grass.
+    for (let dy = 1; dy <= band; dy += 1) {
+      const half = Math.max(2, Math.round(dy * 0.35));
+      for (let dx = -half; dx <= half; dx += 1) {
+        const x = Math.round(front[0] + dx);
+        const y = Math.round(front[1] + dy);
+        pen.put(x, y, (x + y) % 6 === 0 ? shine : water);
+      }
+    }
+    return;
+  }
+  // Away from the middle of the diamond, not always downward. A
+  // turned shore sits on the side or the back, and a ribbon that
+  // only knew how to drip down would paint water across the lots.
+  const center = project(tiles / 2, tiles / 2);
+  strokeRibbonAway(pen, left, front, band, water, shine, center);
+  strokeRibbonAway(pen, right, front, band, water, shine, center);
+  paintLakeCap(pen, front, center, band, water, shine);
+}
+
+function strokeRibbonAway(pen, a, b, band, water, shine, center) {
+  const steps = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])));
+  const dx = (b[0] - a[0]) / steps;
+  const dy = (b[1] - a[1]) / steps;
+  let px = -dy;
+  let py = dx;
+  const len = Math.hypot(px, py) || 1;
+  px /= len;
+  py /= len;
+  const mx = (a[0] + b[0]) / 2;
+  const my = (a[1] + b[1]) / 2;
+  if (px * (mx - center[0]) + py * (my - center[1]) < 0) {
+    px = -px;
+    py = -py;
+  }
+  for (let i = 0; i <= steps; i += 1) {
+    const x = a[0] + dx * i;
+    const y = a[1] + dy * i;
+    for (let d = 1; d <= band; d += 1) {
+      const xx = Math.round(x + px * d);
+      const yy = Math.round(y + py * d);
+      const c = (xx + yy) % 6 === 0 ? shine : water;
+      pen.put(xx, yy, c);
+      pen.put(xx + 1, yy, c);
+    }
+  }
+}
+
+// The two edges meet at the south corner. The cap fills that notch
+// and points away from the city, the same job the downward wedge
+// does when the south corner is still at the bottom of the picture.
+function paintLakeCap(pen, front, center, band, water, shine) {
+  let ox = front[0] - center[0];
+  let oy = front[1] - center[1];
+  const olen = Math.hypot(ox, oy) || 1;
+  ox /= olen;
+  oy /= olen;
+  const px = -oy;
+  const py = ox;
+  for (let d = 1; d <= band; d += 1) {
+    const half = Math.max(2, Math.round(d * 0.35));
+    const bx = front[0] + ox * d;
+    const by = front[1] + oy * d;
+    for (let w = -half; w <= half; w += 1) {
+      const x = Math.round(bx + px * w);
+      const y = Math.round(by + py * w);
       pen.put(x, y, (x + y) % 6 === 0 ? shine : water);
     }
   }
@@ -228,11 +304,20 @@ function ridge(pen, spec, base, lit, shade, snowL, snowS, snowline) {
   }
 }
 
-function paintLots(pen, city, light, theme) {
+function paintFloor(pen, city, light, theme) {
+  // Water goes down before the streets. The lip and the lots then
+  // cover the inner edge of the ribbon, the same way they used to
+  // cover the lake when it sat on the backdrop underneath this picture.
+  if (theme.lake) paintLakeRibbon(pen, theme, light, city?.viewQuarter || 0);
   const ambient = light.ambient.map((v) => Math.max(0.25, Math.min(1.15, v)));
   const night = light.windowLight > 0.35;
   const streets = theme.drawStreets || drawStreets;
   streets(pen, city, theme, ambient, night);
+  return { ambient, night };
+}
+
+function paintLots(pen, city, light, theme) {
+  const { ambient, night } = paintFloor(pen, city, light, theme);
 
   const items = [];
   for (const b of city.buildings) items.push({ k: b.x + b.y, draw: () => theme.drawBuilding(pen, b, ambient, night) });
@@ -262,10 +347,7 @@ export function paintGroundPixels(city, light, options = {}) {
   const theme = themeFor(options.theme || city.theme || "Denver");
   const data = new Uint8ClampedArray(SCENE_W * SCENE_H * 4);
   const pen = createPen(data, SCENE_W, SCENE_H);
-  const ambient = light.ambient.map((v) => Math.max(0.25, Math.min(1.15, v)));
-  const night = light.windowLight > 0.35;
-  const streets = theme.drawStreets || drawStreets;
-  streets(pen, city, theme, ambient, night);
+  paintFloor(pen, city, light, theme);
   return data;
 }
 
@@ -297,10 +379,19 @@ export function bucketIndex(depth) {
 // is not also in the landmark list.
 export function listProps(city) {
   const props = [];
+  // x and y are already the turned lot. Depth is that lot's front
+  // corner (x + y + span * 2), which is the edge nearest the camera
+  // after the turn. Sorting by the saved coordinates would stack a
+  // tower that moved to the front behind the cars it should cover.
+  // Ordinary buildings flip on the odd quarters. Landmarks do not:
+  // their silhouette is how you tell them apart, and a flip would
+  // reverse a clock or a sign.
+  const mirrorBuildings = mirrorBuildingSprite(city?.viewQuarter || 0);
   for (const b of city.buildings || []) {
     props.push({
       id: `b:${b.id}`,
       depth: propDepth(b.x, b.y, 1),
+      mirror: mirrorBuildings,
       sig: `${b.type}:${b.status}:${b.storiesBuilt}:${b.variant ?? ""}`,
       draw(pen, theme, ambient, night) {
         theme.drawBuilding(pen, b, ambient, night);
@@ -312,6 +403,7 @@ export function listProps(city) {
     props.push({
       id: `l:${l.key}:${l.x}:${l.y}`,
       depth: propDepth(l.x, l.y, 1),
+      mirror: false,
       sig: l.key,
       draw(pen, theme, ambient, night) {
         theme.drawLandmark(pen, l, ambient, night);
@@ -322,6 +414,7 @@ export function listProps(city) {
     props.push({
       id: `p:${p.x}:${p.y}:${p.name}`,
       depth: propDepth(p.x, p.y, 1),
+      mirror: false,
       sig: p.name,
       draw(pen, theme) {
         theme.drawPark(pen, p);
@@ -332,6 +425,7 @@ export function listProps(city) {
     props.push({
       id: `q:${q.name}`,
       depth: propDepth(q.x, q.y, 2),
+      mirror: false,
       sig: q.name,
       draw(pen, theme, ambient) {
         theme.drawQuest(pen, q, ambient);

@@ -30,6 +30,7 @@ src/app/api/strava/callback  Trades the code for tokens.
 src/components/game/Game.js      Screen flow and the Log run animation timer.
 src/components/game/Screens.js   Title, picker, Strava, start date, loading.
 src/components/game/sceneLayout.js  Picture size and the isometric lot math (1280×1000).
+src/components/game/rotation.js    Quarter-turns of the view. Does not edit the save.
 src/components/game/pixelPen.js    The shared pixel pen every theme draws with.
 src/components/game/streets.js     Sidewalks, curbs, and asphalt. Colors come from the theme.
 src/components/game/themes/        One folder per city. Denver and Austin. names.js is the allow-list.
@@ -249,6 +250,28 @@ Slots Austin paints, using Denver's unlocks:
 | Walks, 10 / 25 / 50 | Sixth Street, South Congress, Circuit of the Americas |
 
 Ordinary buildings follow the same rings. A rowhouse is a Hyde Park or Bouldin bungalow (cream or wood, red hip roof, a porch) instead of a Victorian. Mixed-use is a South Congress shop under a red roof. Offices are limestone. A skyscraper is one of three shapes, chosen from its variant: stacked slabs (the Independent), a glass sail, or a bronze shaft (Sixth and Guadalupe). State buildings are limestone with a small Texas flag. The sprinkled museum type is a limestone gallery, not a second Blanton. Giga Texas uses the Big Blue Bear's block, which is already on the southeast edge, so the factory sits on the east side without moving a lot. Nothing in the Austin file draws a seal, a wordmark, or a mascot. The library is a travertine slab with a set-back top, the gallery is a cream shop and an orange awning, and the bakery is an awning with a loaf on the sign.
+
+## How view rotation works
+
+The two buttons on the right of the city, and the Q and E keys, turn the view by 90 degrees. Right is clockwise. Left is the opposite direction. Four rights put every lot back where it started. One left undoes one right.
+
+This is a view setting. The save, the city code, and the rules are not rewritten. The same runs still build the same lots. The quarter is stored in `localStorage` under `mc-view-quarter` as 0, 1, 2, or 3, on this device only. A phone that opens a city code starts at whatever that phone last used, or at 0. Strava tokens are not involved.
+
+`orientCity` in `rotation.js` copies the buildings, landmarks, parks, and side quests and gives the copy the coordinates of the turned grid. The original objects keep the stored x and y. Streets, the lake, cars, walkers, bats, the parade, and the crane all read `viewQuarter` on that copy and run the same turn on the point they are about to draw. `project()` itself does not turn anything. A building is drawn with the same three-face formula, on the lot it moved to.
+
+The math is around the center of the map (`tiles / 2`). One right turn sends a grid point `(u, v)` to `(tiles - v, u)`. That slides the right corner of the diamond to the front, the front to the left, and so on. The center point does not move, so the city spins in place. The outer corners trade places, but the box around the diamond does not change size or position. Pinch zoom still anchors on a picture pixel, and the pan clamp still watches that same box, so a turn does not throw the diamond off the phone.
+
+A lot is stored by its back corner. After a turn, a different corner of that square is the one farthest from the camera. `rotateLot` picks the minimum u and the minimum v of the four turned corners. Drawing from the old corner would slide the building by a whole lot.
+
+Depth is still "larger means closer to the camera," and that number is still `u + v`. It has to be the turned u and v. `listProps` uses the front corner of the turned lot, `x + y + span * 2`. Cars and walkers use the turned sum of the point they are standing on, and they go in the bucket for `floor` of that sum. A tower that rotated to the front is drawn after the car it should hide. `moverHidden` still drops a walker whose body overlaps a nearer sprite, so someone on the sidewalk beside a tall landmark does not appear to stand on the roof. Sorting by the saved coordinates would leave that tower behind the car.
+
+Buildings are painted for one isometric angle: the left wall is dark, the right wall is mid, the roof faces the viewer. There is no second set of drawings for the other three compass directions. At 90° and 270° the finished building sprite is flipped left to right, so a door swaps walls. That is a stand-in for looking from the other diagonal, not a true view of the back of the building. At 0° and 180° the sprite is not flipped, so roofs stay upright. Landmarks, parks, and side quests are never flipped. A mirrored clock, flag, or sign would be harder to recognize. None of the landmark painters draw a word, and the rule is still "do not mirror them," so a later sign does not come out backwards.
+
+Lady Bird Lake is the south and east edge of the map, not whichever edge is at the bottom of the screen. The ribbon is painted into the ground picture, the same picture as the streets, before the lip and the lots. It turns, pans, and pinches with the shore. It used to sit on the backdrop, which does not move when you drag the city. The lip under the near edge of the diamond stays on the camera side. It is there so the city does not look like it is floating. It is not a geographic shore. The Congress Avenue Bridge draws water on its own lot, and that lot moves with the other landmarks.
+
+The grid fades for about a sixth of a second when the quarter changes. The sky does not. Share my city copies the stage after that fade is forced back to full opacity, so the PNG is the turn you are looking at. The buttons are HTML, the same as the menu, so they are not in the picture.
+
+The buttons sit on the right of the canvas. MENU is the top left. The bottom bar is the footer under the canvas, so the buttons are not on it. The middle of the picture is left for the pinch. Q and E do the same turns on a keyboard, and they are ignored while a text field is focused.
 
 ## How to add a third city
 

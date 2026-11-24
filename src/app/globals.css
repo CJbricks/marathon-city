@@ -404,6 +404,33 @@ button.city-card:disabled {
   left: 8px;
   z-index: 3;
 }
+/* The turn controls live on the canvas, not the bottom bar. The bar is
+   the footer under this box. MENU is the top left, so the right edge
+   stays clear. 48px is a thumb-sized target. The middle of the picture
+   is left for the pinch. */
+.rotate-dock {
+  position: absolute;
+  z-index: 4;
+  right: max(8px, env(safe-area-inset-right, 0px));
+  top: 42%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rotate-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+}
+.rotate-btn svg {
+  display: block;
+}
 .race-name,
 .mile-pop {
   position: absolute;

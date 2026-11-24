@@ -8,7 +8,8 @@ import { describe, expect, it } from "vitest";
 import { lightingAtMinutes } from "../../lib/lighting";
 import { HW, HH, SCENE_H, SCENE_W, project } from "./sceneLayout";
 import { moverHidden } from "./moverOcclusion";
-import { bucketIndex, listProps, moverDepth, paintBackdropPixels, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
+import { orientCity } from "./rotation";
+import { bucketIndex, listProps, moverDepth, paintBackdropPixels, paintGroundPixels, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
 import { resolveTheme, themeClass, themeFor, themeNames } from "./themes";
 
 const base = {
@@ -203,14 +204,38 @@ describe("theme seam", () => {
     expect(at(austin, 10, 0)).toEqual([0x8e, 0xc8, 0xee]);
     const low = at(austin, 10, 200);
     expect(low[0]).toBeGreaterThan(low[2]);
-    // The ribbon sits just under the front tip (y 880). Twenty pixels
-    // below that is water. Further down, and off to the side, is grass.
-    const water = at(austin, 640, 900);
+    // The ribbon is not on the sky picture. It is on the ground picture,
+    // so a turn can move it with the shore. This row under the front tip
+    // is prairie. Further down, and off to the side, is grass too.
+    const under = at(austin, 640, 900);
     const grass = at(austin, 640, 980);
     const side = at(austin, 1200, 700);
-    expect(water[2]).toBeGreaterThan(water[0]);
+    expect(under[0]).toBeGreaterThan(under[2]);
     expect(grass[0]).toBeGreaterThan(grass[2]);
     expect(side[0]).toBeGreaterThan(side[2]);
+    const shoreCity = {
+      map: { tiles: 22, period: 3 },
+      buildings: [],
+      landmarks: [],
+      parks: [],
+      sideQuests: [],
+    };
+    const ground = paintGroundPixels(shoreCity, light, { theme: "Austin" });
+    const turned = paintGroundPixels(orientCity(shoreCity, 1), light, { theme: "Austin" });
+    const pixel = (data, x, y) => {
+      const i = (y * SCENE_W + x) * 4;
+      return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+    };
+    // Just under the front tip (y 880), past the 20px lip. Quarter 0
+    // is water. One right turn moves that ribbon off this pixel.
+    const shore = pixel(ground, 640, 920);
+    const dry = pixel(turned, 640, 920);
+    expect(shore[3]).toBe(255);
+    expect(shore[2]).toBeGreaterThan(shore[0]);
+    expect(dry[3] === 0 || dry[0] > dry[2]).toBe(true);
+    const moved = pixel(turned, 70, 620);
+    expect(moved[3]).toBe(255);
+    expect(moved[2]).toBeGreaterThan(moved[0]);
     const sand = at(denverSky, 640, 980);
     expect(sand[0]).toBeGreaterThan(sand[2]);
     expect(denver[3]).toBe(255);
