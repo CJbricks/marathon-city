@@ -256,7 +256,9 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       // touch-action does not catch on every iPhone OS.
       application.canvas.style.touchAction = "none";
       application.canvas.style.imageRendering = "pixelated";
-      // The rotate buttons are siblings of this canvas. Without a
+      // The rotate buttons are siblings of this canvas, pinned to the
+      // bottom of this box. They are not in the grid container, so a
+      // pan or a pinch does not take them with the city. Without a
       // stacking level the canvas, appended later, sits on top of them
       // and the taps never land.
       application.canvas.style.position = "absolute";

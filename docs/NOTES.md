@@ -253,7 +253,7 @@ Ordinary buildings follow the same rings. A rowhouse is a Hyde Park or Bouldin b
 
 ## How view rotation works
 
-The two buttons on the right of the city, and the Q and E keys, turn the view by 90 degrees. Right is clockwise. Left is the opposite direction. Four rights put every lot back where it started. One left undoes one right.
+The two buttons under the city, and the Q and E keys, turn the view by 90 degrees. Right is clockwise. Left is the opposite direction. Four rights put every lot back where it started. One left undoes one right.
 
 This is a view setting. The save, the city code, and the rules are not rewritten. The same runs still build the same lots. The quarter is stored in `localStorage` under `mc-view-quarter` as 0, 1, 2, or 3, on this device only. A phone that opens a city code starts at whatever that phone last used, or at 0. Strava tokens are not involved.
 
@@ -271,7 +271,7 @@ Lady Bird Lake is the south and east edge of the map, not whichever edge is at t
 
 The grid fades for about a sixth of a second when the quarter changes. The sky does not. Share my city copies the stage after that fade is forced back to full opacity, so the PNG is the turn you are looking at. The buttons are HTML, the same as the menu, so they are not in the picture.
 
-The buttons sit on the right of the canvas. MENU is the top left. The bottom bar is the footer under the canvas, so the buttons are not on it. The middle of the picture is left for the pinch. Q and E do the same turns on a keyboard, and they are ignored while a text field is focused.
+The buttons are a row, left then right, centered in the prairie under the diamond. That band is empty at the opening fit: the picture is taller than the diamond, and the view fits the whole picture, on a 390px phone and on a desktop window. They sit 20px above the footer, so they do not cover the bottom bar or the city. They are HTML on the canvas box, the same way MENU is, not sprites in the grid. A drag or a pinch moves the city and leaves the buttons where they are. Q and E do the same turns on a keyboard, and they are ignored while a text field is focused.
 
 ## How to add a third city
 
