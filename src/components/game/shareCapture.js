@@ -13,8 +13,10 @@
 // puts the pinch back before the browser paints. The phone-sized sky fill
 // is hidden for that render: it is a rectangle the size of the screen, and
 // leaving it on paints a dark block over the corner of the share picture.
-// The MENU button and the bottom bar are HTML, so they are not in the
-// picture. The menu is closed before this runs. A footer band is painted
+// The MENU button, the rotate buttons, and the bottom bar are HTML, so
+// they are not in the picture. The grid is already on the current turn,
+// and CityView forces that layer to full opacity so a fade does not dim
+// the PNG. The menu is closed before this runs. A footer band is painted
 // under the view, in the theme's colors.
 //
 // Extract reads a premultiplied render texture. Opaque sky and ground

@@ -404,6 +404,37 @@ button.city-card:disabled {
   left: 8px;
   z-index: 3;
 }
+/* The turn controls are HTML on the canvas box, not sprites in the
+   grid, so a drag or a pinch leaves them where they are. The opening
+   fit keeps the whole picture on screen, and the diamond ends well
+   above the bottom of that picture, so the band under the city is
+   empty prairie. The pair sits in that band, centered, just above the
+   footer. 48px is a thumb-sized target. 20px between them is enough
+   that two thumbs do not hit both. MENU stays at the top left. */
+.rotate-dock {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+}
+.rotate-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+}
+.rotate-btn svg {
+  display: block;
+}
 .race-name,
 .mile-pop {
   position: absolute;

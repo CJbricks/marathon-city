@@ -24,9 +24,15 @@
 // Share my city asks this view for a PNG. For that one render the sky and
 // the grid move to a 4:5 frame at scale 1, then the pinch is put back
 // before the browser paints. The pointer listeners are not replaced. The
-// menu and the bottom bar are HTML, so they are not in the picture.
+// menu, the bottom bar, and the rotate buttons are HTML, so they are not
+// in the picture. The grid is already turned, so the PNG shows that view.
+//
+// Q and E, and the two buttons, turn the view 90 degrees. The turn is
+// remembered on this device. It is not written onto the save. The grid
+// fades for a moment. The sky stays. Pinch zoom still anchors on a
+// picture pixel: the diamond's box does not change when the lots move.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
@@ -34,6 +40,14 @@ import { shareFrame } from "@/lib/shareCity";
 import { dustPuffs } from "./dust";
 import { hex } from "./pixelPen";
 import { beginCityShare } from "./shareCapture";
+import {
+  normalizeQuarter,
+  orientCity,
+  readStoredQuarter,
+  rotateLot,
+  storeQuarter,
+} from "./rotation";
+import { MAP_TILES } from "./sceneLayout";
 import { themeFor } from "./themes";
 import { CITY_BOUNDS, clampCityPan, gridPlacement, placeZoom, stepZoom } from "./gridFit";
 import { CONFETTI, drawCrane, drawParade, drawPlane, drawPopulation, drawTransitMarks, drawTransitMovers } from "./overlaySprites";
@@ -137,9 +151,27 @@ function viewClock() {
 // wobble is ignored so a shaky pinch does not skip a step.
 const PINCH_STEP_RATIO = 1.18;
 
+function RotateMark({ way }) {
+  // A corner arrow. The head says which way the view turns. The right
+  // button is that same shape, flipped. currentColor is the button
+  // text, white in both themes. The border is what picks up the theme.
+  const flip = way === "right" ? "translate(16 0) scale(-1 1)" : undefined;
+  return (
+    <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges">
+      <g transform={flip}>
+        <polygon points="1,5 6,1 6,9" fill="currentColor" />
+        <rect x="5" y="4" width="6" height="2" fill="currentColor" />
+        <rect x="10" y="4" width="2" height="6" fill="currentColor" />
+        <rect x="5" y="9" width="7" height="2" fill="currentColor" />
+      </g>
+    </svg>
+  );
+}
+
 export default function CityView({ city, fx, celebrate, theme = "Denver", viewRef }) {
   const hostRef = useRef(null);
-  const stateRef = useRef({ city, fx, celebrate, theme });
+  const [quarter, setQuarter] = useState(readStoredQuarter);
+  const stateRef = useRef({ city, fx, celebrate, theme, quarter });
   // The share button lives in Game.js. The Pixi app only exists after
   // boot(), so the handle is published from there and cleared on the way
   // out. The ref is stored in an effect, not during render: reading it
@@ -148,9 +180,37 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
   const viewRefHolder = useRef(null);
 
   useEffect(() => {
-    stateRef.current = { city, fx, celebrate, theme };
+    stateRef.current = { city, fx, celebrate, theme, quarter };
     viewRefHolder.current = viewRef;
-  }, [city, fx, celebrate, theme, viewRef]);
+  }, [city, fx, celebrate, theme, viewRef, quarter]);
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      const tag = event.target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || event.target?.isContentEditable) return;
+      const key = event.key.toLowerCase();
+      if (key !== "q" && key !== "e") return;
+      event.preventDefault();
+      setQuarter((current) => {
+        const next = normalizeQuarter(current + (key === "q" ? -1 : 1));
+        storeQuarter(next);
+        stateRef.current = { ...stateRef.current, quarter: next };
+        return next;
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const turn = (direction) => {
+    setQuarter((current) => {
+      const next = normalizeQuarter(current + direction);
+      storeQuarter(next);
+      stateRef.current = { ...stateRef.current, quarter: next };
+      return next;
+    });
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -196,6 +256,13 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       // touch-action does not catch on every iPhone OS.
       application.canvas.style.touchAction = "none";
       application.canvas.style.imageRendering = "pixelated";
+      // The rotate buttons are siblings of this canvas, pinned to the
+      // bottom of this box. They are not in the grid container, so a
+      // pan or a pinch does not take them with the city. Without a
+      // stacking level the canvas, appended later, sits on top of them
+      // and the taps never land.
+      application.canvas.style.position = "absolute";
+      application.canvas.style.zIndex = "0";
       host.appendChild(application.canvas);
 
       const fill = new Graphics();
@@ -294,11 +361,38 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       let groundKey = "";
       let marksKey = "";
       let batKey = "";
+      // orientCity copies every lot. The ticker calls paint every frame,
+      // so the copy is reused until the city object or the quarter changes.
+      let orientedSource = null;
+      let orientedQuarter = -1;
+      let orientedCity = null;
+      const forView = (source, q) => {
+        if (source === orientedSource && q === orientedQuarter && orientedCity) return orientedCity;
+        orientedSource = source;
+        orientedQuarter = q;
+        orientedCity = orientCity(source, q);
+        return orientedCity;
+      };
+      let sawQuarter = false;
+      let fadeStart = 0;
       // Screen boxes of the building sprites. A mover behind one of these
       // is not drawn, so a narrow tower still hides the sidewalk it rises over.
       const occluders = [];
+      const placeProp = (sprite, crop, mirror) => {
+        // A negative scale draws the crop to the left of the anchor.
+        // Parking the anchor on the right edge keeps the building on
+        // the same lot. The pixels inside are swapped left to right.
+        if (mirror) {
+          sprite.scale.x = -1;
+          sprite.position.set(crop.x + crop.w, crop.y);
+        } else {
+          sprite.scale.x = 1;
+          sprite.position.set(crop.x, crop.y);
+        }
+      };
       const upload = (live, light, themeName) => {
-        const groundSig = `${themeName}|${light.phase}|${live.map?.tiles}|${live.map?.period}`;
+        const quarterNow = live.viewQuarter || 0;
+        const groundSig = `${themeName}|${light.phase}|q${quarterNow}|${live.map?.tiles}|${live.map?.period}`;
         if (groundSig !== groundKey) {
           groundKey = groundSig;
           adoptTexture(groundSprite, canvasFromPixels(paintGroundPixels(live, light, { theme: themeName }), SCENE_W, SCENE_H));
@@ -312,7 +406,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         let propBytes = 0;
         for (const prop of props) {
           alive.add(prop.id);
-          const sig = `${themeName}|${light.phase}|${prop.sig}`;
+          const sig = `${themeName}|${light.phase}|q${quarterNow}|${prop.mirror ? 1 : 0}|${prop.sig}`;
           let sprite = propSprites.get(prop.id);
           if (sprite && sprite.propSig === sig) {
             sprite.zIndex = prop.depth;
@@ -336,7 +430,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
             propSprites.set(prop.id, sprite);
           }
           adoptTexture(sprite, canvasFromPixels(crop.data, crop.w, crop.h));
-          sprite.position.set(crop.x, crop.y);
+          placeProp(sprite, crop, prop.mirror);
           sprite.zIndex = prop.depth;
           sprite.propSig = sig;
           sprite.propBytes = crop.w * crop.h * 4;
@@ -360,9 +454,10 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
           const sprite = propSprites.get(prop.id);
           const frame = sprite?.texture;
           if (!frame || frame === Texture.EMPTY || !frame.width) continue;
+          const left = sprite.scale.x < 0 ? sprite.position.x - frame.width : sprite.position.x;
           occluders.push({
             depth: prop.depth,
-            x: sprite.position.x,
+            x: left,
             y: sprite.position.y,
             w: frame.width,
             h: frame.height,
@@ -371,9 +466,20 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       };
 
       const paint = () => {
-        const { city: live, fx: liveFx, theme: themeName = "Denver" } = stateRef.current;
-        const shown = liveFx?.city || live;
-        if (!shown) return;
+        const { city: live, fx: liveFx, theme: themeName = "Denver", quarter: rawQuarter = 0 } = stateRef.current;
+        const viewQuarter = normalizeQuarter(rawQuarter);
+        const source = liveFx?.city || live;
+        if (!source) return;
+        // Check before forView, which stores the quarter it just applied.
+        // The fade is a dip of the grid only. Spinning every sprite for
+        // real would mean a new picture per frame. The sky stays put.
+        const turned = sawQuarter && viewQuarter !== orientedQuarter;
+        if (turned) fadeStart = performance.now();
+        sawQuarter = true;
+        const shown = forView(source, viewQuarter);
+        const fadeT = fadeStart ? Math.min(1, (performance.now() - fadeStart) / 180) : 1;
+        world.alpha = fadeStart ? 0.35 + 0.65 * fadeT : 1;
+        host.dataset.quarter = String(viewQuarter);
         const light = viewClock();
         const themeObj = themeFor(themeName);
         const skyTop = themeSkyStop(light, themeObj, 0);
@@ -411,7 +517,14 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
           skySprite.position.set(-extra.left, -extra.top);
         }
         upload(shown, light, themeName);
-        const site = liveFx?.crane || shown.buildings.find((building) => building.status === "in_progress");
+        const tiles = source.map?.tiles || MAP_TILES;
+        let site = null;
+        if (liveFx?.crane) {
+          const [x, y] = rotateLot(liveFx.crane.x, liveFx.crane.y, viewQuarter, tiles, 1);
+          site = { ...liveFx.crane, x, y };
+        } else {
+          site = shown.buildings?.find((building) => building.status === "in_progress");
+        }
         if (site) {
           // Just in front of this lot, and behind any building closer to
           // the camera. The bucket for this depth is 0.5 above the integer,
@@ -439,7 +552,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         }
         const celebrating = stateRef.current.celebrate;
         const frameNow = performance.now();
-        const transitKey = (shown.transit || []).map((piece) => `${piece.mode}:${piece.index}`).join(",");
+        const transitKey = `q${viewQuarter}|${(shown.transit || []).map((piece) => `${piece.mode}:${piece.index}`).join(",")}`;
         if (transitKey !== marksKey) {
           marksKey = transitKey;
           drawTransitMarks(marks, shown);
@@ -655,7 +768,10 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
               sx: layer.scale.x,
               sy: layer.scale.y,
               visible: layer.visible,
+              alpha: layer.alpha,
             }));
+            // A share during the fade would bake the dim grid into the PNG.
+            world.alpha = 1;
             // The fill and the confetti are sized to the phone. On the
             // 4:5 frame they would cover the corner with the screen's
             // sky rectangle. The sky texture is the backdrop, and it
@@ -673,6 +789,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
                 snap.layer.scale.set(snap.sx, snap.sy);
                 snap.layer.position.set(snap.x, snap.y);
                 snap.layer.visible = snap.visible;
+                snap.layer.alpha = snap.alpha;
               }
               try {
                 application.render();
@@ -713,5 +830,30 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
     };
   }, []);
 
-  return <div className="city-canvas" ref={hostRef} />;
+  return (
+    <div className="city-canvas" ref={hostRef}>
+      <div className="rotate-dock" data-quarter={quarter}>
+        <button
+          type="button"
+          className="pixel-btn rotate-btn"
+          aria-label="Rotate left"
+          aria-keyshortcuts="Q"
+          title="Rotate left (Q)"
+          onClick={() => turn(-1)}
+        >
+          <RotateMark way="left" />
+        </button>
+        <button
+          type="button"
+          className="pixel-btn rotate-btn"
+          aria-label="Rotate right"
+          aria-keyshortcuts="E"
+          title="Rotate right (E)"
+          onClick={() => turn(1)}
+        >
+          <RotateMark way="right" />
+        </button>
+      </div>
+    </div>
+  );
 }

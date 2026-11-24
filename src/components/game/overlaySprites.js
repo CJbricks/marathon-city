@@ -18,7 +18,8 @@
 
 import rules from "@/lib/rules";
 import { moverHidden } from "./moverOcclusion";
-import { project, STORY } from "./sceneLayout";
+import { rotateGridPoint } from "./rotation";
+import { MAP_TILES, project, STORY } from "./sceneLayout";
 
 const SHIRTS = [0xd62828, 0x1565c0, 0xfdd835, 0x2e7d32, 0xf57c00, 0x6a1b9a];
 const CONFETTI = [0xfdd835, 0xd62828, 0xffffff, 0xf57c00, 0x43a047, 0x1e88e5];
@@ -54,22 +55,32 @@ export function transitRoad(piece, map) {
   };
 }
 
-function pointOnRoad(span, t, z = 4) {
+// Roads are stored in the unturned map. The view quarter spins the
+// sample point before it is projected, so a car stays on the asphalt
+// that drawStreets moved. Depth is the turned u + v. That is the same
+// sum the building sprites sort by, which is why a walker still slips
+// behind a tower that rotated in front of them.
+function placeOnGrid(u, v, z, city) {
+  const tiles = city?.map?.tiles || MAP_TILES;
+  const [ru, rv] = rotateGridPoint(u, v, city?.viewQuarter || 0, tiles);
+  const [x, y] = project(ru, rv, z);
+  return { x, y, depth: ru + rv };
+}
+
+function pointOnRoad(span, t, city, z = 4) {
   const along = span.start + (span.end - span.start) * t;
   const u = span.axis === "h" ? along : span.fixed;
   const v = span.axis === "h" ? span.fixed : along;
   // Lifted a few picture pixels so the sprite sits just above the asphalt.
-  const [x, y] = project(u, v, z);
-  return { x, y, depth: u + v };
+  return placeOnGrid(u, v, z, city);
 }
 
-function pointOnEdge(span, t, side) {
+function pointOnEdge(span, t, side, city) {
   const along = span.start + (span.end - span.start) * t;
   const offset = side ? 0.38 : -0.28;
   const u = span.axis === "h" ? along : span.fixed + offset;
   const v = span.axis === "h" ? span.fixed + offset : along;
-  const [x, y] = project(u, v, 2);
-  return { x, y, depth: u + v };
+  return placeOnGrid(u, v, 2, city);
 }
 
 function wheels(g, px, py, back, front) {
@@ -137,7 +148,7 @@ export function drawPopulation(layerFor, city, now, occluders) {
     const span = transitRoad(vehicle, city.map);
     const lap = VEHICLE_LAP[vehicle.type] || 8000;
     const t = ((now * vehiclePace) / lap + (vehicle.index || i) * 0.17) % 1;
-    const at = pointOnRoad(span, t);
+    const at = pointOnRoad(span, t, city);
     if (moverHidden(occluders, at.x, at.y, at.depth, 16, 14)) continue;
     drawVehicle(layerFor(at.depth), at.x, at.y, vehicle.type, blink);
   }
@@ -152,7 +163,7 @@ export function drawPopulation(layerFor, city, now, occluders) {
     const phase = walkerPhase(seed, i);
     const raw = ((now * walkPace) / WALKER_LAP_MS + phase) % 1;
     const t = i % 3 === 0 ? 1 - raw : raw;
-    const at = pointOnEdge(span, t, i % 2 === 0);
+    const at = pointOnEdge(span, t, i % 2 === 0, city);
     if (moverHidden(occluders, at.x, at.y, at.depth)) continue;
     const frame = Math.floor((now * walkPace) / WALKER_STEP_MS + i) % 2;
     drawWalker(layerFor(at.depth), at.x, at.y, frame, SHIRTS[i % SHIRTS.length]);
@@ -170,7 +181,7 @@ export function drawTransitMarks(g, city) {
     const span = transitRoad(piece, city.map);
     if (piece.mode === "bike") {
       for (let i = 0; i < 16; i += 2) {
-        const at = pointOnRoad(span, i / 16, 2);
+        const at = pointOnRoad(span, i / 16, city, 2);
         const x = Math.round(at.x);
         const y = Math.round(at.y);
         g.rect(x, y, 8, 3).fill({ color: 0x2e7d32 });
@@ -178,7 +189,7 @@ export function drawTransitMarks(g, city) {
       }
     } else if (piece.mode === "bus") {
       for (let i = 0; i <= 4; i += 1) {
-        const at = pointOnRoad(span, i / 4, 2);
+        const at = pointOnRoad(span, i / 4, city, 2);
         const px = Math.round(at.x);
         const py = Math.round(at.y);
         g.rect(px - 1, py - 8, 3, 8).fill({ color: 0xf57c00 });
@@ -186,7 +197,7 @@ export function drawTransitMarks(g, city) {
       }
     } else {
       for (let i = 0; i <= 20; i += 1) {
-        const at = pointOnRoad(span, i / 20, 2);
+        const at = pointOnRoad(span, i / 20, city, 2);
         g.rect(Math.round(at.x), Math.round(at.y), 4, 2).fill({ color: 0xd0d0d0 });
         g.rect(Math.round(at.x) + 6, Math.round(at.y) - 2, 3, 2).fill({ color: 0x9a9a9a });
       }
@@ -202,7 +213,7 @@ export function drawTransitMovers(layerFor, city, now, occluders) {
     const span = transitRoad(piece, city.map);
     if (piece.mode === "bus") {
       const t = (now / 9000 + piece.index * 0.17) % 1;
-      const at = pointOnRoad(span, t);
+      const at = pointOnRoad(span, t, city);
       if (moverHidden(occluders, at.x, at.y, at.depth, 16, 14)) continue;
       const g = layerFor(at.depth);
       const px = Math.round(at.x);
@@ -214,7 +225,7 @@ export function drawTransitMovers(layerFor, city, now, occluders) {
       wheels(g, px, py - 2, -8, 4);
     } else {
       const t = (now / 7000 + piece.index * 0.13) % 1;
-      const at = pointOnRoad(span, t);
+      const at = pointOnRoad(span, t, city);
       if (moverHidden(occluders, at.x, at.y, at.depth, 16, 14)) continue;
       const g = layerFor(at.depth);
       const px = Math.round(at.x);
@@ -255,9 +266,11 @@ export function drawParade(layerFor, city, now, occluders) {
   const lap = (now % rules.raceDay.paradeMs) / rules.raceDay.paradeMs;
   for (let i = 0; i < 6; i += 1) {
     const u = 1 + ((lap + i / 6) % 1) * span;
-    const [x, y] = project(u, v, 6);
-    if (moverHidden(occluders, x, y, u + v)) continue;
-    const g = layerFor(u + v);
+    const at = placeOnGrid(u, v, 6, city);
+    if (moverHidden(occluders, at.x, at.y, at.depth)) continue;
+    const g = layerFor(at.depth);
+    const x = at.x;
+    const y = at.y;
     const color = CONFETTI[i % CONFETTI.length];
     const px = Math.round(x);
     const py = Math.round(y);
