@@ -3,8 +3,9 @@
 // The lots in the city object are the layout the rules built. A turn is
 // only a different camera. orientCity copies the things we draw and
 // gives the copy new coordinates. The original buildings keep the x and
-// y that a city code would rebuild. Cars, the lake, and the streets read
-// the same turn so they land on those moved lots.
+// y that a city code would rebuild. Cars and the streets read the same
+// turn so they land on those moved lots. There is no lake to turn. The
+// ribbon that used to follow the south edge gapped and crossed the lots.
 //
 // The map is a square, tiles on a side. Its center is tiles / 2. One
 // click of the right button is one clockwise quarter, and the right

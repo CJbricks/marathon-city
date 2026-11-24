@@ -183,7 +183,7 @@ describe("theme seam", () => {
     expect(themeClass("Austin")).toBe("theme-austin");
   });
 
-  it("keeps Denver's midday sky and paints Austin warmer, with water in front", () => {
+  it("keeps Denver's midday sky and paints Austin warmer, on dry ground", () => {
     const light = lightingAtMinutes(12 * 60 + 30);
     const denver = paintScenePixels(
       { map: { tiles: 8, period: 3 }, buildings: [], landmarks: [], parks: [], sideQuests: [] },
@@ -204,9 +204,8 @@ describe("theme seam", () => {
     expect(at(austin, 10, 0)).toEqual([0x8e, 0xc8, 0xee]);
     const low = at(austin, 10, 200);
     expect(low[0]).toBeGreaterThan(low[2]);
-    // The ribbon is not on the sky picture. It is on the ground picture,
-    // so a turn can move it with the shore. This row under the front tip
-    // is prairie. Further down, and off to the side, is grass too.
+    // The field under the hills is grass, including the row that used
+    // to be the lake ribbon. A teal pixel here is the ribbon coming back.
     const under = at(austin, 640, 900);
     const grass = at(austin, 640, 980);
     const side = at(austin, 1200, 700);
@@ -220,22 +219,24 @@ describe("theme seam", () => {
       parks: [],
       sideQuests: [],
     };
-    const ground = paintGroundPixels(shoreCity, light, { theme: "Austin" });
-    const turned = paintGroundPixels(orientCity(shoreCity, 1), light, { theme: "Austin" });
-    const pixel = (data, x, y) => {
-      const i = (y * SCENE_W + x) * 4;
-      return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+    // Teal is what the ribbon was. The ground picture is streets and the
+    // lip. A turn used to move that teal onto a different edge. Every
+    // quarter should now have none of it, including the old front pixel
+    // under the tip and the old left-edge pixel.
+    const teal = (r, g, b) => b > r + 15 && g > 80 && b > 80 && Math.abs(g - b) < 40;
+    const countTeal = (data) => {
+      let n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) continue;
+        if (teal(data[i], data[i + 1], data[i + 2])) n += 1;
+      }
+      return n;
     };
-    // Just under the front tip (y 880), past the 20px lip. Quarter 0
-    // is water. One right turn moves that ribbon off this pixel.
-    const shore = pixel(ground, 640, 920);
-    const dry = pixel(turned, 640, 920);
-    expect(shore[3]).toBe(255);
-    expect(shore[2]).toBeGreaterThan(shore[0]);
-    expect(dry[3] === 0 || dry[0] > dry[2]).toBe(true);
-    const moved = pixel(turned, 70, 620);
-    expect(moved[3]).toBe(255);
-    expect(moved[2]).toBeGreaterThan(moved[0]);
+    for (const quarter of [0, 1, 2, 3]) {
+      const shown = quarter ? orientCity(shoreCity, quarter) : shoreCity;
+      const ground = paintGroundPixels(shown, light, { theme: "Austin" });
+      expect(countTeal(ground)).toBe(0);
+    }
     const sand = at(denverSky, 640, 980);
     expect(sand[0]).toBeGreaterThan(sand[2]);
     expect(denver[3]).toBe(255);
@@ -314,6 +315,40 @@ describe("Austin landmarks", () => {
     expect(count(gallery.data, cream)).toBeGreaterThan(20);
     expect(count(bakery.data, orange)).toBeGreaterThan(10);
     expect(count(bakery.data, loaf)).toBeGreaterThan(15);
+  });
+
+  // The lake teal. Grass fails this on purpose: green is brighter than blue.
+  const teal = (r, g, b) => b > r + 15 && g > 80 && b > 80 && Math.abs(g - b) < 40;
+  const green = (r, g, b) => g > r + 10 && g > b + 10 && g > 70;
+
+  function shape(kind, name) {
+    const city = { buildings: [], landmarks: [], parks: [], sideQuests: [] };
+    if (kind === "landmark") city.landmarks.push({ key: name, x: 8, y: 8 });
+    if (kind === "park") city.parks.push({ name, x: 8, y: 8 });
+    if (kind === "quest") city.sideQuests.push({ name, x: 8, y: 8 });
+    return listProps(city)[0];
+  }
+
+  it("draws the bridge, the trail, the shores, and the arches on land", () => {
+    const bridge = paintPropPixels(shape("landmark", "unionStation"), light, "Austin");
+    const trail = paintPropPixels(shape("park", "Washington Park"), light, "Austin");
+    const shores = paintPropPixels(shape("park", "City Park"), light, "Austin");
+    const springs = paintPropPixels(shape("quest", "Cherry Creek Trail"), light, "Austin");
+    const arch = paintPropPixels(shape("quest", "Denver Botanic Gardens"), light, "Austin");
+    const deck = (r, g, b) => r > 180 && g > 170 && b > 150;
+    const stone = (r, g, b) => r > 180 && g > 160 && b > 140 && r >= g - 10;
+    for (const picture of [bridge, trail, shores, springs, arch]) {
+      expect(picture).toBeTruthy();
+      expect(count(picture.data, teal)).toBe(0);
+    }
+    // The deck is still there, and so is the lawn under the trail and
+    // the shell at Auditorium Shores. Removing the water must not
+    // delete the landmark.
+    expect(count(bridge.data, deck)).toBeGreaterThan(20);
+    expect(count(trail.data, green)).toBeGreaterThan(40);
+    expect(count(shores.data, stone)).toBeGreaterThan(10);
+    expect(count(springs.data, green)).toBeGreaterThan(40);
+    expect(count(arch.data, deck)).toBeGreaterThan(20);
   });
 });
 
