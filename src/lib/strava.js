@@ -151,3 +151,31 @@ export async function fetchActivitiesSince(accessToken, afterUnix) {
   console.log("strava activities fetched", all.length);
   return all;
 }
+
+// The list endpoint does not include best_efforts. Those are on the
+// single activity. The caller caches the result, including an empty list,
+// so this id is not requested again. The status is all the log gets: the
+// body can contain the athlete's other stats, and the token must not be
+// printed either.
+export async function fetchActivityDetail(accessToken, stravaId) {
+  let response;
+  try {
+    response = await fetch(`${API}/activities/${encodeURIComponent(stravaId)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(8000),
+    });
+  } catch {
+    console.error("strava activity detail failed");
+    return { status: "error" };
+  }
+  if (response.status === 429) return { status: "limited" };
+  if (response.status === 401 || response.status === 403) return { status: "unauthorized" };
+  if (response.status === 404) return { status: "missing" };
+  if (!response.ok) {
+    console.error("strava activity detail failed", response.status);
+    return { status: "error" };
+  }
+  const activity = await response.json().catch(() => null);
+  if (!activity || typeof activity !== "object") return { status: "error" };
+  return { status: "ok", activity };
+}

@@ -242,6 +242,28 @@ BEGIN
   END IF;
 END $$;
 
+-- Best efforts from GET /activities/{id}, one row per Strava activity.
+-- The city does not own the row: two saves, and a phone that opened the
+-- city code, read the same cache. efforts is a JSON array of
+-- {name, seconds}. Empty means Strava had none of the five distances.
+-- A missing row means this activity has not been requested yet.
+-- No token is stored here.
+CREATE TABLE IF NOT EXISTS activity_efforts (
+  strava_id TEXT PRIMARY KEY,
+  efforts TEXT NOT NULL,
+  fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- One row per detailed-activity request. The medal stops before Strava's
+-- 100 requests per 15 minutes and 1,000 per day. Old rows are deleted
+-- when a new one is written, so this table stays about a day long.
+CREATE TABLE IF NOT EXISTS strava_reads (
+  id BIGSERIAL PRIMARY KEY,
+  read_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS strava_reads_read_at ON strava_reads (read_at);
+
 CREATE INDEX IF NOT EXISTS city_saves_user ON city_saves (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS city_saves_user_slot ON city_saves (user_id, slot);
 CREATE UNIQUE INDEX IF NOT EXISTS city_saves_one_active ON city_saves (user_id) WHERE active;

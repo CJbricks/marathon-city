@@ -9,7 +9,9 @@
 
 import { NextResponse } from "next/server";
 import { getStore } from "@/lib/db";
+import { fillEfforts } from "@/lib/effortFill";
 import { cityPayload } from "@/lib/payload";
+import { utcToday } from "@/lib/replay";
 import { getUserId } from "@/lib/session";
 import { fetchActivitiesSince, validTokens } from "@/lib/strava";
 
@@ -77,6 +79,14 @@ export async function POST() {
   // above never reaches this line, so the next press covers the same window.
   save.lastSyncedAt = new Date().toISOString();
   await store.saveCity(userId, save);
+  // The new runs are the ones most likely to move a record. A few detail
+  // requests happen here. The rest wait for the medal, and a Strava
+  // failure still returns the city that was just saved.
+  try {
+    await fillEfforts(store, tokens.accessToken, fresh, save, utcToday());
+  } catch {
+    console.error("strava effort cache skipped");
+  }
   const payload = await cityPayload(userId);
   return NextResponse.json({ ...payload, needsManual: false, newActivities: fresh });
 }
