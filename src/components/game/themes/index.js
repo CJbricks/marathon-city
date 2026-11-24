@@ -25,11 +25,10 @@
 //   skirt         [frontFace, sideFace] the lip under the diamond
 //   sky           optional. { day: [top, mid, horizon], night: same, cloud }
 //                 replaces the clock sky. Omit it and the keyframe sky is used.
-//   lake          optional. { color, shine, band } a ribbon along the south
-//                 and east edges of the map, `band` picture pixels wide.
-//                 It is painted on the ground picture, so a view turn
-//                 carries it. Omit it and the ground stays dry. The band
-//                 is not the whole foreground.
+//   There is no lake field. Austin used to pass one, and pixelScene painted
+//   a ribbon from it. The ribbon left gaps. The gaps showed the pinned
+//   prairie, which does not zoom, and a turn did not keep the ribbon on
+//   the shore. A new city draws a shore inside a lot if it needs one.
 //   drawBuilding(pen, building, ambient, night)
 //   drawLandmark(pen, landmark, ambient, night)
 //   drawPark(pen, park)

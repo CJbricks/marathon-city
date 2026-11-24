@@ -31,6 +31,10 @@
 // remembered on this device. It is not written onto the save. The grid
 // fades for a moment. The sky stays. Pinch zoom still anchors on a
 // picture pixel: the diamond's box does not change when the lots move.
+// The wheel listener sits on this box, not on the canvas. The rotate
+// buttons are painted on top of the canvas, and a wheel on a button
+// never reached the canvas, so desktop zoom died in the grass under
+// the city. The phone pinch is still the pointer path.
 
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
@@ -747,7 +751,19 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       canvas.addEventListener("pointermove", move);
       canvas.addEventListener("pointerup", up);
       canvas.addEventListener("pointercancel", up);
-      canvas.addEventListener("wheel", wheel, { passive: false });
+      // The rotate buttons are siblings of the canvas, inside this host,
+      // and they sit in the grass under the diamond. A listener on the
+      // canvas never sees a wheel whose target is one of those buttons.
+      // On a short desktop window that grass is the bottom of the screen,
+      // which is where the cursor rests, so zoom looked dead there and
+      // alive over the buildings. Austin's lake was drawn in that same
+      // band, which made the failure look like an Austin zoom bug.
+      // Capture runs before the button. preventDefault keeps a ctrl+wheel
+      // trackpad pinch from zooming the browser page. The iPhone pinch
+      // does not come through here. It is the pointer handler above,
+      // which still holds the picture pixel between the fingers and
+      // still steps one whole zoom at a time.
+      host.addEventListener("wheel", wheel, { passive: false, capture: true });
       for (const target of gestureTargets) {
         target.addEventListener("gesturestart", stopBrowserPinch, gestureOpts);
         target.addEventListener("gesturechange", stopBrowserPinch, gestureOpts);
@@ -806,7 +822,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         canvas.removeEventListener("pointermove", move);
         canvas.removeEventListener("pointerup", up);
         canvas.removeEventListener("pointercancel", up);
-        canvas.removeEventListener("wheel", wheel);
+        host.removeEventListener("wheel", wheel, { capture: true });
         for (const target of gestureTargets) {
           target.removeEventListener("gesturestart", stopBrowserPinch, gestureOpts);
           target.removeEventListener("gesturechange", stopBrowserPinch, gestureOpts);

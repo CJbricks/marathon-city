@@ -13,7 +13,7 @@
 // What should still be obvious when the whole city fits on a phone:
 //   bungalows have a red hip roof and a porch, shops have an awning,
 //   the capitol is a pink dome (not gold), the UT Tower is a thin
-//   cream shaft with an orange top, the bridge sits on green water.
+//   cream shaft with an orange top, the bridge is a pale deck on its lot.
 //   The LBJ Library is a wide travertine slab with a set-back top.
 //   Martha's is a small cream shop with an orange awning. Rockman's
 //   is a bakery awning with a loaf on a sign. None of those is a logo.
@@ -32,14 +32,15 @@ const TILE_DARK = hex("#8c3424");
 const ORANGE = hex("#bf5700");
 const OAK = hex("#2f5a32");
 const OAK_LIT = hex("#3f6b3a");
-const WATER = hex("#2f8f86");
-const WATER_DEEP = hex("#1f6f72");
+const LAWN = hex("#4e8a40");
+const LAWN_LIT = hex("#67a354");
 
 const GROUND = {
   far: "#6e8a3c",
   mid: "#c4a84a",
   // The field under the city. Caliche gold with enough green that it
-  // reads as Hill Country grass, not the lake and not Denver's sand.
+  // reads as Hill Country grass, not Denver's sand. There is no lake
+  // color in this ground. A teal ribbon here tore when the view zoomed.
   near: "#b7a23a",
   farUntil: 20,
   midUntil: 72,
@@ -374,13 +375,13 @@ function drawBuilding(pen, b, ambient, night) {
 function drawBridge(pen, l) {
   const x = l.x;
   const y = l.y;
-  // Water first, then the deck. The civic slot is one lot, the same size
-  // Union Station used. The deck runs past the lot so the span still
-  // reads as a bridge when you are zoomed out.
-  pen.diamond(x, y, WATER_DEEP);
-  pen.insetDiamond(x, y, 0.08, WATER);
-  const [sx, sy] = project(x + 0.5, y + 0.55, 2);
-  pen.hline(sx - 10, sx + 8, sy, hex("#8fd0c8"));
+  // Grass first, then the deck. The civic slot is one lot, the same size
+  // Union Station used. The lot used to be a teal diamond, which read as
+  // the lake and left a hole once the ribbon around the city was removed.
+  // The deck still runs past the lot so the span reads as a bridge when
+  // the whole city is on screen. The ground shows around the pilings.
+  pen.diamond(x, y, LAWN);
+  pen.insetDiamond(x, y, 0.08, LAWN_LIT);
   pen.box(x - 0.08, y + 0.3, x + 1.08, y + 0.72, 8, 5, hex("#c8c0b0"));
   pen.box(x - 0.08, y + 0.3, x + 1.08, y + 0.72, 13, 2, hex("#f4efe4"));
   // Pilings and a dark arch under the deck, on the front face.
@@ -624,34 +625,20 @@ function drawLandmark(pen, l, ambient, night) {
 function drawPark(pen, p) {
   const x = p.x;
   const y = p.y;
-  const lawn = p.name === "Washington Park" ? hex("#3f6b3a") : hex("#4e8a40");
+  // Lady Bird Lake trail uses the darker lawn so the three parks are
+  // not the same green. The water polygon that used to sit on that
+  // trail is gone. The path below is the trail.
+  const lawn = p.name === "Washington Park" ? hex("#3f6b3a") : LAWN;
   pen.diamond(x, y, lawn);
-  pen.insetDiamond(x, y, 0.08, hex("#67a354"));
+  pen.insetDiamond(x, y, 0.08, LAWN_LIT);
   const [ax, ay] = project(x + 0.08, y + 0.55);
   const [bx, by] = project(x + 0.92, y + 0.62);
   const pathY = Math.round((ay + by) / 2);
   pen.hline(ax, bx, pathY, hex("#e7dcc8"));
   pen.hline(ax, bx, pathY + 1, hex("#c4b48a"));
-  if (p.name === "Cheesman Park") {
-    // Zilker. A small spring pool, not the full Barton Springs block.
-    const [cx, cy] = project(x + 0.58, y + 0.48);
-    pen.disc(cx, cy, 8, hex("#7fd3c4"));
-    pen.disc(cx, cy - 2, 4, hex("#d8fff4"));
-  } else if (p.name === "Washington Park") {
-    // Lady Bird Lake trail: the water is the park, the path runs along it.
-    const [cx, cy] = project(x + 0.55, y + 0.58);
-    pen.fillPoly(
-      [
-        [cx - 16, cy],
-        [cx - 2, cy - 8],
-        [cx + 16, cy - 1],
-        [cx + 2, cy + 7],
-      ],
-      WATER,
-    );
-    pen.hline(cx - 8, cx + 6, cy - 3, hex("#8fd0c8"));
-  } else if (p.name === "City Park") {
-    // Auditorium Shores: a lawn and a low shell facing the water.
+  if (p.name === "City Park") {
+    // Auditorium Shores: a lawn and a low shell. The shell used to face
+    // a lake. The lake is not drawn, and the shell stays on the grass.
     pen.box(x + 0.2, y + 0.58, x + 0.48, y + 0.82, 0, 6, LIMESTONE);
     pen.gable(x + 0.2, y + 0.58, x + 0.48, y + 0.82, 6, 5, hex("#d9d3c8"));
   }
@@ -769,24 +756,9 @@ function drawQuest(pen, q, ambient) {
     pen.diamond(x + 1, y, hex("#c4b48a"));
     pen.diamond(x, y + 1, hex("#4e8a40"));
     pen.diamond(x + 1, y + 1, hex("#3f6b3a"));
-    const [cx, cy] = project(x + 1, y + 0.85, 0);
-    pen.fillPoly(
-      [
-        [cx - 28, cy + 4],
-        [cx - 8, cy - 14],
-        [cx + 30, cy - 2],
-        [cx + 8, cy + 12],
-      ],
-      hex("#7fd3c4"),
-    );
-    pen.fillPoly(
-      [
-        [cx - 10, cy - 4],
-        [cx + 8, cy - 8],
-        [cx + 6, cy + 2],
-      ],
-      hex("#e8fff8"),
-    );
+    // Barton Springs is the lawn and the trees. The pool used to be a
+    // teal polygon on this block. It read as more of the lake, so it
+    // is grass now, same as the lots under it.
     oak(pen, project(x + 0.3, y + 1.55)[0], project(x + 0.3, y + 1.55)[1], true);
     oak(pen, project(x + 1.7, y + 1.6)[0], project(x + 1.7, y + 1.6)[1], false);
     return;
@@ -812,9 +784,11 @@ function drawQuest(pen, q, ambient) {
     return;
   }
   if (name === "Denver Botanic Gardens") {
-    // Pennybacker Bridge. The white arch is the silhouette.
-    pen.diamond(x, y, WATER_DEEP);
-    pen.diamond(x + 1, y, WATER);
+    // Pennybacker Bridge. The white arch is the silhouette. The lots
+    // under it are grass. They used to be the lake, and the arch looked
+    // like it stood in a broken pond.
+    pen.diamond(x, y, hex("#6a9a45"));
+    pen.diamond(x + 1, y, hex("#7eaa52"));
     pen.diamond(x, y + 1, hex("#3f6b3a"));
     pen.diamond(x + 1, y + 1, hex("#4e8a40"));
     const [ax, ay] = project(x + 0.15, y + 0.7, 8);
@@ -876,11 +850,12 @@ export const austinTheme = {
   labels: AUSTIN_LABELS,
   ground: GROUND,
   mountains: MOUNTAINS,
-  // Lady Bird Lake is a ribbon along the south and east edges of the
-  // map, two lots wide (48 picture pixels). A view turn moves those
-  // edges. The civic block is inland, so the Congress Avenue Bridge
-  // draws its own water on its lot instead of sitting on this ribbon.
-  lake: { color: "#2f8f86", shine: "#b7e4dc", band: 48 },
+  // No lake field. The ribbon, the bridge pond, the trail pond, Barton
+  // Springs, and the water under Pennybacker were all the same teal.
+  // The ribbon hung past the diamond and was full of gaps, so a zoom
+  // showed the pinned prairie through it and the shore jumped. A turn
+  // pulled that ribbon across the lots. The skirt below is the lip
+  // the city sits on. It is tan and cedar, not water.
   // Three stops, not one tint. Top is a warm light blue, the middle is
   // peach, the horizon is gold. One peach mixed into every stop turned
   // the whole sky gray. Night stops stay dark so the stars still read.

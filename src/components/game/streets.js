@@ -39,9 +39,10 @@ export function drawStreets(pen, city, theme, ambient, night) {
   const tiles = city.map.tiles;
   const period = city.map.period;
   const quarter = city.viewQuarter || 0;
-  // The lip under the near edge stays on the camera side. It is what
-  // keeps the city from looking like it floats. The lake is the piece
-  // that belongs to a compass edge, and it turns with the map.
+  // The lip under the near edge stays on the camera side at every
+  // quarter. It is what keeps the city from looking like it floats.
+  // It is the skirt, tan or sand, not a shore. There is no water to
+  // send around the diamond when the view turns.
   const at = (u, v) => {
     if (!quarter) return [u, v];
     return rotateGridPoint(u, v, quarter, tiles);
