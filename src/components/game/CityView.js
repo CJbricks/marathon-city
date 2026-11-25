@@ -35,8 +35,23 @@
 // buttons are painted on top of the canvas, and a wheel on a button
 // never reached the canvas, so desktop zoom died in the grass under
 // the city. The phone pinch is still the pointer path.
+//
+// A tap that barely moves, and is not a pinch, asks landmarkHit which
+// sprite box contains that picture pixel. The box is the one just
+// uploaded, so a turn and a flip are already in it. A drag past the
+// slop still pans, and the wheel still zooms. The card is HTML, so it
+// is not in the share PNG.
 
 import { useEffect, useRef, useState } from "react";
+import { landmarkName } from "@/lib/landmarkNames";
+import LandmarkPopup from "./LandmarkPopup";
+import {
+  isTap,
+  pickLandmark,
+  popupForProp,
+  scenePoint,
+  spriteBounds,
+} from "./landmarkHit";
 import { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { lightingAt, lightingAtMinutes } from "@/lib/lighting";
 import rules from "@/lib/rules";
@@ -175,6 +190,7 @@ function RotateMark({ way }) {
 export default function CityView({ city, fx, celebrate, theme = "Denver", viewRef }) {
   const hostRef = useRef(null);
   const [quarter, setQuarter] = useState(readStoredQuarter);
+  const [pick, setPick] = useState(null);
   const stateRef = useRef({ city, fx, celebrate, theme, quarter });
   // The share button lives in Game.js. The Pixi app only exists after
   // boot(), so the handle is published from there and cleared on the way
@@ -184,9 +200,32 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
   const viewRefHolder = useRef(null);
 
   useEffect(() => {
-    stateRef.current = { city, fx, celebrate, theme, quarter };
+    stateRef.current = {
+      city,
+      fx,
+      celebrate,
+      theme,
+      quarter,
+      // Remember which view the card was opened on. A later turn, or a
+      // different save, fails the check in render and the card is not
+      // drawn. The rotate buttons do not go through this function.
+      openLandmark(next) {
+        if (!next) {
+          setPick(null);
+          return;
+        }
+        const view = stateRef.current;
+        setPick({ ...next, quarter: view.quarter, theme: view.theme, city: view.city });
+      },
+    };
     viewRefHolder.current = viewRef;
   }, [city, fx, celebrate, theme, viewRef, quarter]);
+
+  // The card remembers the quarter and the city it was aimed at. A turn
+  // clears it in the handlers below. This check is what hides it on the
+  // same render, before that clear lands, and when a different save
+  // arrives. The buttons still rotate: they are not inside the card.
+  const popup = pick && pick.quarter === quarter && pick.theme === theme && pick.city === city ? pick : null;
 
   useEffect(() => {
     const onKey = (event) => {
@@ -196,6 +235,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       const key = event.key.toLowerCase();
       if (key !== "q" && key !== "e") return;
       event.preventDefault();
+      setPick(null);
       setQuarter((current) => {
         const next = normalizeQuarter(current + (key === "q" ? -1 : 1));
         storeQuarter(next);
@@ -208,6 +248,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
   }, []);
 
   const turn = (direction) => {
+    setPick(null);
     setQuarter((current) => {
       const next = normalizeQuarter(current + direction);
       storeQuarter(next);
@@ -220,7 +261,9 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
     const host = hostRef.current;
     let dead = false;
     let application;
-    const pointers = new Map();
+      const pointers = new Map();
+      const downs = new Map();
+      let gesturePinch = false;
     // The picture pixel between the fingers, remembered for the whole pinch.
     // Scale steps re-anchor that pixel. It is cleared when one finger lifts.
     let pinch = null;
@@ -381,7 +424,9 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       let fadeStart = 0;
       // Screen boxes of the building sprites. A mover behind one of these
       // is not drawn, so a narrow tower still hides the sidewalk it rises over.
+      // hitBoxes is the same rectangles, used when a tap asks what it hit.
       const occluders = [];
+      const hitBoxes = [];
       const placeProp = (sprite, crop, mirror) => {
         // A negative scale draws the crop to the left of the anchor.
         // Parking the anchor on the right edge keeps the building on
@@ -454,17 +499,26 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
           host.dataset.texBytes = String(texBytes + propBytes);
         }
         occluders.length = 0;
+        hitBoxes.length = 0;
         for (const prop of props) {
           const sprite = propSprites.get(prop.id);
           const frame = sprite?.texture;
           if (!frame || frame === Texture.EMPTY || !frame.width) continue;
-          const left = sprite.scale.x < 0 ? sprite.position.x - frame.width : sprite.position.x;
-          occluders.push({
+          // scale.x is negative only for an ordinary building at 90° or
+          // 270°. Landmarks stay at 1, so this left edge matches the
+          // unflipped pixels. spriteBounds is the same math the tap uses.
+          const bounds = spriteBounds(
+            sprite.position.x,
+            sprite.position.y,
+            frame.width,
+            frame.height,
+            sprite.scale.x,
+          );
+          occluders.push({ depth: prop.depth, ...bounds });
+          hitBoxes.push({
             depth: prop.depth,
-            x: left,
-            y: sprite.position.y,
-            w: frame.width,
-            h: frame.height,
+            ...bounds,
+            popup: popupForProp(prop, live),
           });
         }
       };
@@ -669,8 +723,32 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         panY = next.panY;
         placeWorld();
       };
+      const openLandmarkAt = (clientX, clientY) => {
+        const focal = canvasPoint(clientX, clientY);
+        const point = scenePoint(focal.x, focal.y, panX, panY, zoom);
+        const hit = pickLandmark(point, hitBoxes);
+        if (!hit?.popup) return;
+        const themeName = stateRef.current.theme || "Denver";
+        // A slot with no real name in this theme stays closed. Denver
+        // does not have the library, and a blank title would be a bug.
+        if (!landmarkName(themeName, hit.popup.key)) return;
+        const rect = canvas.getBoundingClientRect();
+        const hostRect = host.getBoundingClientRect();
+        const cx = panX + (hit.x + hit.w / 2) * zoom;
+        const cy = panY + (hit.y + hit.h / 2) * zoom;
+        stateRef.current.openLandmark?.({
+          key: hit.popup.key,
+          run: hit.popup.run,
+          anchorX: rect.left - hostRect.left + cx,
+          anchorY: rect.top - hostRect.top + cy,
+        });
+      };
       const down = (event) => {
+        // A right-click is not a tap. Touch events have button 0.
+        if (event.button != null && event.button !== 0) return;
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        downs.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pointers.size >= 2) gesturePinch = true;
       };
       const move = (event) => {
         const prev = pointers.get(event.pointerId);
@@ -679,6 +757,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
         const pts = [...pointers.values()];
         if (pts.length >= 2) {
+          gesturePinch = true;
           const a = canvasPoint(pts[0].x, pts[0].y);
           const b = canvasPoint(pts[1].x, pts[1].y);
           const dist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -724,8 +803,23 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         }
       };
       const up = (event) => {
+        const start = downs.get(event.pointerId);
+        downs.delete(event.pointerId);
         pointers.delete(event.pointerId);
         if (pointers.size < 2) pinch = null;
+        // Wait until every finger is up. A pinch ends with two lifts,
+        // and the first lift must not open a card under the other finger.
+        if (pointers.size > 0) return;
+        const pinched = gesturePinch;
+        gesturePinch = false;
+        if (!isTap(start, { x: event.clientX, y: event.clientY }, pinched)) return;
+        openLandmarkAt(event.clientX, event.clientY);
+      };
+      const cancel = (event) => {
+        downs.delete(event.pointerId);
+        pointers.delete(event.pointerId);
+        if (pointers.size < 2) pinch = null;
+        if (pointers.size === 0) gesturePinch = false;
       };
       let wheelAt = 0;
       const wheel = (event) => {
@@ -750,7 +844,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
       canvas.addEventListener("pointerdown", down);
       canvas.addEventListener("pointermove", move);
       canvas.addEventListener("pointerup", up);
-      canvas.addEventListener("pointercancel", up);
+      canvas.addEventListener("pointercancel", cancel);
       // The rotate buttons are siblings of the canvas, inside this host,
       // and they sit in the grass under the diamond. A listener on the
       // canvas never sees a wheel whose target is one of those buttons.
@@ -821,7 +915,7 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
         canvas.removeEventListener("pointerdown", down);
         canvas.removeEventListener("pointermove", move);
         canvas.removeEventListener("pointerup", up);
-        canvas.removeEventListener("pointercancel", up);
+        canvas.removeEventListener("pointercancel", cancel);
         host.removeEventListener("wheel", wheel, { capture: true });
         for (const target of gestureTargets) {
           target.removeEventListener("gesturestart", stopBrowserPinch, gestureOpts);
@@ -848,6 +942,16 @@ export default function CityView({ city, fx, celebrate, theme = "Denver", viewRe
 
   return (
     <div className="city-canvas" ref={hostRef}>
+      {popup ? (
+        <LandmarkPopup
+          theme={theme}
+          landmarkKey={popup.key}
+          run={popup.run}
+          anchorX={popup.anchorX}
+          anchorY={popup.anchorY}
+          onClose={() => setPick(null)}
+        />
+      ) : null}
       <div className="rotate-dock" data-quarter={quarter}>
         <button
           type="button"

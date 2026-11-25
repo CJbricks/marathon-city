@@ -115,6 +115,36 @@ describe("simulate", () => {
     expect(built).toBe(2);
     expect(out.buildings[0].storiesBuilt).toBeGreaterThan(0);
   });
+
+  it("ties Union Station to the run that crossed 100 miles", () => {
+    const open = { ...rules, asOfDate: "2022-01-01", map: wideMap };
+    const out = simulate(runs(10, 10), open);
+    const station = out.landmarks.find((l) => l.key === "unionStation");
+    expect(station.run).toEqual({
+      date: "2020-01-10",
+      miles: 10,
+      seconds: 6000,
+      stravaId: "r9",
+    });
+    expect(out.landmarks.find((l) => l.key === "cathedral")).toBeUndefined();
+  });
+
+  it("keeps the unlock run on an unfinished capitol and the finish run once it is done", () => {
+    const open = { ...rules, asOfDate: "2022-06-01", map: wideMap };
+    const started = simulate(runs(10, 25), open);
+    const rising = started.buildings.find((b) => b.type === "capitol");
+    expect(rising.status).toBe("in_progress");
+    expect(rising.run.stravaId).toBe("r24");
+    expect(started.landmarks.find((l) => l.key === "capitol")).toBeUndefined();
+
+    const done = simulate(runs(10, 28), open);
+    const finished = done.buildings.find((b) => b.type === "capitol");
+    const mark = done.landmarks.find((l) => l.key === "capitol");
+    expect(finished.status).toBe("complete");
+    expect(mark.run).toEqual(finished.run);
+    expect(mark.run.miles).toBe(10);
+    expect(mark.run.stravaId).not.toBe("r24");
+  });
 });
 
 function effort(type, miles, i) {

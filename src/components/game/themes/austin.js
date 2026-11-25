@@ -15,9 +15,10 @@
 //   the capitol is a pink dome (not gold), the UT Tower is a thin
 //   cream shaft with an orange top, the bridge is a pale deck on its lot.
 //   The LBJ Library is a wide travertine slab with a set-back top.
-//   Martha's is a small cream shop with an orange awning. Rockman's
-//   is a bakery awning with a loaf on a sign. None of those is a logo.
+//   Martha's is a small cream shop with an orange awning. Rockman
+//   Coffee is a bakery awning with a loaf on a sign. None of those is a logo.
 
+import { labelsFor } from "../../../lib/landmarkNames.js";
 import { hex, mix, mul, pick, rng } from "../pixelPen";
 import { STORY, project } from "../sceneLayout";
 
@@ -62,17 +63,11 @@ const MOUNTAINS = {
 };
 
 // Names a person would say, keyed by the slot the simulator already uses.
-// Drawing code matches the slot. A caption, if one is added later, should
-// read this map instead of the Denver string stored on the city.
+// Drawing code matches the slot. The landmark names come from
+// landmarkNames.js so the popup and this map cannot drift apart. The
+// quest and park names below are Austin's words for a Denver quest name.
 export const AUSTIN_LABELS = {
-  capitol: "Texas State Capitol",
-  unionStation: "Congress Avenue Bridge",
-  courthouse: "UT Tower",
-  artMuseum: "Blanton Museum of Art",
-  lbjLibrary: "LBJ Presidential Library",
-  marthasGallery: "Martha's Art Gallery",
-  rockmansBakery: "Rockman's Bakery",
-  cathedral: "St. Mary Cathedral",
+  ...labelsFor("Austin"),
   "Cherry Creek Trail": "Barton Springs Pool",
   "Denver Zoo": "Mount Bonnell",
   "Denver Botanic Gardens": "Pennybacker Bridge",
@@ -467,7 +462,7 @@ function drawCathedral(pen, l, ambient) {
   const x = l.x;
   const y = l.y;
   const stone = mul(CREAM, ambient);
-  // St. Mary Cathedral: one tall steeple and a rose window. Denver's
+  // Saint Mary Cathedral: one tall steeple and a rose window. Denver's
   // cathedral is two equal spires. One steeple is how these stay apart.
   pen.box(x + 0.22, y + 0.28, x + 0.78, y + 0.88, 0, 20, stone);
   pen.windows(x + 0.22, y + 0.28, x + 0.78, y + 0.88, 20, (side, t, n, k) => {

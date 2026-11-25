@@ -6,6 +6,7 @@ The game rules (one story per mile, landmarks, parks, side quests) are in the [R
 
 ```
 src/lib/rules.js           The numbers. Heights, milestones, park and side-quest thresholds.
+src/lib/landmarkNames.js   Real-world names for the landmark popup. One file to edit.
 src/lib/simulate.js        Pure replay. Activities in, city out. No database, no DOM.
 src/lib/replay.js          Applies the save's start date, then calls simulate.
 src/lib/lighting.js        Device-clock sky, from the prototype keyframes.
@@ -43,6 +44,8 @@ src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks t
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
 src/components/game/dust.js      Pixel specks at the base of a building that is going up.
 src/components/game/CityView.js  Shows the canvas in Pixi. The sky stays put. The grid moves.
+src/components/game/landmarkHit.js  Tap to picture pixel, then which sprite box was hit.
+src/components/game/LandmarkPopup.js  The card that grows out of a tapped landmark.
 src/components/game/shareCapture.js  Copies that canvas to a PNG and shares or downloads it.
 src/lib/shareCity.js       The share sentence, the filename, and the footer colors. No canvas.
 src/app/layout.js          Font, tab title, share-card tags, viewport, Chakra provider.
@@ -260,9 +263,9 @@ Slots Austin paints, using Denver's unlocks:
 | Courthouse (streak) | UT Tower, cream shaft, red tile roof, orange crown |
 | Art Museum (pace PR) | Blanton Museum of Art, a canopy of colored petals |
 | LBJ Library (500 run mi, Austin only) | Travertine slab, recessed top band, its own lot |
-| Martha's Art Gallery (first 5-mile pace PR, Austin only) | Small cream storefront, burnt-orange awning, across from the Blanton |
-| Rockman's Bakery (10 runs before 6:00am local, Austin only) | Awning and a loaf sign |
-| Cathedral (every 200 mi) | St. Mary Cathedral, one steeple and a rose window |
+| Martha's (first 5-mile pace PR, Austin only) | Small cream shop, burnt-orange awning, across from the Blanton. The rules file still says "Martha's Art Gallery". |
+| Rockman Coffee (10 runs before 6:00am local, Austin only) | Awning and a loaf sign. The rules file still says "Rockman's Bakery". |
+| Cathedral (every 200 mi) | Saint Mary Cathedral, one steeple and a rose window |
 | Half marathon, in order | Barton Springs Pool, Mount Bonnell, Pennybacker Bridge |
 | Full marathon, in order | Giga Texas, then Frost Bank Tower |
 | Parks, in order | Zilker Park, Lady Bird Lake trail, Auditorium Shores |
@@ -293,6 +296,20 @@ The grid fades for about a sixth of a second when the quarter changes. The sky d
 
 The buttons are a row, left then right, centered in the prairie under the diamond. That band is empty at the opening fit: the picture is taller than the diamond, and the view fits the whole picture, on a 390px phone and on a desktop window. They sit 20px above the footer, so they do not cover the bottom bar or the city. They are HTML on the canvas box, the same way MENU is, not sprites in the grid. A drag or a pinch moves the city and leaves the buttons where they are. Q and E do the same turns on a keyboard, and they are ignored while a text field is focused.
 
+## Landmark tap popups
+
+A tap or a click on a civic landmark, or on one of the other named landmark buildings, opens a small card. The card scales out of that building in four pixel steps. It closes on a tap outside the card, the X, or Escape. The same card is used on a phone and on a desktop window.
+
+The buildings that open it are the slots in `src/lib/landmarkNames.js`: the capitol, Union Station, the courthouse, the art museum, and the cathedral, plus Austin's library, gallery, and bakery. A rowhouse, a park, a trail, and a stadium do not. Those are ordinary buildings, parks, and side quests. Their sprites still block a tap, so a tower standing in front of Union Station does not open Union Station.
+
+The name on the card is not the string `simulate()` stored. The replay still writes "State Capitol", "Courthouse", "Cathedral Basilica", "Martha's Art Gallery", and "Rockman's Bakery", because those strings are in the log and in old tests. `landmarkNames.js` is the map from that slot to the real place. Denver's capitol is the Colorado State Capitol. Austin's same slot is the Texas State Capitol. The courthouse sprite is a stone block with a pediment, so the Denver name is the Byron R. White U.S. Courthouse, not the City and County Building (that one is known for a clock tower, and the clock in this city is Union Station). Austin's cathedral is Saint Mary Cathedral, the name on the cathedral's own site. Martha's and Rockman Coffee are the names on those businesses' own sites. Edit that one file to change a name. Austin's `labels` map reads the Austin half of it, so the label and the card cannot disagree.
+
+The run on the card is copied when the city is replayed. `runOf` in `simulate.js` keeps the date, the miles, the moving seconds, and the Strava id of the activity that unlocked the landmark. The capitol is the exception: while it is still going up, the run is the one that crossed 250 miles. When the 13.1 miles finish, that finish replaces it, on both the building and the landmark row. The capitol is drawn as a building, so the tap reads `building.run`. Every other landmark is its own sprite, and the tap reads `landmark.run`. Pace is moving seconds divided by miles. A demo id (`demo-3`) or a typed distance (`manual-…`) has no Strava page, and the card says so. A missing run says no run is linked yet. The card does not call Strava. A phone that opened the city by code is looking at the same replay of the saved activities. It does not have the owner's token, and it does not need one.
+
+Hit testing does not use the lot diamond. The dome and the spires stand above the lot, and the sprite's box is the rectangle CityView already cut out of the picture. A tap's page pixel becomes a canvas pixel (minus the canvas origin), then a picture pixel: `(canvas - pan) / zoom`. That is the same camera a drag and a pinch write. The box that contains the point and has the greatest depth wins. Depth is the turned `x + y + span * 2`, so a landmark that rotated to the front is in front. `orientCity` has already moved the lot, and the sprite was painted on that moved lot, so the box is the turned one. At 90° and 270° a normal building, including the capitol, is drawn with a negative horizontal scale. The anchor sits on the right edge, which keeps the building on its lot. The hit box starts at `position.x - width` in that case. Landmark sprites stay at scale 1. A mirrored clock would be harder to recognize, and the hit box must not pretend they were mirrored.
+
+A finger that moves more than 12 pixels is a pan. The card stays closed, and the drag is the one that was already running. Two fingers are a pinch, and the lift does not open a card. The wheel listener is unchanged. The rotate buttons are later siblings of the transparent scrim, at the same stacking level, so a tap on a button turns the view instead of closing the card. The turn then closes the card, because every lot just moved and the card was aimed at the old pixel.
+
 ## How to add a third city
 
 Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile numbers stay shared. Austin's library, gallery, and bakery are already the `cities.Austin` block; a new city that only changes drawings should not add a second block there. Copy `themes/austin.js` to `themes/chicago.js` (or whatever the city is) and export an object with the same shape. The field list is at the top of `themes/index.js`. Omit `sky` if this city should keep Denver's sky. There is no `lake` field. The painter that used to read it is gone.
@@ -303,7 +320,7 @@ Then:
 2. Add the canonical name to `OPEN_THEMES` in `themes/names.js`. That is what the API will accept. `themeFor` still falls back to Denver if the painter is missing, so do both.
 3. Add the uppercase label to `CITIES` in `Screens.js`. A name in that list but not in `OPEN_THEMES` stays a SOON card. A name in both becomes a button.
 4. If the frame should change, add a `.theme-<id>` block in `globals.css` next to `.theme-austin`. The class is `theme-` plus the name in lowercase. Denver has no class, on purpose, so its gold frame is the default.
-5. Give the theme a `labels` map if the landmarks should have their own names. Draw functions still switch on the slot key the simulator writes (`unionStation`, `"Coors Field"`, `"Cheesman Park"`). The map is the display name. It does not move the unlock.
+5. Give the theme a `labels` map if the landmarks should have their own names. Denver and Austin popup names live in `src/lib/landmarkNames.js`. A new city's real names go in that file too, or the card will keep Denver's. Draw functions still switch on the slot key the simulator writes (`unionStation`, `"Coors Field"`, `"Cheesman Park"`). The map is the display name. It does not move the unlock.
 
 Run `npm test`. The Denver capitol test still expects a gold dome, and the Austin capitol test expects pink granite and almost no gold. A new city should get the same kind of check: one pixel that Denver has, and one it must not have. Then `npm run lint` and `npm run build`.
 

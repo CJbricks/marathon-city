@@ -12,6 +12,10 @@
 // Denver and Austin share this replay. rules.cities.Austin is the extra:
 // three landmarks a Denver save never receives. replay() passes the save's
 // city in as rules.city. A missing city is Denver.
+//
+// Each landmark keeps a small copy of the activity that unlocked it, or
+// that finished the capitol. The popup reads that copy. It does not ask
+// Strava. A city code replays the same rows the owner already saved.
 
 import rulesDefault from "./rules.js";
 
@@ -22,6 +26,22 @@ const addDays = (s, n) => fmt(new Date(toDate(s).getTime() + n * DAY));
 const daysBetween = (a, b) => Math.round((toDate(b) - toDate(a)) / DAY);
 const hund = (x) => Math.round(x * 100);
 const mi = (h) => +(h / 100).toFixed(2);
+
+// The bits the landmark card shows. The rest of the activity (title,
+// type, the local clock) stays on the activity row. A later edit of the
+// card should add a field here, not read the whole log on the phone.
+function runOf(act) {
+  if (!act || !act.date) return null;
+  const miles = Number(act.miles);
+  if (!Number.isFinite(miles)) return null;
+  const seconds = Number(act.seconds);
+  return {
+    date: act.date,
+    miles,
+    seconds: Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : 0,
+    stravaId: act.stravaId ? String(act.stravaId) : "",
+  };
+}
 
 // Wall clock from a Strava start_date_local string. The digits after T are
 // already the athlete's local time. new Date() would read that string in
@@ -279,6 +299,9 @@ export function simulate(input, rules = rulesDefault) {
       variant: 0,
       status: "in_progress",
       completeDate: null,
+      // The run that crossed 250 miles. If a later run finishes the 13.1,
+      // that finish replaces this. An unfinished capitol still has a run.
+      run: runOf(act),
     };
     buildings.push(b);
     log.push(
@@ -287,7 +310,7 @@ export function simulate(input, rules = rulesDefault) {
     return b;
   }
 
-  function placeLandmark(key, date, note) {
+  function placeLandmark(key, date, note, act) {
     const max = L[key].max ?? 1;
     if (landmarks.filter((l) => l.key === key).length >= max) return;
     earned.add(key);
@@ -300,6 +323,7 @@ export function simulate(input, rules = rulesDefault) {
       x: lot.x,
       y: lot.y,
       ring: lot.ring,
+      run: runOf(act),
     });
     log.push(`${date}  Landmark: ${L[key].name} (${note})`);
   }
@@ -324,7 +348,7 @@ export function simulate(input, rules = rulesDefault) {
     }
   }
 
-  function placeCityLandmark(key, spec, date, note) {
+  function placeCityLandmark(key, spec, date, note, act) {
     if (!spec) return;
     const max = spec.max ?? 1;
     if (landmarks.filter((l) => l.key === key).length >= max) return;
@@ -347,6 +371,7 @@ export function simulate(input, rules = rulesDefault) {
       x: placed.x,
       y: placed.y,
       ring: placed.ring,
+      run: runOf(act),
     });
     log.push(`${date}  Landmark: ${spec.name} (${note})`);
   }
@@ -500,6 +525,9 @@ export function simulate(input, rules = rulesDefault) {
           `${act.date}  Completed #${current.id} ${current.label} (${current.targetStories} st) on ${current.ring} lot ${current.x},${current.y}`,
         );
         if (current.type === "capitol") {
+          // The finish replaces the unlock. The card shows the run that
+          // completed the dome, which is the one that just landed.
+          current.run = runOf(act);
           landmarks.push({
             key: "capitol",
             name: L.capitol.name,
@@ -509,6 +537,7 @@ export function simulate(input, rules = rulesDefault) {
             y: current.y,
             ring: current.ring,
             buildingId: current.id,
+            run: current.run,
           });
         }
         current = paused || startBuilding(act);
@@ -533,7 +562,7 @@ export function simulate(input, rules = rulesDefault) {
     }
 
     if (cumRun >= hund(L.unionStation.cumulativeRunMiles)) {
-      placeLandmark("unionStation", act.date, `cumulative ${mi(cumRun)} run mi`);
+      placeLandmark("unionStation", act.date, `cumulative ${mi(cumRun)} run mi`, act);
     }
     runDates.push(act.date);
     const inWin = runDates.filter((d) => daysBetween(d, act.date) < L.courthouse.windowDays).length;
@@ -542,6 +571,7 @@ export function simulate(input, rules = rulesDefault) {
         "courthouse",
         act.date,
         `${inWin} runs in ${L.courthouse.windowDays} days ending ${act.date}`,
+        act,
       );
     }
     if (act.miles >= L.artMuseum.minDistance) {
@@ -553,6 +583,7 @@ export function simulate(input, rules = rulesDefault) {
           "artMuseum",
           act.date,
           `pace PR ${fmtPace(pace)}/mi on ${act.miles} mi (prev best ${fmtPace(bestPace)}/mi)`,
+          act,
         );
       }
       bestPace = Math.min(bestPace, pace);
@@ -565,6 +596,7 @@ export function simulate(input, rules = rulesDefault) {
         cityLandmarks.lbjLibrary,
         act.date,
         `cumulative ${mi(cumRun)} run mi`,
+        act,
       );
     }
     if (cityLandmarks?.marthasGallery) {
@@ -574,7 +606,7 @@ export function simulate(input, rules = rulesDefault) {
         const pace = act.seconds / act.miles;
         const after = spec.afterRuns ?? 0;
         if (runCount > after && austinBestPace < Infinity && pace < austinBestPace) {
-          placeCityLandmark("marthasGallery", spec, act.date, `pace PR on ${act.miles} mi`);
+          placeCityLandmark("marthasGallery", spec, act.date, `pace PR on ${act.miles} mi`, act);
         }
         austinBestPace = Math.min(austinBestPace, pace);
       }
@@ -592,6 +624,7 @@ export function simulate(input, rules = rulesDefault) {
           cityLandmarks.rockmansBakery,
           act.date,
           `${earlyRuns} runs starting before ${hour}:00`,
+          act,
         );
       }
     }
@@ -616,6 +649,7 @@ export function simulate(input, rules = rulesDefault) {
           x: lot.x,
           y: lot.y,
           ring: lot.ring,
+          run: runOf(act),
         });
         log.push(
           `${act.date}  Landmark: ${name} (${mi(cumRun)} banked run mi, 1 per ${cathedral.milesPer})`,
@@ -718,6 +752,9 @@ export function simulate(input, rules = rulesDefault) {
     completeDate: b.completeDate,
     storiesBuilt: mi(b.builtH * R.storiesPerMile),
     progress: +((b.builtH / b.needH).toFixed(4)),
+    // Only the capitol carries a run. Other buildings are not tappable,
+    // and copying a run onto every rowhouse would bloat the payload.
+    ...(b.run ? { run: b.run } : {}),
   }));
 
   return {

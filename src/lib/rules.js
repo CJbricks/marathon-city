@@ -80,6 +80,9 @@ const rules = {
   },
 
   landmarks: {
+    // The name strings here are what the replay stores. The popup shows
+    // the real-world name from src/lib/landmarkNames.js. Edit that file
+    // to change what a tap says. Editing a name here changes the log.
     // max is how many of that landmark the city may hold. 1 is the default
     // for a milestone landmark. Cathedral is the exception: it is one
     // building per milesPer banked run miles, and max null means no ceiling.
