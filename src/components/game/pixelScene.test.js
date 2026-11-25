@@ -165,10 +165,10 @@ describe("theme seam", () => {
     expect(themeFor("Austin").sidewalk.day).not.toBe(themeFor("Denver").sidewalk.day);
     expect(themeFor("Austin").labels.unionStation).toBe("Congress Avenue Bridge");
     expect(themeFor("Austin").labels.courthouse).toBe("UT Tower");
-    expect(themeFor("Austin").labels.cathedral).toBe("St. Mary Cathedral");
+    expect(themeFor("Austin").labels.cathedral).toBe("Saint Mary Cathedral");
     expect(themeFor("Austin").labels.lbjLibrary).toBe("LBJ Presidential Library");
-    expect(themeFor("Austin").labels.marthasGallery).toBe("Martha's Art Gallery");
-    expect(themeFor("Austin").labels.rockmansBakery).toBe("Rockman's Bakery");
+    expect(themeFor("Austin").labels.marthasGallery).toBe("Martha's");
+    expect(themeFor("Austin").labels.rockmansBakery).toBe("Rockman Coffee");
     expect(themeFor("Austin").labels["Big Blue Bear"]).toBe("Giga Texas");
   });
 
