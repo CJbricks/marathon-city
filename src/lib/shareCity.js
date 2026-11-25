@@ -5,11 +5,11 @@
 // lines are decided here, with no canvas and no Pixi, so a test can lock
 // them without a browser. The pixel copy lives in shareCapture.js.
 //
-// The colors are the same hex values as the Denver and Austin blocks in
-// globals.css. The capture prefers the live CSS variables when it can
-// read them. These are the backup, and they are what the tests check. An
-// unknown theme uses Denver's band, the same way an unknown theme paints
-// Denver.
+// The colors are the same hex values as the Denver, Austin, and Tokyo
+// blocks in globals.css. The capture prefers the live CSS variables when
+// it can read them. These are the backup, and they are what the tests
+// check. An unknown theme uses Denver's band, the same way an unknown
+// theme paints Denver.
 
 export const SHARE_TITLE = "Miles and Miles";
 export const SHARE_SITE_HOST = "marathon-city.vercel.app";
@@ -76,11 +76,17 @@ export function formatShareMiles(miles) {
 }
 
 // The save's typed name is the city name on the card. A blank name falls
-// back to the theme, so an Austin city does not introduce itself as Denver.
+// back to the theme, so an Austin or Tokyo city does not introduce itself
+// as Denver.
+const THEME_FALLBACK_NAMES = {
+  austin: "Austin",
+  tokyo: "Tokyo",
+};
+
 export function shareCityName(name, theme) {
   const trimmed = String(name ?? "").replace(/\s+/g, " ").trim();
   if (trimmed) return trimmed;
-  return String(theme || "").toLowerCase() === "austin" ? "Austin" : "Denver";
+  return THEME_FALLBACK_NAMES[String(theme || "").toLowerCase()] || "Denver";
 }
 
 export function shareCaption({ name, miles, theme } = {}) {
@@ -120,13 +126,23 @@ export function shareMessage(meta = {}) {
 }
 
 export function shareBandPalette(theme) {
-  if (String(theme || "").toLowerCase() === "austin") {
+  const key = String(theme || "").toLowerCase();
+  if (key === "austin") {
     return {
       background: "#2c1810",
       name: "#f4e6c8",
       stats: "#bf5700",
       credit: "#e7c9a0",
       rule: "#bf5700",
+    };
+  }
+  if (key === "tokyo") {
+    return {
+      background: "#1c2430",
+      name: "#f7f4ee",
+      stats: "#c9b062",
+      credit: "#e8e4d8",
+      rule: "#c9b062",
     };
   }
   return {

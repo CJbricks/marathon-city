@@ -135,15 +135,23 @@ function skyAndLand(pen, light, theme) {
     }
   }
 
-  const mountains = theme.mountains;
-  const rock = mul(hex(mountains.rock), light.mountain);
-  const rockS = mul(hex(mountains.rockShade), light.mountain);
-  const snow = mul(hex(mountains.snow), light.snow);
-  const snowS = mul(hex(mountains.snowShade), light.snow);
-  const foot = mul(hex(mountains.foothill), light.mountain);
-  const footS = mul(hex(mountains.foothillShade), light.mountain);
-  ridge(pen, mountains.main, horizonY + 12, rock, rockS, snow, snowS, mountains.snowline);
-  ridge(pen, mountains.foothills, horizonY + 32, foot, footS, snow, snowS, mountains.snowline);
+  // A theme may paint its own horizon. Tokyo does, because the ridge
+  // below is always seven peaks: Denver's range, or Austin's hills when
+  // the snow line is above them. Fuji is one cone, so it cannot be a
+  // seed change. Omit drawHorizon and this ridge is what you get.
+  if (typeof theme.drawHorizon === "function") {
+    theme.drawHorizon(pen, horizonY, light);
+  } else {
+    const mountains = theme.mountains;
+    const rock = mul(hex(mountains.rock), light.mountain);
+    const rockS = mul(hex(mountains.rockShade), light.mountain);
+    const snow = mul(hex(mountains.snow), light.snow);
+    const snowS = mul(hex(mountains.snowShade), light.snow);
+    const foot = mul(hex(mountains.foothill), light.mountain);
+    const footS = mul(hex(mountains.foothillShade), light.mountain);
+    ridge(pen, mountains.main, horizonY + 12, rock, rockS, snow, snowS, mountains.snowline);
+    ridge(pen, mountains.foothills, horizonY + 32, foot, footS, snow, snowS, mountains.snowline);
+  }
 
   const ground = theme.ground;
   for (let y = horizonY; y < height; y += 1) {

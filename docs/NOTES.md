@@ -38,7 +38,7 @@ src/components/game/sceneLayout.js  Picture size and the isometric lot math (128
 src/components/game/rotation.js    Quarter-turns of the view. Does not edit the save.
 src/components/game/pixelPen.js    The shared pixel pen every theme draws with.
 src/components/game/streets.js     Sidewalks, curbs, and asphalt. Colors come from the theme.
-src/components/game/themes/        One folder per city. Denver and Austin. names.js is the allow-list.
+src/components/game/themes/        One file per city. Denver, Austin, and Tokyo. names.js is the allow-list.
 src/components/game/overlaySprites.js  Cars, people, crane, transit. Same pixel scale as the city.
 src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks the theme to draw.
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
@@ -81,7 +81,7 @@ Someone opens `/`.
 
 A person can keep three cities. Each one is a row in `city_saves` with its own `save_id`. The browser cookie is still only the user id. `active` is which of the three is on screen.
 
-The name is a label they type ("Training block", "CJ's Denver"), at most 24 characters. A blank name is refused. The theme stays Denver for the beta. The bottom bar shows the name so the three cities are easy to tell apart.
+The name is a label they type ("Training block", "CJ's Denver"), at most 24 characters. A blank name is refused. The theme is the city they picked: Denver, Austin, or Tokyo. The bottom bar shows the name so the three cities are easy to tell apart.
 
 What a save stores: the name, the theme, all-history or a start date, the race date and race name if they set one, the runs that belong to that city, and that city's own `last_synced_at`. Log run and the first-load Strava pull write runs onto the active save only. The same Strava id can sit on two saves. Inside one save, a repeat of that id is still ignored.
 
@@ -234,11 +234,11 @@ A car is not drawn on top of every building. The ground (streets and lawns) is o
 
 One 1280×1000 texture is about 5 MB. Phones allow at least 4096×4096. The city does not need to be split into chunks. The sky picture grows to cover a tall screen, and `fitBackdropExtras` trims that growth so the upload stays inside 4096. A flat rectangle of sky and prairie sits behind it and covers any gap.
 
-The theme seam is `src/components/game/themes/`. `themeFor("Denver")` returns the Denver object. `themeFor("Austin")` returns the Austin object. `paintScene` asks that object to draw buildings, landmarks, parks, and side quests, and it reads the object's colors for the prairie, the hills, and the streets. The save's `city` field is the name that gets passed in (`"Denver"` or `"Austin"`). The name the person typed for the save is a label on the bottom bar. It is not the theme. An unknown name paints Denver, so a typo does not draw an empty picture. `sceneSignature` includes the theme name, so the cached texture is thrown away when the theme changes and kept when a car moves.
+The theme seam is `src/components/game/themes/`. `themeFor("Denver")` returns the Denver object. `themeFor("Austin")` returns the Austin object. `themeFor("Tokyo")` returns the Tokyo object. `paintScene` asks that object to draw buildings, landmarks, parks, and side quests, and it reads the object's colors for the prairie, the hills, and the streets. The save's `city` field is the name that gets passed in (`"Denver"`, `"Austin"`, or `"Tokyo"`). The name the person typed for the save is a label on the bottom bar. It is not the theme. An unknown name paints Denver, so a typo does not draw an empty picture. `sceneSignature` includes the theme name, so the cached texture is thrown away when the theme changes and kept when a car moves.
 
 ## How a theme is chosen, stored, and drawn
 
-The picker is the only place a person chooses a theme. Denver and Austin are both enabled. Boulder, New York, and Tokyo still say SOON. Tapping a card does not build the city yet. NEXT writes the choice onto the draft (`"Austin"` or `"Denver"`), and that draft is what Strava, the start date, and the race question keep. The title-screen **Demo city** button still builds Denver. The DEMO button on the Strava step uses whatever the picker just chose, so an Austin demo is the sample log drawn with Austin's art.
+The picker is the only place a person chooses a theme. Denver, Austin, and Tokyo are enabled. Flagstaff and New York still say SOON. The card that used to say Boulder now says Flagstaff, and it is still locked. Tapping a card does not build the city yet. NEXT writes the choice onto the draft (`"Tokyo"`, `"Austin"`, or `"Denver"`), and that draft is what Strava, the start date, and the race question keep. The title-screen **Demo city** button still builds Denver. The DEMO button on the Strava step uses whatever the picker just chose, so a Tokyo demo is the sample log drawn with Tokyo's art.
 
 `POST /api/city` checks the name with `resolveTheme` in `themes/names.js`. A missing name is Denver, which is why an old client and an old save still get the Mile High city. A name that is not in `OPEN_THEMES` is refused. The row stores the canonical name (`"Austin"`, not `"austin"`). City codes do not include the theme. Opening a code opens that save, and the save already knows its city.
 
@@ -300,9 +300,9 @@ The buttons are a row, left then right, centered in the prairie under the diamon
 
 A tap or a click on a civic landmark, or on one of the other named landmark buildings, opens a small card. The card scales out of that building in four pixel steps. It closes on a tap outside the card, the X, or Escape. The same card is used on a phone and on a desktop window.
 
-The buildings that open it are the slots in `src/lib/landmarkNames.js`: the capitol, Union Station, the courthouse, the art museum, and the cathedral, plus Austin's library, gallery, and bakery. A rowhouse, a park, a trail, and a stadium do not. Those are ordinary buildings, parks, and side quests. Their sprites still block a tap, so a tower standing in front of Union Station does not open Union Station.
+The buildings that open it are the slots in `src/lib/landmarkNames.js`: the capitol, Union Station, the courthouse, the art museum, and the cathedral, plus Austin's library, gallery, and bakery, plus Tokyo's Skytree. A rowhouse, a park, a trail, and a stadium do not. Those are ordinary buildings, parks, and side quests. Their sprites still block a tap, so a tower standing in front of Union Station does not open Union Station.
 
-The name on the card is not the string `simulate()` stored. The replay still writes "State Capitol", "Courthouse", "Cathedral Basilica", "Martha's Art Gallery", and "Rockman's Bakery", because those strings are in the log and in old tests. `landmarkNames.js` is the map from that slot to the real place. Denver's capitol is the Colorado State Capitol. Austin's same slot is the Texas State Capitol. The courthouse sprite is a stone block with a pediment, so the Denver name is the Byron R. White U.S. Courthouse, not the City and County Building (that one is known for a clock tower, and the clock in this city is Union Station). Austin's cathedral is Saint Mary Cathedral, the name on the cathedral's own site. Martha's and Rockman Coffee are the names on those businesses' own sites. Edit that one file to change a name. Austin's `labels` map reads the Austin half of it, so the label and the card cannot disagree.
+The name on the card is not the string `simulate()` stored. The replay still writes "State Capitol", "Courthouse", "Cathedral Basilica", "Martha's Art Gallery", and "Rockman's Bakery", because those strings are in the log and in old tests. `landmarkNames.js` is the map from that slot to the real place. Denver's capitol is the Colorado State Capitol. Austin's same slot is the Texas State Capitol. Tokyo's same slot is Imperial Palace Nijubashi Bridge. The other Tokyo cards are Tokyo Station Marunouchi Building, Tokyo Tower, Meiji Jingu, Senso-ji Kaminarimon, and Tokyo Skytree. The courthouse sprite in Denver is a stone block with a pediment, so the Denver name is the Byron R. White U.S. Courthouse, not the City and County Building (that one is known for a clock tower, and the clock in this city is Union Station). Austin's cathedral is Saint Mary Cathedral, the name on the cathedral's own site. Martha's and Rockman Coffee are the names on those businesses' own sites. Edit that one file to change a name. Austin's and Tokyo's `labels` maps read their half of it, so the label and the card cannot disagree. A slot with no row for the city on screen does not open. That is why Tokyo has its own table: without it, a tap on Tokyo Tower would find the slot and then stay closed, because the Denver name is not Tokyo's.
 
 The run on the card is copied when the city is replayed. `runOf` in `simulate.js` keeps the date, the miles, the moving seconds, and the Strava id of the activity that unlocked the landmark. The capitol is the exception: while it is still going up, the run is the one that crossed 250 miles. When the 13.1 miles finish, that finish replaces it, on both the building and the landmark row. The capitol is drawn as a building, so the tap reads `building.run`. Every other landmark is its own sprite, and the tap reads `landmark.run`. Pace is moving seconds divided by miles. A demo id (`demo-3`) or a typed distance (`manual-…`) has no Strava page, and the card says so. A missing run says no run is linked yet. The card does not call Strava. A phone that opened the city by code is looking at the same replay of the saved activities. It does not have the owner's token, and it does not need one.
 
@@ -310,19 +310,60 @@ Hit testing does not use the lot diamond. The dome and the spires stand above th
 
 A finger that moves more than 12 pixels is a pan. The card stays closed, and the drag is the one that was already running. Two fingers are a pinch, and the lift does not open a card. The wheel listener is unchanged. The rotate buttons are later siblings of the transparent scrim, at the same stacking level, so a tap on a button turns the view instead of closing the card. The turn then closes the card, because every lot just moved and the card was aimed at the old pixel.
 
-## How to add a third city
+## How a city theme is added
 
-Do not edit `rules.js`, `simulate.js`, or the city-code tables. The mile numbers stay shared. Austin's library, gallery, and bakery are already the `cities.Austin` block; a new city that only changes drawings should not add a second block there. Copy `themes/austin.js` to `themes/chicago.js` (or whatever the city is) and export an object with the same shape. The field list is at the top of `themes/index.js`. Omit `sky` if this city should keep Denver's sky. There is no `lake` field. The painter that used to read it is gone.
+Tokyo is the example. Austin was the one before it. The mile numbers stay shared. Do not add a new threshold for a landmark that already has a slot. A 100-mile run is still `unionStation`. In Tokyo that slot is drawn as Tokyo Station's Marunouchi Building. The simulator still writes the slot key. The name on the card lives in `landmarkNames.js`. The theme's `labels` map spreads `labelsFor("Tokyo")` from that file, then adds the park and side-quest names, which do not open a card.
 
-Then:
+Tokyo's one extra is the Skytree, and it follows the library, not a new rule. `rules.cities.Tokyo.landmarks.tokyoSkytree.cumulativeRunMiles` is 500, the same line as `lbjLibrary`. `simulate.js` walks any city landmark that has `cumulativeRunMiles`, so the Skytree does not need its own `if`. The gallery and the bakery stay on Austin's keys. Tokyo's block does not list them, so a Tokyo replay does not earn them. The Capitol, the streak tower, the pace-PR gate, and the cathedral count are the shared slots. They are not reimplemented.
+
+What changed for Tokyo, and only that:
+
+| Piece | Where | What Tokyo did |
+| --- | --- | --- |
+| Drawings and names | `themes/tokyo.js` and `landmarkNames.js` | Silhouettes, Fuji, and the six real names the card shows |
+| Register the painter | `themes/index.js` | `THEMES.Tokyo` |
+| Let the API accept the name | `themes/names.js` | `"Tokyo"` in `OPEN_THEMES` |
+| Picker card | `Screens.js` `CITIES` | Tokyo is a button. Boulder was renamed to Flagstaff and left locked, with New York |
+| Frame | `globals.css` `.theme-tokyo` | Navy, white pinstripes, one red disc, gold trim |
+| Title face | `layout.js` and the two CSS rules | Zilla Slab on `.pixel-title` and `.hud-name` only while Tokyo is active |
+| 500-mile lot | `rules.js` `cities.Tokyo` | The Skytree, same number as the library |
+
+Slots Tokyo paints, using the same unlocks:
+
+| Slot | Tokyo |
+| --- | --- |
+| State Capitol (250 mi, then 13.1 mi to build) | Imperial Palace Nijubashi Bridge |
+| Union Station (100 mi) | Tokyo Station Marunouchi Building |
+| Courthouse (12 runs in 30 days) | Tokyo Tower |
+| Art Museum (5-mile run after 20 runs) | Meiji Jingu |
+| Cathedral (one per 200 run miles, no cap) | Senso-ji Kaminarimon |
+| Skytree (500 run miles, Tokyo only) | Tokyo Skytree, its own lot |
+| Half marathon, in order | Shibuya Crossing, Rainbow Bridge, Komazawa Olympic Park |
+| Full marathon, in order | Tokyo Metropolitan Government Building, then Mori Tower |
+| Parks, in order | Ueno Park, Yoyogi Park, Shinjuku Gyoen |
+| Rides, 10 / 25 / 50 | Tokyo Dome, Jingu Stadium, Japan National Stadium |
+| Walks, 10 / 25 / 50 | Takeshita Street, Ginza, Ameyoko |
+
+Ordinary buildings follow the same rings. A rowhouse is a machiya (wood posts, plaster, a tile roof). Mixed-use is a shotengai shop under apartments. Offices are concrete mid-rises. A skyscraper is one of three shapes from its variant: a glass slab with a red crown band, stepped setbacks, or a slender shaft with a mast. Nothing in the Tokyo file draws a team mark, a "J", or a ray flag. The red disc in the sky is a circle. The banner on a state building is navy with one gold bar.
+
+The horizon is `drawHorizon`. The shared ridge is seven peaks, which is Denver's snow range and, with the snow line pushed above the peaks, Austin's hills. Fuji is one cone, so Tokyo passes `drawHorizon` and the ridge is skipped. There is no `lake` field. Rainbow Bridge, the parks, and the skirt are on stone and grass. A blue fill under the diamond is the water coming back.
+
+The frame is `.theme-tokyo`. Denver has no class, on purpose, so its gold frame stays the default. Austin keeps `.theme-austin`. The class is `theme-` plus the name in lowercase, from `themeClass`.
+
+The face on the title and the city name, and only those, is Zilla Slab. `next/font` loads it in `layout.js` and publishes `--font-slab`. It is a Latin slab serif under the SIL Open Font License, served from this origin. `.theme-tokyo .pixel-title` and `.theme-tokyo .hud-name` are the only rules that use it. Buttons, cards, and notes stay on Press Start 2P. The other cities never see the slab, because the rules are under `.theme-tokyo`.
+
+Buildings mirror at 90° and 270°. Landmarks, parks, and side quests do not. That is `mirrorBuildingSprite` in `rotation.js`, applied in `listProps`. Tokyo does not get a second set of drawings. The palace is the capitol building, so it mirrors with the houses. It is drawn symmetric so the bridge still reads. The tower, the torii, the station clock, the lantern, and the Skytree are landmarks, so they stay unflipped.
+
+To add the next city, copy `themes/tokyo.js`, keep the same slot keys, and add a table in `landmarkNames.js`. Then:
 
 1. Register it in `THEMES` inside `themes/index.js`.
-2. Add the canonical name to `OPEN_THEMES` in `themes/names.js`. That is what the API will accept. `themeFor` still falls back to Denver if the painter is missing, so do both.
+2. Add the canonical name to `OPEN_THEMES` in `themes/names.js`. `themeFor` still falls back to Denver if the painter is missing, so do both.
 3. Add the uppercase label to `CITIES` in `Screens.js`. A name in that list but not in `OPEN_THEMES` stays a SOON card. A name in both becomes a button.
-4. If the frame should change, add a `.theme-<id>` block in `globals.css` next to `.theme-austin`. The class is `theme-` plus the name in lowercase. Denver has no class, on purpose, so its gold frame is the default.
-5. Give the theme a `labels` map if the landmarks should have their own names. Denver and Austin popup names live in `src/lib/landmarkNames.js`. A new city's real names go in that file too, or the card will keep Denver's. Draw functions still switch on the slot key the simulator writes (`unionStation`, `"Coors Field"`, `"Cheesman Park"`). The map is the display name. It does not move the unlock.
+4. If the frame should change, add a `.theme-<id>` block in `globals.css` next to `.theme-tokyo`. The class is `theme-` plus the name in lowercase. Denver has no class, on purpose, so its gold frame is the default.
+5. Add the city's real landmark names to `src/lib/landmarkNames.js`, with `popup: true`. Spread `labelsFor` into the theme's `labels` map, then add park and side-quest names. Draw functions still switch on the slot key (`unionStation`, `"Coors Field"`, `"Cheesman Park"`). A name that is only on the theme, and not in `landmarkNames.js`, will not open the card.
+6. Add a `cities.<Name>` block only for a landmark that is not one of the shared slots. Give it `cumulativeRunMiles` if it should follow the library and the Skytree. Do not copy the gallery or the bakery unless that city has those rules.
 
-Run `npm test`. The Denver capitol test still expects a gold dome, and the Austin capitol test expects pink granite and almost no gold. A new city should get the same kind of check: one pixel that Denver has, and one it must not have. Then `npm run lint` and `npm run build`.
+Run `npm test`. The Denver capitol test still expects a gold dome. The Austin capitol test expects pink granite and almost no gold. The Tokyo capitol test expects red posts and almost no gold, and the backdrop test expects one snow cone instead of a range. Then `npm run lint` and `npm run build`.
 
 `?flyover=1` on the city page, or the F key, plays the 8-second plane and quote banner without logging a run. `?time=22:00` (or any `HH:MM`) previews that hour's sky instead of the device clock. Neither one writes a run.
 

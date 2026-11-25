@@ -6,9 +6,11 @@
 // asOfDate is the fixture date used by the golden test. A live replay passes
 // today's date instead, so a finished quiet week can still earn a park.
 //
-// cities.Austin is the one set of numbers Denver does not share. The
-// simulator reads it only when the save's city is Austin. The drawings
-// for those keys live in themes/austin.js.
+// cities.Austin and cities.Tokyo are the numbers Denver does not share.
+// The simulator reads a block only when the save's city is that name.
+// Austin's three landmarks stay Austin's. Tokyo adds the Skytree at the
+// same 500-mile line the library uses, and nothing else. The drawings
+// live in themes/austin.js and themes/tokyo.js.
 
 const rules = {
   asOfDate: "2026-10-29",
@@ -184,8 +186,9 @@ const rules = {
     paradeMs: 9000,
   },
 
-  // Austin-only landmarks. Denver's replay never reads this object, so
-  // Union Station, the Capitol, and the lot map stay put. `at` is
+  // City-specific landmarks. Denver's replay never reads this object, so
+  // Union Station, the Capitol, and the lot map stay put. Austin's three
+  // and Tokyo's Skytree are the only entries. `at` is
   // [blockX, blockY, lotX, lotY] on the 7×7 map. The lot is held empty
   // until the landmark unlocks, which is what keeps it off someone else's
   // building. A road tile (block coordinate where the lot index would land
@@ -227,6 +230,24 @@ const rules = {
           // A corner lot in the same block as the gallery, closer to the
           // camera, so the awning has a street of its own.
           at: [5, 4, 1, 1],
+        },
+      },
+    },
+    // Tokyo shares every other milestone with Denver and Austin. The
+    // Skytree is the one extra, on the same 500-mile line as the library,
+    // on its own lot so a tower does not take the civic square. The
+    // gallery and the bakery are not in this object, so a Tokyo replay
+    // does not earn them.
+    Tokyo: {
+      landmarks: {
+        tokyoSkytree: {
+          name: "Tokyo Skytree",
+          cumulativeRunMiles: 500,
+          max: 1,
+          // East of the civic square, one lot over from the library's
+          // tile, so the two cities are not standing on the same square
+          // if you compare the maps. [blockX, blockY, lotX, lotY].
+          at: [5, 3, 1, 0],
         },
       },
     },

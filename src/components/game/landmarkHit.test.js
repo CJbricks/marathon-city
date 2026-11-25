@@ -2,6 +2,7 @@
 // A flip moves a building's box and must not move a landmark's box.
 
 import { describe, expect, it } from "vitest";
+import { landmarkName } from "../../lib/landmarkNames.js";
 import { MAP_TILES, project } from "./sceneLayout";
 import { orientCity, rotateLot } from "./rotation";
 import {
@@ -112,6 +113,45 @@ describe("popupForProp", () => {
     expect(popupForProp({ id: "b:7" }, city).key).toBe("capitol");
     expect(popupForProp({ id: "b:8" }, city)).toBeNull();
     expect(popupForProp({ id: "p:1:1:Cheesman Park" }, city)).toBeNull();
+  });
+
+  it("opens a card for each Tokyo landmark under that place's real name", () => {
+    const city = {
+      buildings: [
+        { id: 3, type: "capitol", x: 4, y: 4, run: { date: "2024-04-01", miles: 13.1, seconds: 7000 } },
+        { id: 4, type: "rowhouse", x: 1, y: 1 },
+      ],
+      landmarks: [
+        ["unionStation", 5, 5],
+        ["courthouse", 6, 6],
+        ["artMuseum", 7, 7],
+        ["cathedral", 8, 8],
+        ["tokyoSkytree", 9, 9],
+      ].map(([key, x, y]) => ({
+        key,
+        x,
+        y,
+        run: { date: "2024-04-02", miles: 5, seconds: 2500 },
+      })),
+    };
+    const names = {
+      capitol: "Imperial Palace Nijubashi Bridge",
+      unionStation: "Tokyo Station Marunouchi Building",
+      courthouse: "Tokyo Tower",
+      artMuseum: "Meiji Jingu",
+      cathedral: "Senso-ji Kaminarimon",
+      tokyoSkytree: "Tokyo Skytree",
+    };
+    const palace = popupForProp({ id: "b:3" }, city);
+    expect(palace.key).toBe("capitol");
+    expect(landmarkName("Tokyo", palace.key)).toBe(names.capitol);
+    for (const item of city.landmarks) {
+      const hit = popupForProp({ id: `l:${item.key}:${item.x}:${item.y}` }, city);
+      expect(hit.key).toBe(item.key);
+      expect(hit.run.date).toBe("2024-04-02");
+      expect(landmarkName("Tokyo", hit.key)).toBe(names[item.key]);
+    }
+    expect(popupForProp({ id: "b:4" }, city)).toBeNull();
   });
 });
 

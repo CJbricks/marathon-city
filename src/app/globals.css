@@ -6,7 +6,10 @@
 
 /* Denver's Nuggets colors are the defaults. .theme-austin overrides them
    for an Austin city only: burnt orange frame, cream type, cedar ground.
-   A screen with no theme class still looks exactly like Denver. */
+   .theme-tokyo is navy, white pinstripes, one red disc, and gold trim.
+   A screen with no theme class still looks exactly like Denver.
+   The slab face is only the Tokyo title and the Tokyo city name.
+   Buttons stay on the pixel face. See layout.js for why the font is loaded. */
 :root {
   --mc-page: #05143a;
   --mc-stage: #0d2a6b;
@@ -57,6 +60,77 @@
   --mc-banner-border: #bf5700;
   --mc-note: #8c3a12;
   --mc-skyfill: #8ec8ee;
+}
+
+/* Tokyo. The stripe is vertical pinstripes, the way a jersey is, on the
+   navy field. The disc is one circle in the top stripe. The bottom stripe
+   is pinstripes only, so the screen does not grow a second sun. Gold is
+   the frame. The red is the disc and the accent, not a ray pattern. */
+.theme-tokyo {
+  --mc-page: #1c2430;
+  --mc-stage: #1c2430;
+  --mc-border: #c9b062;
+  --mc-accent: #d93a33;
+  --mc-ink: #1c2430;
+  --mc-btn: #c9b062;
+  --mc-muted: #e8e4d8;
+  --mc-card: #2a3444;
+  --mc-card-text: #b7c0cc;
+  --mc-stripe: repeating-linear-gradient(90deg, #f7f4ee 0 1px, transparent 1px 5px);
+  --mc-hud: #1c2430;
+  --mc-hud-text: #f7f4ee;
+  --mc-title: #f7f4ee;
+  --mc-name: #f7f4ee;
+  --mc-ready: #d93a33;
+  --mc-warn: #e07a5a;
+  --mc-pop: #d93a33;
+  --mc-pop-ink: #f7f4ee;
+  --mc-banner: #f7f4ee;
+  --mc-banner-ink: #1c2430;
+  --mc-banner-border: #c9b062;
+  --mc-note: #d93a33;
+  --mc-skyfill: #7eb0dc;
+}
+
+.theme-tokyo .stage-px {
+  box-shadow: inset 0 0 0 2px #f7f4ee;
+}
+
+.theme-tokyo .sky-stripes {
+  background-color: #1c2430;
+  background-image: var(--mc-stripe);
+}
+
+.theme-tokyo .sky-stripes:not(.bottom) {
+  background-image:
+    radial-gradient(circle at 50% 50%, #d93a33 0 4px, transparent 4.5px),
+    var(--mc-stripe);
+}
+
+.theme-tokyo .pixel-title,
+.theme-tokyo .hud-name {
+  font-family: var(--font-slab), "Zilla Slab", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.theme-tokyo .pixel-title {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.theme-tokyo .hud-name {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.theme-tokyo .hud {
+  box-shadow: inset 0 2px 0 #f7f4ee;
+  background-image: radial-gradient(circle at 50% 0, #d93a33 0 5px, #c9b062 5px 7px, transparent 7px);
+}
+
+.theme-tokyo .city-screen {
+  box-shadow: inset 0 0 0 3px #c9b062, inset 0 0 0 5px #f7f4ee;
 }
 
 html,

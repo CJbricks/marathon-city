@@ -9,9 +9,10 @@
 // Node APIs (no fs, no database) so a Log run animation can replay on the
 // phone without asking the server for every frame.
 //
-// Denver and Austin share this replay. rules.cities.Austin is the extra:
-// three landmarks a Denver save never receives. replay() passes the save's
-// city in as rules.city. A missing city is Denver.
+// Denver, Austin, and Tokyo share this replay. The extra landmarks are
+// rules.cities[city]: Austin's library, gallery, and bakery, and Tokyo's
+// Skytree. A Denver save, and a save with no city, never receives them.
+// replay() passes the save's city in as rules.city.
 //
 // Each landmark keeps a small copy of the activity that unlocked it, or
 // that finished the capitol. The popup reads that copy. It does not ask
@@ -189,7 +190,7 @@ export function simulate(input, rules = rulesDefault) {
   // camera (large x+y) instead of one hidden behind a tower.
   function takeLot(isBuilding = true, frontBias = 0) {
     const skip = isBuilding ? [] : M.reserveRingsForBuildings || [];
-    // held is a lot set aside for an Austin landmark that has not unlocked
+    // held is a lot set aside for a city landmark that has not unlocked
     // yet. Denver never sets it, so a Denver lot is chosen exactly as before.
     const open = (l) => !l.used && !l.held && !skip.includes(l.ring);
     let lot;
@@ -221,7 +222,10 @@ export function simulate(input, rules = rulesDefault) {
   let earlyRuns = 0;
   const L = R.landmarks;
   const earned = new Set();
-  const cityLandmarks = R.city === "Austin" ? R.cities?.Austin?.landmarks || null : null;
+  // The save's city picks the extra landmarks. Austin and Tokyo each have
+  // a block. Denver has none, and an old save with no city is Denver, so
+  // this stays null and the lot picker does not hold a tile aside.
+  const cityLandmarks = R.cities?.[R.city]?.landmarks || null;
 
   function civicLot(key) {
     if (!civic || !civic.slots[key]) return null;
@@ -588,16 +592,18 @@ export function simulate(input, rules = rulesDefault) {
       }
       bestPace = Math.min(bestPace, pace);
     }
-    // Austin-only. The checks above are the shared milestones and are left
-    // alone, including the Capitol at 250. These three read cities.Austin.
-    if (cityLandmarks?.lbjLibrary && cumRun >= hund(cityLandmarks.lbjLibrary.cumulativeRunMiles)) {
-      placeCityLandmark(
-        "lbjLibrary",
-        cityLandmarks.lbjLibrary,
-        act.date,
-        `cumulative ${mi(cumRun)} run mi`,
-        act,
-      );
+    // Lifetime-mile landmarks that are not the shared slots. Austin's
+    // library and Tokyo's Skytree both carry cumulativeRunMiles. The
+    // gallery and the bakery do not, so this loop leaves them for the
+    // checks below. The Capitol at 250 is still the shared slot above.
+    // `act` is copied onto the landmark so the tap card can name the run.
+    if (cityLandmarks) {
+      for (const [key, spec] of Object.entries(cityLandmarks)) {
+        if (spec?.cumulativeRunMiles == null) continue;
+        if (cumRun >= hund(spec.cumulativeRunMiles)) {
+          placeCityLandmark(key, spec, act.date, `cumulative ${mi(cumRun)} run mi`, act);
+        }
+      }
     }
     if (cityLandmarks?.marthasGallery) {
       const spec = cityLandmarks.marthasGallery;

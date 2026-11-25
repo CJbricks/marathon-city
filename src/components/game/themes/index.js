@@ -1,10 +1,10 @@
 // Which set of drawings a city uses.
 //
-// The save stores a city name ("Denver" or "Austin"). This file turns
-// that name into the object paintScene draws with. The rules, the
-// database, and the city code do not know about pixels. Adding a third
-// city is a new file in this folder, one line in THEMES, and one name
-// in names.js.
+// The save stores a city name ("Denver", "Austin", or "Tokyo"). This file
+// turns that name into the object paintScene draws with. The rules, the
+// database, and the city code do not know about pixels. Adding a city is
+// a new file in this folder, one line in THEMES, and one name in names.js.
+// Tokyo is the worked example. See docs/NOTES.md.
 //
 // Austin's library, gallery, and bakery are the exception to "art only".
 // Their thresholds live in rules.js under cities.Austin, and simulate.js
@@ -34,6 +34,9 @@
 //   drawPark(pen, park)
 //   drawQuest(pen, quest, ambient)
 //   drawStreets   optional. Omit it and the shared sidewalk painter runs.
+//   drawHorizon   optional. (pen, horizonY, light) paints the skyline
+//                 behind the city instead of the shared seven-peak ridge.
+//                 Tokyo uses it for one Fuji cone. Omit it and the ridge runs.
 //
 // night is true at dusk and night. Denver's landmark painter ignores it.
 // Austin uses it for the tower's orange crown.
@@ -43,12 +46,14 @@
 
 import { austinTheme } from "./austin";
 import { denverTheme } from "./denver";
+import { tokyoTheme } from "./tokyo";
 
-export { OPEN_THEMES, resolveTheme, themeClass } from "./names";
+export { OPEN_THEMES, PICKER_CITIES, resolveTheme, themeClass } from "./names";
 
 const THEMES = {
   Denver: denverTheme,
   Austin: austinTheme,
+  Tokyo: tokyoTheme,
 };
 
 export function themeFor(name) {
