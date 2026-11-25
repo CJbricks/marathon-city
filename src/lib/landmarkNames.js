@@ -4,7 +4,7 @@
 // ("State Capitol", "Courthouse", "Cathedral Basilica", "Martha's Art
 // Gallery"). Those strings stay in the log and on the city object so an
 // old save replays the same way. This file is the one place a person
-// edits when the popup, or Austin's label map, should say something else.
+// edits when the popup, or a city's label map, should say something else.
 //
 // A name here is a real place, copied from that place's own public name.
 // Nothing in this file is a nickname we made up for the game. `stored` is
@@ -98,15 +98,55 @@ const AUSTIN = {
   },
 };
 
+// Tokyo reuses the same slot keys. The stored string is still Denver's,
+// except the Skytree, which is Tokyo's own landmark and stores its own
+// name. The card names are the places. A missing row would leave the tap
+// closed, because CityView only opens a card when this theme has a name.
+const TOKYO = {
+  capitol: {
+    stored: "State Capitol",
+    name: "Imperial Palace Nijubashi Bridge",
+    popup: true,
+  },
+  unionStation: {
+    stored: "Union Station",
+    name: "Tokyo Station Marunouchi Building",
+    popup: true,
+  },
+  courthouse: {
+    stored: "Courthouse",
+    name: "Tokyo Tower",
+    popup: true,
+  },
+  artMuseum: {
+    stored: "Denver Art Museum",
+    name: "Meiji Jingu",
+    popup: true,
+  },
+  cathedral: {
+    stored: "Cathedral Basilica",
+    name: "Senso-ji Kaminarimon",
+    popup: true,
+  },
+  tokyoSkytree: {
+    stored: "Tokyo Skytree",
+    name: "Tokyo Skytree",
+    popup: true,
+  },
+};
+
 const BY_THEME = {
   Denver: DENVER,
   Austin: AUSTIN,
+  Tokyo: TOKYO,
 };
 
 function tableFor(theme) {
   if (theme && BY_THEME[theme]) return BY_THEME[theme];
   // An unknown theme paints Denver. The popup follows that, so a typo
-  // does not show a blank card or an Austin name on a Denver skyline.
+  // does not show a blank card or a Tokyo name on a Denver skyline.
+  // Tokyo is in the table on purpose. Falling through to Denver would
+  // title Tokyo Tower as the Denver courthouse and then still open it.
   return DENVER;
 }
 

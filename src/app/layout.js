@@ -7,7 +7,7 @@
 // right place to load a font and set the document title and the share-card
 // tags. The Chakra wrapper it renders is a Client Component; see providers.js.
 
-import { Press_Start_2P } from "next/font/google";
+import { Press_Start_2P, Zilla_Slab } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
 
@@ -20,6 +20,19 @@ const pixel = Press_Start_2P({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-pixel",
+});
+
+// Zilla Slab is a Latin slab serif under the SIL Open Font License.
+// next/font downloads it at build time and serves it from this origin,
+// the same way Press Start 2P is served. The variable is on the document
+// so CSS can name it. The face is applied only by .theme-tokyo, and only
+// on the title and the city name. Buttons, notes, and the other cities
+// stay on the pixel face. It is not a team wordmark and not a Japanese face.
+const slab = Zilla_Slab({
+  weight: "700",
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-slab",
 });
 
 // These exports become tags in <head>. Next writes them; we do not add a
@@ -72,7 +85,7 @@ export default function RootLayout({ children }) {
     // className sets the pixel font on the document. The variable class
     // defines --font-pixel, which page.js points at. Both are needed:
     // the class applies the face, the variable lets other CSS name it.
-    <html lang="en" className={`${pixel.className} ${pixel.variable}`}>
+    <html lang="en" className={`${pixel.className} ${pixel.variable} ${slab.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

@@ -68,6 +68,30 @@ describe("landmark names", () => {
       },
       { theme: "Austin", key: "marthasGallery", stored: "Martha's Art Gallery", name: "Martha's", popup: true },
       { theme: "Austin", key: "rockmansBakery", stored: "Rockman's Bakery", name: "Rockman Coffee", popup: true },
+      {
+        theme: "Tokyo",
+        key: "capitol",
+        stored: "State Capitol",
+        name: "Imperial Palace Nijubashi Bridge",
+        popup: true,
+      },
+      {
+        theme: "Tokyo",
+        key: "unionStation",
+        stored: "Union Station",
+        name: "Tokyo Station Marunouchi Building",
+        popup: true,
+      },
+      { theme: "Tokyo", key: "courthouse", stored: "Courthouse", name: "Tokyo Tower", popup: true },
+      { theme: "Tokyo", key: "artMuseum", stored: "Denver Art Museum", name: "Meiji Jingu", popup: true },
+      {
+        theme: "Tokyo",
+        key: "cathedral",
+        stored: "Cathedral Basilica",
+        name: "Senso-ji Kaminarimon",
+        popup: true,
+      },
+      { theme: "Tokyo", key: "tokyoSkytree", stored: "Tokyo Skytree", name: "Tokyo Skytree", popup: true },
     ]);
   });
 
@@ -76,6 +100,14 @@ describe("landmark names", () => {
     expect(landmarkName("Austin", "capitol")).toBe("Texas State Capitol");
     expect(landmarkName("Austin", "unionStation")).toBe("Congress Avenue Bridge");
     expect(landmarkName("Denver", "lbjLibrary")).toBeNull();
+    expect(landmarkName("Denver", "tokyoSkytree")).toBeNull();
+    expect(landmarkName("Tokyo", "capitol")).toBe("Imperial Palace Nijubashi Bridge");
+    expect(landmarkName("Tokyo", "unionStation")).toBe("Tokyo Station Marunouchi Building");
+    expect(landmarkName("Tokyo", "courthouse")).toBe("Tokyo Tower");
+    expect(landmarkName("Tokyo", "artMuseum")).toBe("Meiji Jingu");
+    expect(landmarkName("Tokyo", "cathedral")).toBe("Senso-ji Kaminarimon");
+    expect(landmarkName("Tokyo", "tokyoSkytree")).toBe("Tokyo Skytree");
+    expect(landmarkName("Tokyo", "lbjLibrary")).toBeNull();
     expect(landmarkName("Boulder", "capitol")).toBe("Colorado State Capitol");
   });
 

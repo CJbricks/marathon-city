@@ -2,7 +2,7 @@
 
 Marathon City turns the owner's Strava runs into a growing pixel-art city. The look is isometric, in the spirit of SimCity 2000, and the theme is Denver. The app is planned as a plain-JavaScript Next.js site, hosted on Vercel, and laid out for a phone.
 
-The app at the repo root replays runs into a city: opening screens, Strava sync (or a demo log), and an isometric Pixi view. Denver and Austin share the mile rules. Only the drawings, the names, the palette, and the backdrop change. The original scripts and stills stay in [`prototype/`](prototype/) as the spec the app was ported from. New to the code? Read [docs/NOTES.md](docs/NOTES.md).
+The app at the repo root replays runs into a city: opening screens, Strava sync (or a demo log), and an isometric Pixi view. Denver, Austin, and Tokyo share the mile rules. Only the drawings, the names, the palette, and the backdrop change. The original scripts and stills stay in [`prototype/`](prototype/) as the spec the app was ported from. New to the code? Read [docs/NOTES.md](docs/NOTES.md).
 
 ![Isometric Denver city built from run miles](prototype/preview.png)
 
@@ -65,6 +65,8 @@ Landmarks unlock from milestones:
 
 Austin adds three landmarks Denver does not earn. The numbers live in `cities.Austin` inside `src/lib/rules.js`. The Texas State Capitol is still the shared capitol slot and still unlocks at 250 run miles.
 
+Tokyo uses those same shared slots and adds one landmark of its own. `cities.Tokyo` is only the Skytree, at 500 lifetime run miles, the same line as the LBJ Library. The names a person would say (Tokyo Station's Marunouchi Building, Tokyo Tower, the Meiji Jingu torii, Nijubashi, Senso-ji's Kaminarimon) live on the theme, in `themes/tokyo.js`, not as new mile numbers. Flagstaff and New York stay locked on the picker. How the files fit together is in [docs/NOTES.md](docs/NOTES.md).
+
 - **LBJ Presidential Library** at 500 lifetime run miles, on its own lot beside the civic square.
 - **Martha's Art Gallery** the first time a run of at least 5 miles is a new pace personal record. A later PR does not add another. The lot is across the street from the Blanton.
 - **Rockman's Bakery** when 10 runs have a Strava `start_date_local` before 6:00am. 5:59 counts. 6:00 does not. A run with no clock (a typed distance, or the demo log) does not count.
@@ -103,7 +105,7 @@ The database is the source of truth: Vercel Postgres or Supabase. It stores the 
 
 1. **Resume City** or **New City**. Resume lists up to three named saves. The name on the save is not the theme.
 2. If all three slots are full, New City asks which save to replace and confirms. The same Strava dates rebuild that city.
-3. A name for the save, then the city picker. Denver and Austin are enabled. The other cards stay marked soon.
+3. A name for the save, then the city picker. Denver, Austin, and Tokyo are enabled. Flagstaff and New York stay marked soon.
 4. Strava OAuth, if it is not already connected.
 5. A choice of all history, or a start date that defaults to today.
 6. An optional race day. On that local date the city shows confetti and a parade.
@@ -124,9 +126,9 @@ The loading screen shows a random quote from [`prototype/quotes.json`](prototype
 
 ## Art
 
-The art stays small and cheap to draw. Each ordinary building type is a generic pixel marker. Landmarks get a little more detail (the Capitol dome, Union Station, the museums, the creek, the zoo, the glass gardens) without becoming illustrations. The palette is a consistent retro Nuggets rainbow: navy, gold, and the red–orange–yellow stripe, with a pixel font and a gold frame. Scaling is nearest-neighbor, so the pixels stay sharp on a phone.
+The art stays small and cheap to draw. Each ordinary building type is a generic pixel marker. Landmarks get a little more detail (the Capitol dome, Union Station, the museums, the creek, the zoo, the glass gardens, and the Tokyo gate, tower, and bridge) without becoming illustrations. Denver's palette is a consistent retro Nuggets rainbow: navy, gold, and the red–orange–yellow stripe, with a pixel font and a gold frame. Austin and Tokyo swap the frame and the drawings. Tokyo's title and city name use a slab serif while that city is on screen. The buttons stay on the pixel font. Scaling is nearest-neighbor, so the pixels stay sharp on a phone.
 
-The city is drawn at double the old detail: a 1280×1000 picture, lots 48 pixels across, stories 6 pixels tall, with sidewalks, facade detail, and landmark silhouettes. Denver's drawings live in `src/components/game/themes/denver.js`, so a later city can swap art without changing the mile rules. The city opens at the contain-fit scale from `gridFit.js` (about 0.30× on a 390px-wide phone), with the whole diamond on screen. That scale is smaller than the old 0.61× only because the picture has twice as many pixels. The diamond fills the same fraction of the phone. Pinching or scrolling in past 1× snaps to 1×, 2×, 3×, and so on, up to 6×. A fractional enlarge such as 1.5× would blend pixels. A whole number keeps each city pixel a solid block. Zooming back out from 1× returns to that opening fit. The sky, mountains, and ground stay pinned. Only the grid zooms.
+The city is drawn at double the old detail: a 1280×1000 picture, lots 48 pixels across, stories 6 pixels tall, with sidewalks, facade detail, and landmark silhouettes. Denver's drawings live in `src/components/game/themes/denver.js`, Austin's in `themes/austin.js`, and Tokyo's in `themes/tokyo.js`, so a later city can swap art without changing the mile rules. The city opens at the contain-fit scale from `gridFit.js` (about 0.30× on a 390px-wide phone), with the whole diamond on screen. That scale is smaller than the old 0.61× only because the picture has twice as many pixels. The diamond fills the same fraction of the phone. Pinching or scrolling in past 1× snaps to 1×, 2×, 3×, and so on, up to 6×. A fractional enlarge such as 1.5× would blend pixels. A whole number keeps each city pixel a solid block. Zooming back out from 1× returns to that opening fit. The sky, mountains, and ground stay pinned. Only the grid zooms.
 
 The Strava client ID and client secret belong in Vercel environment variables. They never go in source code, and `.env*` is gitignored.
 

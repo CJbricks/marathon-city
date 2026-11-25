@@ -33,6 +33,7 @@ describe("shareCaption", () => {
 
   it("uses the theme when the save has no name", () => {
     expect(shareCaption({ name: "   ", theme: "Austin", miles: 0 })).toMatch(/^Austin: 0 miles/);
+    expect(shareCaption({ name: "   ", theme: "Tokyo", miles: 0 })).toMatch(/^Tokyo: 0 miles/);
     expect(shareCaption({ name: "", theme: "Denver", miles: Number.NaN })).toMatch(/^Denver: 0 miles/);
     expect(shareCaption({ miles: -4 })).toMatch(/^Denver: 0 miles/);
   });
@@ -97,8 +98,16 @@ describe("shareBandPalette", () => {
       stats: "#bf5700",
       rule: "#bf5700",
     });
+    expect(shareBandPalette("Tokyo")).toMatchObject({
+      background: "#1c2430",
+      name: "#f7f4ee",
+      stats: "#c9b062",
+      rule: "#c9b062",
+    });
+    expect(shareBandPalette("tokyo").background).toBe("#1c2430");
     expect(shareBandPalette("austin").background).toBe("#2c1810");
     expect(shareBandPalette("Boulder").background).toBe("#05143a");
+    expect(shareBandPalette("Flagstaff").background).toBe("#05143a");
     expect(shareBandPalette().rule).toBe("#fdd835");
   });
 });

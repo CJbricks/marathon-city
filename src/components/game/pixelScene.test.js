@@ -10,7 +10,7 @@ import { HW, HH, SCENE_H, SCENE_W, project } from "./sceneLayout";
 import { moverHidden } from "./moverOcclusion";
 import { orientCity } from "./rotation";
 import { bucketIndex, listProps, moverDepth, paintBackdropPixels, paintGroundPixels, paintPropPixels, paintScenePixels, propDepth, sceneSignature } from "./pixelScene";
-import { resolveTheme, themeClass, themeFor, themeNames } from "./themes";
+import { PICKER_CITIES, resolveTheme, themeClass, themeFor, themeNames } from "./themes";
 
 const base = {
   buildings: [{ id: 1, status: "complete", storiesBuilt: 2 }],
@@ -153,16 +153,23 @@ describe("occlusion", () => {
 });
 
 describe("theme seam", () => {
-  it("paints Denver and Austin, and falls back for a city that is not open", () => {
-    expect(themeNames()).toEqual(["Denver", "Austin"]);
+  it("paints Denver, Austin, and Tokyo, and falls back for a city that is not open", () => {
+    expect(themeNames()).toEqual(["Denver", "Austin", "Tokyo"]);
     expect(themeFor("Denver").id).toBe("Denver");
     expect(themeFor("Austin").id).toBe("Austin");
+    expect(themeFor("Tokyo").id).toBe("Tokyo");
     expect(themeFor("Austin")).not.toBe(themeFor("Denver"));
+    expect(themeFor("Tokyo")).not.toBe(themeFor("Denver"));
     expect(themeFor("Boulder")).toBe(themeFor("Denver"));
+    expect(themeFor("Flagstaff")).toBe(themeFor("Denver"));
     expect(themeFor("")).toBe(themeFor("Denver"));
     expect(typeof themeFor("Austin").drawBuilding).toBe("function");
+    expect(typeof themeFor("Tokyo").drawBuilding).toBe("function");
+    expect(typeof themeFor("Tokyo").drawHorizon).toBe("function");
+    expect(themeFor("Denver").drawHorizon).toBeUndefined();
     expect(themeFor("Denver").sidewalk.day).not.toBe(themeFor("Denver").road.day);
     expect(themeFor("Austin").sidewalk.day).not.toBe(themeFor("Denver").sidewalk.day);
+    expect(themeFor("Tokyo").sidewalk.day).not.toBe(themeFor("Denver").sidewalk.day);
     expect(themeFor("Austin").labels.unionStation).toBe("Congress Avenue Bridge");
     expect(themeFor("Austin").labels.courthouse).toBe("UT Tower");
     expect(themeFor("Austin").labels.cathedral).toBe("Saint Mary Cathedral");
@@ -170,17 +177,47 @@ describe("theme seam", () => {
     expect(themeFor("Austin").labels.marthasGallery).toBe("Martha's");
     expect(themeFor("Austin").labels.rockmansBakery).toBe("Rockman Coffee");
     expect(themeFor("Austin").labels["Big Blue Bear"]).toBe("Giga Texas");
+    expect(themeFor("Tokyo").labels.unionStation).toBe("Tokyo Station Marunouchi Building");
+    expect(themeFor("Tokyo").labels.courthouse).toBe("Tokyo Tower");
+    expect(themeFor("Tokyo").labels.artMuseum).toBe("Meiji Jingu");
+    expect(themeFor("Tokyo").labels.capitol).toBe("Imperial Palace Nijubashi Bridge");
+    expect(themeFor("Tokyo").labels.cathedral).toBe("Senso-ji Kaminarimon");
+    expect(themeFor("Tokyo").labels.tokyoSkytree).toBe("Tokyo Skytree");
+    expect(themeFor("Tokyo").labels["Cherry Creek Trail"]).toBe("Shibuya Crossing");
+    expect(themeFor("Tokyo").labels["Denver Zoo"]).toBe("Rainbow Bridge");
+    expect(themeFor("Tokyo").labels["Denver Botanic Gardens"]).toBe("Komazawa Olympic Park");
+    expect(themeFor("Tokyo").labels["Big Blue Bear"]).toBe("Tokyo Metropolitan Government Building");
+    expect(themeFor("Tokyo").labels["Denver Athletic Club"]).toBe("Mori Tower");
+    expect(themeFor("Tokyo").labels["Cheesman Park"]).toBe("Ueno Park");
+    expect(themeFor("Tokyo").labels["Washington Park"]).toBe("Yoyogi Park");
+    expect(themeFor("Tokyo").labels["City Park"]).toBe("Shinjuku Gyoen");
+    expect(themeFor("Tokyo").labels["Coors Field"]).toBe("Tokyo Dome");
+    expect(themeFor("Tokyo").labels["Ball Arena"]).toBe("Jingu Stadium");
+    expect(themeFor("Tokyo").labels["Empower Field at Mile High"]).toBe("Japan National Stadium");
+    expect(themeFor("Tokyo").labels["Confluence Park bridge"]).toBe("Takeshita Street");
+    expect(themeFor("Tokyo").labels["16th Street Mall"]).toBe("Ginza");
+    expect(themeFor("Tokyo").labels["Red Rocks Amphitheatre"]).toBe("Ameyoko");
+    const denverWords = ["Union Station", "Cherry Creek Trail", "Cheesman Park", "Coors Field", "Big Blue Bear"];
+    for (const value of Object.values(themeFor("Tokyo").labels)) {
+      expect(denverWords).not.toContain(value);
+    }
   });
 
   it("treats a missing theme as Denver and refuses a city that is still soon", () => {
     expect(resolveTheme(undefined)).toBe("Denver");
     expect(resolveTheme("")).toBe("Denver");
     expect(resolveTheme("austin")).toBe("Austin");
+    expect(resolveTheme("tokyo")).toBe("Tokyo");
     expect(resolveTheme("Denver")).toBe("Denver");
     expect(resolveTheme("Boulder")).toBeNull();
+    expect(resolveTheme("Flagstaff")).toBeNull();
+    expect(resolveTheme("New York")).toBeNull();
     expect(themeClass("Denver")).toBe("");
     expect(themeClass(undefined)).toBe("");
     expect(themeClass("Austin")).toBe("theme-austin");
+    expect(themeClass("Tokyo")).toBe("theme-tokyo");
+    expect(PICKER_CITIES).toEqual(["AUSTIN", "DENVER", "FLAGSTAFF", "NEW YORK", "TOKYO"]);
+    expect(PICKER_CITIES).not.toContain("BOULDER");
   });
 
   it("keeps Denver's midday sky and paints Austin warmer, on dry ground", () => {
@@ -352,6 +389,143 @@ describe("Austin landmarks", () => {
   });
 });
 
+describe("Tokyo landmarks", () => {
+  const light = lightingAtMinutes(12 * 60 + 30);
+
+  function count(data, pred) {
+    let n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) continue;
+      if (pred(data[i], data[i + 1], data[i + 2])) n += 1;
+    }
+    return n;
+  }
+
+  const gold = (r, g, b) => r > 180 && g > 120 && b < 90;
+  const red = (r, g, b) => r > 160 && g < 100 && b < 90;
+  const white = (r, g, b) => r > 230 && g > 230 && b > 230;
+
+  function shape(kind, name) {
+    const city = { buildings: [], landmarks: [], parks: [], sideQuests: [] };
+    if (kind === "landmark") city.landmarks.push({ key: name, x: 8, y: 8 });
+    if (kind === "park") city.parks.push({ name, x: 8, y: 8 });
+    if (kind === "quest") city.sideQuests.push({ name, x: 8, y: 8 });
+    if (kind === "building") {
+      city.buildings.push({
+        id: 1,
+        type: name,
+        x: 4,
+        y: 4,
+        status: "complete",
+        targetStories: name === "capitol" ? 13 : 8,
+        storiesBuilt: name === "capitol" ? 13 : 8,
+        variant: 1,
+      });
+    }
+    return listProps(city)[0];
+  }
+
+  it("draws the palace in stone and red, not Denver gold", () => {
+    const palace = paintPropPixels(shape("building", "capitol"), light, "Tokyo");
+    const denver = paintPropPixels(shape("building", "capitol"), light, "Denver");
+    expect(count(denver.data, gold)).toBeGreaterThan(30);
+    expect(count(palace.data, gold)).toBeLessThan(10);
+    expect(count(palace.data, red)).toBeGreaterThan(20);
+  });
+
+  it("draws Tokyo Tower in red and white, and the Skytree as a silver needle Denver does not have", () => {
+    const tower = paintPropPixels(shape("landmark", "courthouse"), light, "Tokyo");
+    const skytree = paintPropPixels(shape("landmark", "tokyoSkytree"), light, "Tokyo");
+    expect(paintPropPixels(shape("landmark", "tokyoSkytree"), light, "Denver")).toBeNull();
+    expect(count(tower.data, red)).toBeGreaterThan(40);
+    expect(count(tower.data, white)).toBeGreaterThan(20);
+    expect(count(skytree.data, white)).toBeGreaterThan(30);
+    expect(count(skytree.data, red)).toBeLessThan(count(tower.data, red));
+    expect(skytree.h).toBeGreaterThan(tower.h * 0.8);
+  });
+
+  it("draws the torii, the lantern gate, and the station without a gold dome", () => {
+    const torii = paintPropPixels(shape("landmark", "artMuseum"), light, "Tokyo");
+    const gate = paintPropPixels(shape("landmark", "cathedral"), light, "Tokyo");
+    const station = paintPropPixels(shape("landmark", "unionStation"), light, "Tokyo");
+    expect(count(torii.data, red)).toBeGreaterThan(20);
+    expect(count(gate.data, red)).toBeGreaterThan(20);
+    expect(count(station.data, red)).toBeGreaterThan(40);
+    expect(count(station.data, gold)).toBeLessThan(10);
+  });
+
+  it("keeps the bridge, the crossing, and the parks on dry ground", () => {
+    const teal = (r, g, b) => b > r + 15 && g > 80 && b > 80 && Math.abs(g - b) < 40;
+    const names = [
+      ["quest", "Denver Zoo"],
+      ["quest", "Cherry Creek Trail"],
+      ["park", "Cheesman Park"],
+      ["park", "Washington Park"],
+      ["park", "City Park"],
+    ];
+    for (const [kind, name] of names) {
+      const picture = paintPropPixels(shape(kind, name), light, "Tokyo");
+      expect(picture).toBeTruthy();
+      expect(count(picture.data, teal)).toBe(0);
+    }
+  });
+
+  it("paints one snow cone and a plain red disc, not a snowy range", () => {
+    const tokyo = paintBackdropPixels(light, "Tokyo");
+    const denver = paintBackdropPixels(light, "Denver");
+    const at = (data, x, y) => {
+      const i = (y * SCENE_W + x) * 4;
+      return [data[i], data[i + 1], data[i + 2]];
+    };
+    expect(at(tokyo, 10, 0)).toEqual([0x7e, 0xb0, 0xdc]);
+    expect(at(tokyo, 168, 78)).toEqual([0xd9, 0x3a, 0x33]);
+    const snowCols = (data) => {
+      const cols = [];
+      for (let x = 0; x < SCENE_W; x += 1) {
+        let n = 0;
+        for (let y = 180; y < 330; y += 1) {
+          const i = (y * SCENE_W + x) * 4;
+          if (data[i] > 250 && data[i + 1] > 250 && data[i + 2] > 250) n += 1;
+        }
+        if (n > 6) cols.push(x);
+      }
+      return cols;
+    };
+    const fuji = snowCols(tokyo);
+    const range = snowCols(denver);
+    expect(fuji.length).toBeGreaterThan(8);
+    expect(fuji[fuji.length - 1] - fuji[0]).toBeLessThan(80);
+    expect(range[range.length - 1] - range[0]).toBeGreaterThan(400);
+    const water = (r, g, b) => b > r + 25 && b > 90 && g > 70;
+    let wet = 0;
+    for (let y = 700; y < SCENE_H; y += 1) {
+      const i = (y * SCENE_W + 640) * 4;
+      if (water(tokyo[i], tokyo[i + 1], tokyo[i + 2])) wet += 1;
+    }
+    expect(wet).toBe(0);
+  });
+
+  it("mirrors ordinary buildings on a quarter turn and leaves landmarks upright", () => {
+    const city = {
+      viewQuarter: 1,
+      buildings: [{ id: 1, type: "rowhouse", x: 4, y: 4, status: "complete", targetStories: 3, storiesBuilt: 3, variant: 0 }],
+      landmarks: [
+        { key: "tokyoSkytree", x: 5, y: 5 },
+        { key: "courthouse", x: 6, y: 6 },
+      ],
+      parks: [{ name: "Cheesman Park", x: 7, y: 7 }],
+      sideQuests: [{ name: "Coors Field", x: 8, y: 8 }],
+    };
+    const turned = listProps(city);
+    expect(turned.find((prop) => prop.id.startsWith("b:")).mirror).toBe(true);
+    expect(turned.filter((prop) => !prop.id.startsWith("b:")).every((prop) => prop.mirror === false)).toBe(true);
+    const straight = listProps({ ...city, viewQuarter: 0 });
+    expect(straight.find((prop) => prop.id.startsWith("b:")).mirror).toBe(false);
+    const half = listProps({ ...city, viewQuarter: 2 });
+    expect(half.find((prop) => prop.id.startsWith("b:")).mirror).toBe(false);
+  });
+});
+
 describe("mover occlusion", () => {
   const light = lightingAtMinutes(12 * 60 + 30);
 
@@ -415,6 +589,13 @@ describe("mover occlusion", () => {
     ["Denver", landmark("cathedral", 14, 8)],
     ["Denver", capitol],
     ["Denver", tower],
+    ["Tokyo", landmark("courthouse", 13, 14)],
+    ["Tokyo", landmark("unionStation", 14, 14)],
+    ["Tokyo", landmark("artMuseum", 14, 13)],
+    ["Tokyo", landmark("cathedral", 14, 8)],
+    ["Tokyo", landmark("tokyoSkytree", 16, 11)],
+    ["Tokyo", capitol],
+    ["Tokyo", tower],
   ];
 
   it.each(cases)("hides a walker behind the %s sprite and keeps one in front", (theme, prop) => {

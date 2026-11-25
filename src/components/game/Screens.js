@@ -5,14 +5,31 @@
 // 320 wide, scaled to the phone, pixel font, and a frame. Denver keeps the
 // Nuggets stripes and the gold frame. Austin passes theme="Austin", which
 // adds the theme-austin class and swaps those colors for burnt orange.
-// The picker enables every name in OPEN_THEMES. The others stay SOON.
+// Tokyo passes theme="Tokyo": navy, white pinstripes, a red disc, gold
+// trim, and a slab serif on the title only. The picker enables every
+// name in OPEN_THEMES. Flagstaff and New York stay SOON.
 
 import { useEffect, useState } from "react";
 import { normalizeCityCode } from "@/lib/cityCode";
 import { MAX_SAVES, NAME_MAX, cleanName, saveLabel } from "@/lib/saves";
-import { OPEN_THEMES, themeClass } from "./themes/names";
+import { OPEN_THEMES, PICKER_CITIES, themeClass } from "./themes/names";
 
-export const CITIES = ["AUSTIN", "DENVER", "BOULDER", "NEW YORK", "TOKYO"];
+export const CITIES = PICKER_CITIES;
+
+// Flagstaff does not fit one line of the pixel face in a 52px card.
+// Two lines keep the name readable. The value stored is still Flagstaff.
+function cardFace(name) {
+  if (name === "FLAGSTAFF") {
+    return (
+      <span>
+        FLAG
+        <br />
+        STAFF
+      </span>
+    );
+  }
+  return <span>{name}</span>;
+}
 
 const OPEN = new Set(OPEN_THEMES.map((name) => name.toUpperCase()));
 
@@ -213,9 +230,13 @@ export function NameScreen({ initial, notice, onNext, onBack }) {
 }
 
 export function PickerScreen({ city = "Denver", onNext, onBack }) {
-  // The card the person last chose. Denver is the start, so a fresh city
-  // still lands on the gold frame until they tap Austin.
-  const [selected, setSelected] = useState(city === "Austin" ? "AUSTIN" : "DENVER");
+  // The card the person last chose. A fresh city starts on Denver, which
+  // keeps the gold frame until they tap Austin or Tokyo. A locked name
+  // is not a card they can land on, so Flagstaff falls through to Denver.
+  const [selected, setSelected] = useState(() => {
+    const wanted = String(city || "").toUpperCase();
+    return OPEN.has(wanted) ? wanted : "DENVER";
+  });
   const theme = themeFromCard(selected);
   return (
     <Stage theme={theme}>
@@ -234,7 +255,7 @@ export function PickerScreen({ city = "Denver", onNext, onBack }) {
               aria-pressed={on}
               onClick={() => setSelected(name)}
             >
-              <span>{name}</span>
+              {cardFace(name)}
               <em>{!open ? "SOON" : on ? "READY" : "OPEN"}</em>
             </button>
           );
