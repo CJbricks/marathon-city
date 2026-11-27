@@ -14,16 +14,18 @@
 // is a navy cloth with one gold bar, not a disc on a white field.
 //
 // What should still be obvious when the whole city fits on a phone:
-//   machiya have a dark tile roof and a wooden frame, shotengai shops
-//   have a noren band under apartments, the palace is a stone bridge
-//   and a gate (not a gold dome), Tokyo Tower is a red-and-white lattice,
-//   the Skytree is a silver needle with a pod, the Kaminarimon is a
-//   lantern under a heavy roof, and one snow cone (Fuji) sits on the
-//   horizon. There is no water under the city.
+//   machiya have a dark tile roof, a wooden frame, pale shoji, and a
+//   small engawa, shotengai shops have a noren band under apartments,
+//   the palace is a stone bridge and a gate (not a gold dome), Tokyo
+//   Tower is a red-and-white lattice, the Skytree is a silver needle
+//   with a pod, the Kaminarimon is a lantern under a heavy roof, and a
+//   faded row of temples sits on the horizon. There is no water under
+//   the city, and there is no snow cone.
 
 import { labelsFor } from "../../../lib/landmarkNames.js";
 import { hex, mix, mul, pick, rng } from "../pixelPen";
 import { STORY, project } from "../sceneLayout";
+import { drawSkyline } from "./tokyoSkyline";
 
 const WIN = hex("#2a3444");
 const LIT = hex("#ffe0a0");
@@ -56,9 +58,9 @@ const GROUND = {
 };
 
 const MOUNTAINS = {
-  // Unused by the cone painter. Kept so a caller that only reads colors
-  // still finds a mountain object. drawHorizon paints Fuji instead of
-  // the seven-peak ridge these numbers would have made.
+  // Unused by the skyline painter. Kept so a caller that only reads colors
+  // still finds a mountain object. drawHorizon paints the faded row of
+  // temples instead of the seven-peak ridge these numbers would have made.
   rock: "#8ea0b8",
   rockShade: "#6d7e96",
   snow: "#ffffff",
@@ -125,33 +127,21 @@ function tileRoof(pen, u0, v0, u1, v1, z, rh) {
   pen.fillRect(cx - 4, cy - 1, 9, 2, TILE_DARK);
 }
 
-// One snow cone, right of center. The shared ridge painter draws seven
-// peaks, which is Denver's range and, with the snow turned off, Austin's
-// hills. Fuji is one mountain. The disc is a plain circle: no rays, so
-// it is not a rising-sun flag. It is skipped once the stars are up,
-// because a red disc on a night sky reads as a second moon.
-export function drawFuji(pen, horizonY, light) {
-  const { width } = pen;
-  const apexX = Math.round(width * 0.72);
-  const apexY = horizonY - 108;
-  const halfBase = 92;
-  const snow = mul(hex("#ffffff"), light.snow || [1, 1, 1]);
-  const slope = mul(hex("#8ea0b8"), light.mountain || [1, 1, 1]);
-  const shade = mul(hex("#6d7e96"), light.mountain || [1, 1, 1]);
-  const base = horizonY + 8;
-  const snowBand = 30;
-  for (let y = apexY; y <= base; y += 1) {
-    const t = (y - apexY) / Math.max(1, base - apexY);
-    const half = Math.max(1, Math.round(halfBase * t));
-    for (let x = apexX - half; x <= apexX + half; x += 1) {
-      const cap = y < apexY + snowBand && Math.abs(x - apexX) < half * 0.72;
-      const onLeft = x < apexX;
-      pen.put(x, y, cap ? snow : onLeft ? slope : shade);
-    }
-  }
-  if ((light.stars || 0) < 0.35) {
-    pen.disc(168, 78, 11, RED);
-  }
+// Paper and a wood lattice. The office windows are dark glass. A machiya
+// window is the opposite: the opening is pale, and the bars are the frame.
+const SHOJI = hex("#fff6e0");
+const SHOJI_SHADE = hex("#f0e2c4");
+const SHOJI_GLOW = hex("#ffe0a0");
+
+function shojiPane(side, t, k, night, variant) {
+  const row = k % STORY;
+  if (row === 0) return null;
+  // Most of the opening is paper. A bar on two rows and a mullion every
+  // fourth column is as much lattice as this face can hold before the
+  // screen turns back into a dark window.
+  if (row === 1 || row === 4 || t % 4 === 0) return side === "R" ? mix(WOOD_DARK, 0.9) : WOOD_DARK;
+  if (lamp(t, k, variant, 0.35, night)) return SHOJI_GLOW;
+  return side === "L" ? SHOJI : SHOJI_SHADE;
 }
 
 function drawMachiya(pen, b, ambient, night) {
@@ -170,14 +160,25 @@ function drawMachiya(pen, b, ambient, night) {
     // frame is the machiya, the way a porch is the bungalow.
     if (t % 6 === 0 || t === n - 1) return side === "R" ? mix(wood, 0.8) : wood;
     if (t <= 0 || k >= h - 2) return mix(plaster, 1.05);
-    if (k < 8 && t > n * 0.38 && t < n * 0.62) return WOOD_DARK;
-    return punchedWindow(side, t, k, night, b.variant, WIN, mix(WIN, 0.8), mix(plaster, 1.15), 0.3);
+    if (k < Math.min(8, h - 3) && t > n * 0.38 && t < n * 0.62) return WOOD_DARK;
+    return shojiPane(side, t, k, night, b.variant);
   });
   tileRoof(pen, u0 - 0.04, v0 - 0.02, u1 + 0.04, v1 + 0.02, h, 8);
-  // A noren is two color panels, not a word. It hangs in front of the
-  // door so it still reads after the picture is shrunk onto a phone.
+  // Engawa: a wooden deck and a thin tile roof, stuck out past the front
+  // wall. It has to clear the main eaves, or a short house wears its
+  // porch on its head. Two posts hold the outer corners.
+  const porchTop = Math.min(8, Math.max(5, h - 4));
+  const deckU0 = u0;
+  const deckU1 = u1;
+  const deckV1 = v1 + 0.22;
+  pen.box(deckU0, v1 - 0.04, deckU1, deckV1, 0, 4, wood);
+  pen.box(deckU0, deckV1 - 0.12, deckU0 + 0.14, deckV1, 0, porchTop, WOOD_DARK);
+  pen.box(deckU1 - 0.14, deckV1 - 0.12, deckU1, deckV1, 0, porchTop, WOOD_DARK);
+  tileRoof(pen, deckU0 - 0.04, v1 - 0.06, deckU1 + 0.04, deckV1 + 0.04, porchTop, 5);
+  // A noren is two color panels, not a word. It hangs in the porch
+  // opening, in front of the door, so it still reads on a phone.
   const cloth = hex(pick(rand, ["#1c2430", "#d93a33", "#2f5a3a"]));
-  pen.box(b.x + 0.36, b.y + 0.7, b.x + 0.64, b.y + 0.92, 6, 5, cloth);
+  pen.box(b.x + 0.36, b.y + 0.66, b.x + 0.64, b.y + 0.92, porchTop - 1, 5, cloth);
   if (rand() < 0.7) {
     const [tx, ty] = project(b.x + 0.14, b.y + 0.22);
     pine(pen, tx, ty, false);
@@ -740,7 +741,7 @@ export const tokyoTheme = {
   ground: GROUND,
   mountains: MOUNTAINS,
   // No lake field. The lip under the diamond is stone, not a bay.
-  // drawHorizon replaces the ridge so the horizon is Fuji alone.
+  // drawHorizon replaces the ridge so the horizon is the faded skyline.
   sky: {
     day: ["#7eb0dc", "#c5d7ea", "#f3ece2"],
     night: ["#0e1520", "#1c2430", "#2a3444"],
@@ -753,7 +754,7 @@ export const tokyoTheme = {
   lane: { day: "#f4f1ea", night: "#c9b062" },
   crosswalk: "#f7f4ee",
   skirt: ["#c8c2b4", "#6e675c"],
-  drawHorizon: drawFuji,
+  drawHorizon: drawSkyline,
   drawBuilding,
   drawLandmark,
   drawPark,

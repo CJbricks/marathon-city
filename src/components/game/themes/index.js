@@ -34,9 +34,10 @@
 //   drawPark(pen, park)
 //   drawQuest(pen, quest, ambient)
 //   drawStreets   optional. Omit it and the shared sidewalk painter runs.
-//   drawHorizon   optional. (pen, horizonY, light) paints the skyline
+//   drawHorizon   optional. (pen, horizonY, light) paints the distance
 //                 behind the city instead of the shared seven-peak ridge.
-//                 Tokyo uses it for one Fuji cone. Omit it and the ridge runs.
+//                 Tokyo uses it for a faded architectural skyline.
+//                 Omit it and the ridge runs.
 //
 // night is true at dusk and night. Denver's landmark painter ignores it.
 // Austin uses it for the tower's orange crown.
