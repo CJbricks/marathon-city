@@ -38,7 +38,7 @@ src/components/game/sceneLayout.js  Picture size and the isometric lot math (128
 src/components/game/rotation.js    Quarter-turns of the view. Does not edit the save.
 src/components/game/pixelPen.js    The shared pixel pen every theme draws with.
 src/components/game/streets.js     Sidewalks, curbs, and asphalt. Colors come from the theme.
-src/components/game/themes/        One file per city. Denver, Austin, and Tokyo. names.js is the allow-list.
+src/components/game/themes/        One file per city. Denver, Austin, and Tokyo. names.js is the allow-list. tokyoSkyline.js is Tokyo's horizon.
 src/components/game/overlaySprites.js  Cars, people, crane, transit. Same pixel scale as the city.
 src/components/game/pixelScene.js  Paints the backdrop and the grid, then asks the theme to draw.
 src/components/game/gridFit.js    Opening scale, pinch focal point, and the pan clamp.
@@ -274,6 +274,29 @@ Slots Austin paints, using Denver's unlocks:
 
 Ordinary buildings follow the same rings. A rowhouse is a Hyde Park or Bouldin bungalow (cream or wood, red hip roof, a porch) instead of a Victorian. Mixed-use is a South Congress shop under a red roof. Offices are limestone. A skyscraper is one of three shapes, chosen from its variant: stacked slabs (the Independent), a glass sail, or a bronze shaft (Sixth and Guadalupe). State buildings are limestone with a small Texas flag. The sprinkled museum type is a limestone gallery, not a second Blanton. Giga Texas uses the Big Blue Bear's block, which is already on the southeast edge, so the factory sits on the east side without moving a lot. Nothing in the Austin file draws a seal, a wordmark, or a mascot. The library is a travertine slab with a set-back top, the gallery is a cream shop and an orange awning, and the bakery is an awning with a loaf on the sign.
 
+## How the Tokyo skyline is drawn
+
+The horizon behind Tokyo is a row of traditional buildings, not a mountain. `drawSkyline` paints them into the backdrop, in picture pixels, on the rows above `HORIZON_Y`. The ground painter then covers everything from the horizon down, and the city grid is a second picture drawn on top. The row sits behind every lot.
+
+It does not call `project()` or `pen.box()`. Those place a building on a lot, and a lot moves when the view turns. At 90° and 270° an ordinary building sprite is also mirrored. A pagoda on a lot would slide around the diamond, and a mirrored one would face the wrong way. The backdrop is pinned. Turning the city leaves the pagoda, the gate, and the temple where they were, upright, at all four quarters. Landmarks in the city still never mirror. That is `mirrorBuildingSprite` in `rotation.js`, applied in `listProps`. The skyline never goes through it, because it is not a sprite.
+
+Each pigment is mixed toward the sky before it is drawn. Day mist is the horizon cream. Night mist is the night horizon. Higher pixels get a little more mist. That mix is the haze: the row stays lighter and less saturated than a wall in the city, so it does not compete with the buildings in front. The clock's mountain tint is only a light touch. Using it at full strength made the old snow cone a dark lump.
+
+The roofs are silhouettes with an eave that sags in the middle and turns up at the corners, and dark courses for the kawara tiles. Four forms:
+
+- kirizuma is a gable. Timber fills a triangle inside the slopes. Tile stays on the border and the eaves.
+- yosemune is a hip. The ridge is a short flat line, every face is tile, and there is no timber triangle.
+- irimoya is a hip with a small gable cut into the upper slope. The temple hall's lower roof uses it.
+- hogyo is a pyramid. The slopes meet at a point. Each of the pagoda's five roofs is one.
+
+The pagoda is the tallest shape: a stone step, five vermilion stories, a dark tiled roof on each, then a pole with five rings. The gate is two vermilion pillars, a wide gabled roof, a smaller roof above it, and a lantern with gold bands and no mark. The temple is a wide timber hall on stone, with a second story and a second roof so the two eaves stay separate. The lower houses use the other roof forms. One wooden house stands next to a flat concrete slab with glass bands. Pink blossoms sit along the base, in front of the walls.
+
+The red disc stays a plain circle in the upper sky, and it is skipped once the stars are up. A ray around it would be a flag. Nothing in the skyline file draws a word or a team mark.
+
+A machiya in the city is close enough for two things the distant houses only hint at. The windows are shoji: most of the opening is pale paper, with a wood bar and a mullion, not the dark glass an office uses. The engawa is a wooden deck, two posts, and a thin tile roof stuck out past the front wall. It is kept below the main eaves, or a short house would wear the porch on its head. The noren still hangs in that opening. It is color panels, not a word.
+
+Denver has no `drawHorizon`, so the seven-peak ridge still runs, snow and all. Austin has no `drawHorizon` either. Its snow line sits above the peaks, so the same ridge stays a low hill. Neither background reads this file.
+
 ## How view rotation works
 
 The two buttons under the city, and the Q and E keys, turn the view by 90 degrees. Right is clockwise. Left is the opposite direction. Four rights put every lot back where it started. One left undoes one right.
@@ -320,7 +343,7 @@ What changed for Tokyo, and only that:
 
 | Piece | Where | What Tokyo did |
 | --- | --- | --- |
-| Drawings and names | `themes/tokyo.js` and `landmarkNames.js` | Silhouettes, Fuji, and the six real names the card shows |
+| Drawings and names | `themes/tokyo.js`, `themes/tokyoSkyline.js`, and `landmarkNames.js` | Silhouettes, the faded skyline, and the six real names the card shows |
 | Register the painter | `themes/index.js` | `THEMES.Tokyo` |
 | Let the API accept the name | `themes/names.js` | `"Tokyo"` in `OPEN_THEMES` |
 | Picker card | `Screens.js` `CITIES` | Tokyo is a button. Boulder was renamed to Flagstaff and left locked, with New York |
@@ -344,9 +367,9 @@ Slots Tokyo paints, using the same unlocks:
 | Rides, 10 / 25 / 50 | Tokyo Dome, Jingu Stadium, Japan National Stadium |
 | Walks, 10 / 25 / 50 | Takeshita Street, Ginza, Ameyoko |
 
-Ordinary buildings follow the same rings. A rowhouse is a machiya (wood posts, plaster, a tile roof). Mixed-use is a shotengai shop under apartments. Offices are concrete mid-rises. A skyscraper is one of three shapes from its variant: a glass slab with a red crown band, stepped setbacks, or a slender shaft with a mast. Nothing in the Tokyo file draws a team mark, a "J", or a ray flag. The red disc in the sky is a circle. The banner on a state building is navy with one gold bar.
+Ordinary buildings follow the same rings. A rowhouse is a machiya: wood posts, plaster, a tile roof, pale shoji screens, and a covered engawa along the street face. Mixed-use is a shotengai shop under apartments. Offices are concrete mid-rises. A skyscraper is one of three shapes from its variant: a glass slab with a red crown band, stepped setbacks, or a slender shaft with a mast. Nothing in the Tokyo file draws a team mark, a "J", or a ray flag. The red disc in the sky is a circle. The banner on a state building is navy with one gold bar.
 
-The horizon is `drawHorizon`. The shared ridge is seven peaks, which is Denver's snow range and, with the snow line pushed above the peaks, Austin's hills. Fuji is one cone, so Tokyo passes `drawHorizon` and the ridge is skipped. There is no `lake` field. Rainbow Bridge, the parks, and the skirt are on stone and grass. A blue fill under the diamond is the water coming back.
+The horizon is `drawHorizon`. The shared ridge is seven peaks, which is Denver's snow range and, with the snow line pushed above the peaks, Austin's hills. Tokyo passes `drawHorizon`, so that ridge is skipped. The painter is `drawSkyline` in `themes/tokyoSkyline.js`. How that row is drawn is the next section. There is no `lake` field. Rainbow Bridge, the parks, and the skirt are on stone and grass. A blue fill under the diamond is the water coming back.
 
 The frame is `.theme-tokyo`. Denver has no class, on purpose, so its gold frame stays the default. Austin keeps `.theme-austin`. The class is `theme-` plus the name in lowercase, from `themeClass`.
 
@@ -363,7 +386,7 @@ To add the next city, copy `themes/tokyo.js`, keep the same slot keys, and add a
 5. Add the city's real landmark names to `src/lib/landmarkNames.js`, with `popup: true`. Spread `labelsFor` into the theme's `labels` map, then add park and side-quest names. Draw functions still switch on the slot key (`unionStation`, `"Coors Field"`, `"Cheesman Park"`). A name that is only on the theme, and not in `landmarkNames.js`, will not open the card.
 6. Add a `cities.<Name>` block only for a landmark that is not one of the shared slots. Give it `cumulativeRunMiles` if it should follow the library and the Skytree. Do not copy the gallery or the bakery unless that city has those rules.
 
-Run `npm test`. The Denver capitol test still expects a gold dome. The Austin capitol test expects pink granite and almost no gold. The Tokyo capitol test expects red posts and almost no gold, and the backdrop test expects one snow cone instead of a range. Then `npm run lint` and `npm run build`.
+Run `npm test`. The Denver capitol test still expects a gold dome. The Austin capitol test expects pink granite and almost no gold. The Tokyo capitol test expects red posts and almost no gold. The backdrop test expects the faded skyline and a plain red disc, and Denver's snow range still spans the picture. Then `npm run lint` and `npm run build`.
 
 `?flyover=1` on the city page, or the F key, plays the 8-second plane and quote banner without logging a run. `?time=22:00` (or any `HH:MM`) previews that hour's sky instead of the device clock. Neither one writes a run.
 

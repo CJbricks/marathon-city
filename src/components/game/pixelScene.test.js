@@ -470,15 +470,21 @@ describe("Tokyo landmarks", () => {
     }
   });
 
-  it("paints one snow cone and a plain red disc, not a snowy range", () => {
+  it("paints a faded skyline and a plain red disc, not a snow cone", () => {
     const tokyo = paintBackdropPixels(light, "Tokyo");
     const denver = paintBackdropPixels(light, "Denver");
+    const austin = paintBackdropPixels(light, "Austin");
     const at = (data, x, y) => {
       const i = (y * SCENE_W + x) * 4;
       return [data[i], data[i + 1], data[i + 2]];
     };
     expect(at(tokyo, 10, 0)).toEqual([0x7e, 0xb0, 0xdc]);
+    expect(at(denver, 10, 0)).toEqual([0x5b, 0x8f, 0xd6]);
+    expect(at(austin, 10, 0)).toEqual([0x8e, 0xc8, 0xee]);
+    // The disc is a circle. A ray would paint this same red outside it.
     expect(at(tokyo, 168, 78)).toEqual([0xd9, 0x3a, 0x33]);
+    expect(at(tokyo, 168 + 16, 78)).not.toEqual([0xd9, 0x3a, 0x33]);
+    expect(at(tokyo, 168, 78 + 16)).not.toEqual([0xd9, 0x3a, 0x33]);
     const snowCols = (data) => {
       const cols = [];
       for (let x = 0; x < SCENE_W; x += 1) {
@@ -491,11 +497,14 @@ describe("Tokyo landmarks", () => {
       }
       return cols;
     };
-    const fuji = snowCols(tokyo);
+    const tokyoSnow = snowCols(tokyo);
     const range = snowCols(denver);
-    expect(fuji.length).toBeGreaterThan(8);
-    expect(fuji[fuji.length - 1] - fuji[0]).toBeLessThan(80);
+    const austinSnow = snowCols(austin);
+    expect(tokyoSnow).toEqual([]);
+    expect(austinSnow).toEqual([]);
     expect(range[range.length - 1] - range[0]).toBeGreaterThan(400);
+    expect(themeFor("Denver").drawHorizon).toBeUndefined();
+    expect(themeFor("Austin").drawHorizon).toBeUndefined();
     const water = (r, g, b) => b > r + 25 && b > 90 && g > 70;
     let wet = 0;
     for (let y = 700; y < SCENE_H; y += 1) {

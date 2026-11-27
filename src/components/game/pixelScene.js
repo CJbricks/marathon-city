@@ -137,8 +137,10 @@ function skyAndLand(pen, light, theme) {
 
   // A theme may paint its own horizon. Tokyo does, because the ridge
   // below is always seven peaks: Denver's range, or Austin's hills when
-  // the snow line is above them. Fuji is one cone, so it cannot be a
-  // seed change. Omit drawHorizon and this ridge is what you get.
+  // the snow line is above them. Tokyo's horizon is a painted skyline,
+  // not a ridge and not a seed change. Omit drawHorizon and this ridge
+  // is what you get. The painter gets picture pixels only. It does not
+  // see the view quarter, so a turn cannot flip it.
   if (typeof theme.drawHorizon === "function") {
     theme.drawHorizon(pen, horizonY, light);
   } else {
